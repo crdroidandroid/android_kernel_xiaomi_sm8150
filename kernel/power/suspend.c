@@ -652,6 +652,8 @@ static void pm_suspend_marker(char *annotation)
 		tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
 }
 
+bool pm_in_action;
+
 /**
  * pm_suspend - Externally visible function for suspending the system.
  * @state: System sleep state to enter.
@@ -666,6 +668,7 @@ int pm_suspend(suspend_state_t state)
 	if (state <= PM_SUSPEND_ON || state >= PM_SUSPEND_MAX)
 		return -EINVAL;
 
+	pm_in_action = true;
 	pm_suspend_marker("entry");
 	pr_info("suspend entry (%s)\n", mem_sleep_labels[state]);
 	error = enter_state(state);
@@ -677,6 +680,7 @@ int pm_suspend(suspend_state_t state)
 	}
 	pm_suspend_marker("exit");
 	pr_info("suspend exit\n");
+	pm_in_action = false;
 	measure_wake_up_time();
 	return error;
 }
