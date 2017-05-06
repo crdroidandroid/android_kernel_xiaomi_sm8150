@@ -2148,7 +2148,7 @@ static u64 numa_get_avg_runtime(struct task_struct *p, u64 *period)
 		if (unlikely((s64)*period < 0))
 			*period = 0;
 	} else {
-		delta = p->se.avg.load_sum / p->se.load.weight;
+		delta = p->se.avg.load_sum;
 		*period = LOAD_AVG_MAX;
 	}
 
@@ -3156,7 +3156,7 @@ accumulate_sum(u64 delta, int cpu, struct sched_avg *sa,
  *            = u_0 + u_1*y + u_2*y^2 + ... [re-labeling u_i --> u_{i+1}]
  */
 static __always_inline int
-___update_load_avg(u64 now, int cpu, struct sched_avg *sa,
+___update_load_sum(u64 now, int cpu, struct sched_avg *sa,
 		  unsigned long weight, int running, struct cfs_rq *cfs_rq,
 		  struct rt_rq *rt_rq)
 {
@@ -3204,27 +3204,31 @@ ___update_load_avg(u64 now, int cpu, struct sched_avg *sa,
 	if (!accumulate_sum(delta, cpu, sa, weight, running, cfs_rq))
 		return 0;
 
+	return 1;
+}
+
+static __always_inline void
+___update_load_avg(struct sched_avg *sa, unsigned long weight, struct cfs_rq *cfs_rq)
+{
+	u32 divider = LOAD_AVG_MAX - 1024 + sa->period_contrib;
+
 	/*
 	 * Step 2: update *_avg.
 	 */
-	sa->load_avg = div_u64(sa->load_sum, LOAD_AVG_MAX - 1024 + sa->period_contrib);
+	sa->load_avg = div_u64(weight * sa->load_sum, divider);
 	if (cfs_rq) {
 		cfs_rq->runnable_load_avg =
-			div_u64(cfs_rq->runnable_load_sum, LOAD_AVG_MAX - 1024 + sa->period_contrib);
+			div_u64(cfs_rq->runnable_load_sum, divider);
 	}
-	sa->util_avg = sa->util_sum / (LOAD_AVG_MAX - 1024 + sa->period_contrib);
+	sa->util_avg = sa->util_sum / divider;
+}
 
-	if (cfs_rq) {
-		trace_sched_load_cfs_rq(cfs_rq);
-	} else {
-		if (likely(!rt_rq)) {
-			trace_sched_load_se(container_of(sa, struct sched_entity, avg));
-		} else {
-			trace_sched_load_rt_rq(cpu, rt_rq);
-		}
-	}
-
-	return 1;
+/*
+ * XXX we want to get rid of this helper and use the full load resolution.
+ */
+static inline long se_weight(struct sched_entity *se)
+{
+	return scale_load_down(se->load.weight);
 }
 
 /*
@@ -3256,38 +3260,21 @@ static inline void cfs_se_util_change(struct sched_avg *avg)
 static int
 __update_load_avg_blocked_se(u64 now, int cpu, struct sched_entity *se)
 {
-	return ___update_load_avg(now, cpu, &se->avg, 0, 0, NULL, NULL);
+	if (___update_load_sum(now, cpu, &se->avg, 0, 0, NULL, NULL)) {
+		___update_load_avg(&se->avg, se_weight(se), NULL);
+	return 1;
+	}
+
+    return 0;
 }
 
 static int
 __update_load_avg_se(u64 now, int cpu, struct cfs_rq *cfs_rq, struct sched_entity *se)
 {
-	if (___update_load_avg(now, cpu, &se->avg,
-			       se->on_rq * scale_load_down(se->load.weight),
-			       cfs_rq->curr == se, NULL, NULL)) {
-		cfs_se_util_change(&se->avg);
+	if (___update_load_sum(now, cpu, &se->avg, !!se->on_rq,
+				cfs_rq->curr == se, NULL, NULL)) {
 
-#ifdef UTIL_EST_DEBUG
-		/*
-		 * Trace utilization only for actual tasks.
-		 *
-		 * These trace events are mostly useful to get easier to
-		 * read plots for the estimated utilization, where we can
-		 * compare it with the actual grow/decrease of the original
-		 * PELT signal.
-		 * Let's keep them disabled by default in "production kernels".
-		 */
-		if (entity_is_task(se)) {
-			struct task_struct *tsk = task_of(se);
-
-			trace_sched_util_est_task(tsk, &se->avg);
-
-			/* Trace utilization only for top level CFS RQ */
-			cfs_rq = &(task_rq(tsk)->cfs);
-			trace_sched_util_est_cpu(cpu, cfs_rq);
-		}
-#endif /* UTIL_EST_DEBUG */
-
+		___update_load_avg(&se->avg, se_weight(se), NULL);
 		return 1;
 	}
 
@@ -3297,9 +3284,14 @@ __update_load_avg_se(u64 now, int cpu, struct cfs_rq *cfs_rq, struct sched_entit
 static int
 __update_load_avg_cfs_rq(u64 now, int cpu, struct cfs_rq *cfs_rq)
 {
-	return ___update_load_avg(now, cpu, &cfs_rq->avg,
-			scale_load_down(cfs_rq->load.weight),
-			cfs_rq->curr != NULL, cfs_rq, NULL);
+	if (___update_load_sum(now, cpu, &cfs_rq->avg,
+				scale_load_down(cfs_rq->load.weight),
+				cfs_rq->curr != NULL, cfs_rq, NULL)) {
+		___update_load_avg(&cfs_rq->avg, 1, cfs_rq);
+		return 1;
+	}
+
+	return 0;
 }
 
 /*
@@ -3471,7 +3463,7 @@ update_tg_cfs_load(struct cfs_rq *cfs_rq, struct sched_entity *se)
 
 	/* Set new sched_entity's load */
 	se->avg.load_avg = load;
-	se->avg.load_sum = se->avg.load_avg * LOAD_AVG_MAX;
+	se->avg.load_sum = LOAD_AVG_MAX;
 
 	/* Update parent cfs_rq load */
 	add_positive(&cfs_rq->avg.load_avg, delta);
@@ -3700,7 +3692,7 @@ static void attach_entity_load_avg(struct cfs_rq *cfs_rq, struct sched_entity *s
 {
 	se->avg.last_update_time = cfs_rq->avg.last_update_time;
 	cfs_rq->avg.load_avg += se->avg.load_avg;
-	cfs_rq->avg.load_sum += se->avg.load_sum;
+	cfs_rq->avg.load_sum += se_weight(se) * se->avg.load_sum;
 	cfs_rq->avg.util_avg += se->avg.util_avg;
 	cfs_rq->avg.util_sum += se->avg.util_sum;
 	set_tg_cfs_propagate(cfs_rq);
@@ -3722,7 +3714,7 @@ static void detach_entity_load_avg(struct cfs_rq *cfs_rq, struct sched_entity *s
 {
 
 	sub_positive(&cfs_rq->avg.load_avg, se->avg.load_avg);
-	sub_positive(&cfs_rq->avg.load_sum, se->avg.load_sum);
+	sub_positive(&cfs_rq->avg.load_sum, se_weight(se) * se->avg.load_sum);
 	sub_positive(&cfs_rq->avg.util_avg, se->avg.util_avg);
 	sub_positive(&cfs_rq->avg.util_sum, se->avg.util_sum);
 	set_tg_cfs_propagate(cfs_rq);
@@ -3736,12 +3728,10 @@ static void detach_entity_load_avg(struct cfs_rq *cfs_rq, struct sched_entity *s
 static inline void
 enqueue_entity_load_avg(struct cfs_rq *cfs_rq, struct sched_entity *se)
 {
-	struct sched_avg *sa = &se->avg;
+	cfs_rq->runnable_load_avg += se->avg.load_avg;
+	cfs_rq->runnable_load_sum += se_weight(se) * se->avg.load_sum;
 
-	cfs_rq->runnable_load_avg += sa->load_avg;
-	cfs_rq->runnable_load_sum += sa->load_sum;
-
-	if (!sa->last_update_time) {
+	if (!se->avg.last_update_time) {
 		attach_entity_load_avg(cfs_rq, se);
 		update_tg_load_avg(cfs_rq, 0);
 	}
@@ -3751,10 +3741,8 @@ enqueue_entity_load_avg(struct cfs_rq *cfs_rq, struct sched_entity *se)
 static inline void
 dequeue_entity_load_avg(struct cfs_rq *cfs_rq, struct sched_entity *se)
 {
-	cfs_rq->runnable_load_avg =
-		max_t(long, cfs_rq->runnable_load_avg - se->avg.load_avg, 0);
-	cfs_rq->runnable_load_sum =
-		max_t(s64,  cfs_rq->runnable_load_sum - se->avg.load_sum, 0);
+	sub_positive(&cfs_rq->runnable_load_avg, se->avg.load_avg);
+	sub_positive(&cfs_rq->runnable_load_sum, se_weight(se) * se->avg.load_sum);
 }
 
 #ifndef CONFIG_64BIT
