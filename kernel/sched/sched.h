@@ -517,6 +517,7 @@ struct cfs_bandwidth { };
 struct cfs_rq {
 	struct load_weight load;
 	unsigned int nr_running, h_nr_running, idle_h_nr_running;
+	unsigned long runnable_weight;
 
 	u64 exec_clock;
 	u64 min_vruntime;
@@ -541,8 +542,6 @@ struct cfs_rq {
 	 * CFS load tracking
 	 */
 	struct sched_avg avg;
-	u64 runnable_load_sum;
-	unsigned long runnable_load_avg;
 #ifndef CONFIG_64BIT
 	u64 load_last_update_time_copy;
 #endif
