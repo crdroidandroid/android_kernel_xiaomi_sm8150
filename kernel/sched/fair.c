@@ -3927,10 +3927,6 @@ void remove_entity_load_avg(struct sched_entity *se)
 	 * Similarly for groups, they will have passed through
 	 * post_init_entity_util_avg() before unregister_sched_fair_group()
 	 * calls this.
-	 *
-	 * XXX in case entity_is_task(se) && task_of(se)->on_rq == MIGRATING
-	 * we could actually get the right time, since we're called with
-	 * rq->lock held, see detach_task().
 	 */
 
 	sync_entity_load_avg(se);
