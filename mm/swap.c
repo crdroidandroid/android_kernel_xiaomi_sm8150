@@ -909,9 +909,9 @@ EXPORT_SYMBOL(release_pages);
  */
 void __pagevec_release(struct pagevec *pvec)
 {
-	if (!pvec->drained) {
+	if (!pvec->percpu_pvec_drained) {
 		lru_add_drain();
-		pvec->drained = true;
+		pvec->percpu_pvec_drained = true;
 	}
 	release_pages(pvec->pages, pagevec_count(pvec), 0);
 	pagevec_reinit(pvec);
