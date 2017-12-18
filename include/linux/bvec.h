@@ -156,4 +156,13 @@ static inline void bvec_iter_skip_zero_bvec(struct bvec_iter *iter)
 	     (bvl).bv_len ? (void)bvec_iter_advance((bio_vec), &(iter),	\
 		     (bvl).bv_len) : bvec_iter_skip_zero_bvec(&(iter)))
 
+/* for iterating one bio from start to end */
+#define BVEC_ITER_ALL_INIT (struct bvec_iter)				\
+{									\
+	.bi_sector	= 0,						\
+	.bi_size	= UINT_MAX,					\
+	.bi_idx		= 0,						\
+	.bi_bvec_done	= 0,						\
+}
+
 #endif /* __LINUX_BVEC_ITER_H */
