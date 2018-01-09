@@ -243,7 +243,7 @@ void blk_mq_quiesce_queue(struct request_queue *q)
 
 	queue_for_each_hw_ctx(q, hctx, i) {
 		if (hctx->flags & BLK_MQ_F_BLOCKING)
-			synchronize_srcu(hctx->queue_rq_srcu);
+			synchronize_srcu(hctx->srcu);
 		else
 			rcu = true;
 	}
@@ -584,7 +584,7 @@ static void hctx_unlock(struct blk_mq_hw_ctx *hctx, int srcu_idx)
 	if (!(hctx->flags & BLK_MQ_F_BLOCKING))
 		rcu_read_unlock();
 	else
-		srcu_read_unlock(hctx->queue_rq_srcu, srcu_idx);
+		srcu_read_unlock(hctx->srcu, srcu_idx);
 }
 
 static void hctx_lock(struct blk_mq_hw_ctx *hctx, int *srcu_idx)
@@ -592,7 +592,7 @@ static void hctx_lock(struct blk_mq_hw_ctx *hctx, int *srcu_idx)
 	if (!(hctx->flags & BLK_MQ_F_BLOCKING))
 		rcu_read_lock();
 	else
-		*srcu_idx = srcu_read_lock(hctx->queue_rq_srcu);
+		*srcu_idx = srcu_read_lock(hctx->srcu);
 }
 
 static void blk_mq_rq_update_aborted_gstate(struct request *rq, u64 gstate)
@@ -957,7 +957,7 @@ static void blk_mq_timeout_work(struct work_struct *work)
 			if (!(hctx->flags & BLK_MQ_F_BLOCKING))
 				has_rcu = true;
 			else
-				synchronize_srcu(hctx->queue_rq_srcu);
+				synchronize_srcu(hctx->srcu);
 
 			hctx->nr_expired = 0;
 		}
@@ -2110,7 +2110,7 @@ static void blk_mq_exit_hctx(struct request_queue *q,
 		set->ops->exit_hctx(hctx, hctx_idx);
 
 	if (hctx->flags & BLK_MQ_F_BLOCKING)
-		cleanup_srcu_struct(hctx->queue_rq_srcu);
+		cleanup_srcu_struct(hctx->srcu);
 
 	blk_mq_remove_cpuhp(hctx);
 	blk_free_flush_queue(hctx->fq);
@@ -2177,7 +2177,7 @@ static int blk_mq_init_hctx(struct request_queue *q,
 		goto free_fq;
 
 	if (hctx->flags & BLK_MQ_F_BLOCKING)
-		init_srcu_struct(hctx->queue_rq_srcu);
+		init_srcu_struct(hctx->srcu);
 
 	blk_mq_debugfs_register_hctx(q, hctx);
 
@@ -2460,7 +2460,7 @@ static int blk_mq_hw_ctx_size(struct blk_mq_tag_set *tag_set)
 {
 	int hw_ctx_size = sizeof(struct blk_mq_hw_ctx);
 
-	BUILD_BUG_ON(ALIGN(offsetof(struct blk_mq_hw_ctx, queue_rq_srcu),
+	BUILD_BUG_ON(ALIGN(offsetof(struct blk_mq_hw_ctx, srcu),
 			   __alignof__(struct blk_mq_hw_ctx)) !=
 		     sizeof(struct blk_mq_hw_ctx));
 
