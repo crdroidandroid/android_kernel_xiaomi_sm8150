@@ -133,6 +133,8 @@ typedef __u32 __bitwise req_flags_t;
 #define RQF_PM_ADDED		((__force req_flags_t)(1 << 19))
 /* timeout is expired */
 #define RQF_MQ_TIMEOUT_EXPIRED	((__force req_flags_t)(1 << 20))
+/* already slept for hybrid poll */
+#define RQF_MQ_POLL_SLEPT	((__force req_flags_t)(1 << 21))
 
 /* flags that prevent us from merging requests: */
 #define RQF_NOMERGE_FLAGS \

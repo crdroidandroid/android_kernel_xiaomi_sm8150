@@ -289,13 +289,13 @@ static const char *const rqf_name[] = {
 	RQF_NAME(HASHED),
 	RQF_NAME(STATS),
 	RQF_NAME(SPECIAL_PAYLOAD),
+	RQF_NAME(MQ_POLL_SLEPT),
 };
 #undef RQF_NAME
 
 #define RQAF_NAME(name) [REQ_ATOM_##name] = #name
 static const char *const rqaf_name[] = {
 	RQAF_NAME(COMPLETE),
-	RQAF_NAME(POLL_SLEPT),
 };
 #undef RQAF_NAME
 
