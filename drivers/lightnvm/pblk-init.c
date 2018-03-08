@@ -1007,7 +1007,7 @@ static void *pblk_init(struct nvm_tgt_dev *dev, struct gendisk *tdisk,
 	tqueue->limits.discard_granularity = geo->pgs_per_blk * geo->pfpg_size;
 	tqueue->limits.discard_alignment = 0;
 	blk_queue_max_discard_sectors(tqueue, UINT_MAX >> 9);
-	queue_flag_set_unlocked(QUEUE_FLAG_DISCARD, tqueue);
+	blk_queue_flag_set(QUEUE_FLAG_DISCARD, tqueue);
 
 	pr_info("pblk init: luns:%u, lines:%d, secs:%llu, buf entries:%u\n",
 			geo->nr_luns, pblk->l_mg.nr_lines,

@@ -1180,7 +1180,7 @@ static void nvme_config_discard(struct nvme_ns *ns)
 	}
 	blk_queue_max_discard_sectors(ns->queue, UINT_MAX);
 	blk_queue_max_discard_segments(ns->queue, NVME_DSM_MAX_RANGES);
-	queue_flag_set_unlocked(QUEUE_FLAG_DISCARD, ns->queue);
+	blk_queue_flag_set(QUEUE_FLAG_DISCARD, ns->queue);
 
 	if (ctrl->quirks & NVME_QUIRK_DEALLOCATE_ZEROES)
 		blk_queue_max_write_zeroes_sectors(ns->queue, UINT_MAX);
@@ -2369,7 +2369,7 @@ static void nvme_alloc_ns(struct nvme_ctrl *ctrl, unsigned nsid)
 	ns->queue = blk_mq_init_queue(ctrl->tagset);
 	if (IS_ERR(ns->queue))
 		goto out_release_instance;
-	queue_flag_set_unlocked(QUEUE_FLAG_NONROT, ns->queue);
+	blk_queue_flag_set(QUEUE_FLAG_NONROT, ns->queue);
 	ns->queue->queuedata = ns;
 	ns->ctrl = ctrl;
 

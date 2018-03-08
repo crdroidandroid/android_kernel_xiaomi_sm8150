@@ -1086,7 +1086,7 @@ static void nbd_parse_flags(struct nbd_device *nbd)
 	else
 		set_disk_ro(nbd->disk, false);
 	if (config->flags & NBD_FLAG_SEND_TRIM)
-		queue_flag_set_unlocked(QUEUE_FLAG_DISCARD, nbd->disk->queue);
+		blk_queue_flag_set(QUEUE_FLAG_DISCARD, nbd->disk->queue);
 	if (config->flags & NBD_FLAG_SEND_FLUSH) {
 		if (config->flags & NBD_FLAG_SEND_FUA)
 			blk_queue_write_cache(nbd->disk->queue, true, true);
@@ -1166,7 +1166,7 @@ static void nbd_config_put(struct nbd_device *nbd)
 		nbd->recv_workq = NULL;
 
 		nbd->tag_set.timeout = 0;
-		queue_flag_clear_unlocked(QUEUE_FLAG_DISCARD, nbd->disk->queue);
+		blk_queue_flag_clear(QUEUE_FLAG_DISCARD, nbd->disk->queue);
 
 		mutex_unlock(&nbd->config_lock);
 		nbd_put(nbd);
@@ -1654,8 +1654,8 @@ static int nbd_dev_add(int index)
 	/*
 	 * Tell the block layer that we are not a rotational device
 	 */
-	queue_flag_set_unlocked(QUEUE_FLAG_NONROT, disk->queue);
-	queue_flag_clear_unlocked(QUEUE_FLAG_ADD_RANDOM, disk->queue);
+	blk_queue_flag_set(QUEUE_FLAG_NONROT, disk->queue);
+	blk_queue_flag_clear(QUEUE_FLAG_ADD_RANDOM, disk->queue);
 	disk->queue->limits.discard_granularity = 512;
 	blk_queue_max_discard_sectors(disk->queue, UINT_MAX);
 	blk_queue_max_segment_size(disk->queue, UINT_MAX);
