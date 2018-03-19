@@ -922,16 +922,16 @@ int blk_queue_enter(struct request_queue *q, unsigned int op)
 {
 	while (true) {
 
-		rcu_read_lock_sched();
+		rcu_read_lock();
 		if (__percpu_ref_tryget_live(&q->q_usage_counter)) {
 			if (likely((op & REQ_PREEMPT) ||
 					!blk_queue_preempt_only(q))) {
-				rcu_read_unlock_sched();
+				rcu_read_unlock();
 				return 0;
 			} else
 				percpu_ref_put(&q->q_usage_counter);
 		}
-		rcu_read_unlock_sched();
+		rcu_read_unlock();
 
 		if (op & REQ_NOWAIT)
 			return -EBUSY;
