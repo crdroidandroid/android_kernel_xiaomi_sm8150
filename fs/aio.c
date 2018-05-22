@@ -1588,7 +1588,7 @@ static int io_submit_one(struct kioctx *ctx, struct iocb __user *user_iocb,
 	req->common.ki_pos = iocb->aio_offset;
 	req->common.ki_complete = aio_complete;
 	req->common.ki_flags = iocb_flags(req->common.ki_filp);
-	req->common.ki_hint = file_write_hint(file);
+	req->common.ki_hint = ki_hint_validate(file_write_hint(file));
 
 	if (iocb->aio_flags & IOCB_FLAG_RESFD) {
 		/*
