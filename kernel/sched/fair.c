@@ -2004,7 +2004,8 @@ static int task_numa_migrate(struct task_struct *p)
 		return ret;
 	}
 
-	ret = migrate_swap(p, env.best_task);
+	ret = migrate_swap(p, env.best_task, env.best_cpu, env.src_cpu);
+
 	if (ret != 0)
 		trace_sched_stick_numa(p, env.src_cpu, task_cpu(env.best_task));
 	put_task_struct(env.best_task);
@@ -13486,7 +13487,7 @@ static void walt_rotate_work_func(struct work_struct *work)
 	struct walt_rotate_work *wr = container_of(work,
 				struct walt_rotate_work, w);
 
-	migrate_swap(wr->src_task, wr->dst_task);
+	migrate_swap(wr->src_task, wr->dst_task, wr->dst_cpu, wr->src_cpu);
 
 	put_task_struct(wr->src_task);
 	put_task_struct(wr->dst_task);
