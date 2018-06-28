@@ -1185,8 +1185,6 @@ static void update_curr_dl(struct rq *rq)
 	curr->se.exec_start = now;
 	cpuacct_charge(curr, delta_exec);
 
-	sched_rt_avg_update(rq, delta_exec);
-
 	/*
 	 * For tasks that participate in GRUB, we implement GRUB-PA: the
 	 * spare reclaimed bandwidth is used to clock down frequency.
