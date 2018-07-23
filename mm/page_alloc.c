@@ -4998,7 +4998,8 @@ void show_free_areas(unsigned int filter, nodemask_t *nodemask)
 		" unevictable:%lu dirty:%lu writeback:%lu unstable:%lu\n"
 		" slab_reclaimable:%lu slab_unreclaimable:%lu\n"
 		" mapped:%lu shmem:%lu pagetables:%lu bounce:%lu\n"
-		" free:%lu free_pcp:%lu free_cma:%lu\n",
+		" free:%lu free_pcp:%lu free_cma:%lu zspages: %lu\n"
+		" ion_heap:%lu ion_heap_pool:%lu\n",
 		global_node_page_state(NR_ACTIVE_ANON),
 		global_node_page_state(NR_INACTIVE_ANON),
 		global_node_page_state(NR_ISOLATED_ANON),
@@ -5018,6 +5019,14 @@ void show_free_areas(unsigned int filter, nodemask_t *nodemask)
 		global_zone_page_state(NR_FREE_PAGES),
 		free_pcp,
 		global_zone_page_state(NR_FREE_CMA_PAGES));
+#if IS_ENABLED(CONFIG_ZSMALLOC)
+		global_page_state(NR_ZSPAGES),
+#else
+		0UL,
+#endif
+		global_node_page_state(NR_ION_HEAP),
+		global_node_page_state(NR_INDIRECTLY_RECLAIMABLE_BYTES)
+							>> PAGE_SHIFT);
 
 	for_each_online_pgdat(pgdat) {
 		if (show_mem_node_skip(filter, pgdat->node_id, nodemask))
