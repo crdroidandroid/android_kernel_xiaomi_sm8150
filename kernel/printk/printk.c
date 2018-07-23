@@ -823,6 +823,10 @@ static ssize_t devkmsg_write(struct kiocb *iocb, struct iov_iter *from)
 		}
 	}
 
+	if (strncmp("healthd", line, 7) == 0) {
+		return len;
+	}
+
 	printk_emit(facility, level, NULL, 0, "%s", line);
 ignore:
 	kfree(buf);
