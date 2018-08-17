@@ -947,49 +947,7 @@ static void reset_page(struct page *page)
 	page->freelist = NULL;
 }
 
-/*
- * To prevent zspage destroy during migration, zspage freeing should
- * hold locks of all pages in the zspage.
- */
-void lock_zspage(struct zspage *zspage)
-{
-	struct page *curr_page, *page;
-
-	/*
-	 * Pages we haven't locked yet can be migrated off the list while we're
-	 * trying to lock them, so we need to be careful and only attempt to
-	 * lock each page under migrate_read_lock(). Otherwise, the page we lock
-	 * may no longer belong to the zspage. This means that we may wait for
-	 * the wrong page to unlock, so we must take a reference to the page
-	 * prior to waiting for it to unlock outside migrate_read_lock().
-	 */
-	while (1) {
-		migrate_read_lock(zspage);
-		page = get_first_page(zspage);
-		if (trylock_page(page))
-			break;
-		get_page(page);
-		migrate_read_unlock(zspage);
-		wait_on_page_locked(page);
-		put_page(page);
-	}
-
-	curr_page = page;
-	while ((page = get_next_page(curr_page))) {
-		if (trylock_page(page)) {
-			curr_page = page;
-		} else {
-			get_page(page);
-			migrate_read_unlock(zspage);
-			wait_on_page_locked(page);
-			put_page(page);
-			migrate_read_lock(zspage);
-		}
-	}
-	migrate_read_unlock(zspage);
-}
-
-int trylock_zspage(struct zspage *zspage)
+static int trylock_zspage(struct zspage *zspage)
 {
 	struct page *cursor, *fail;
 
@@ -1865,6 +1823,48 @@ static enum fullness_group putback_zspage(struct size_class *class,
 }
 
 #ifdef CONFIG_COMPACTION
+/*
+ * To prevent zspage destroy during migration, zspage freeing should
+ * hold locks of all pages in the zspage.
+ */
+static void lock_zspage(struct zspage *zspage)
+{
+	struct page *curr_page, *page;
+
+	/*
+	 * Pages we haven't locked yet can be migrated off the list while we're
+	 * trying to lock them, so we need to be careful and only attempt to
+	 * lock each page under migrate_read_lock(). Otherwise, the page we lock
+	 * may no longer belong to the zspage. This means that we may wait for
+	 * the wrong page to unlock, so we must take a reference to the page
+	 * prior to waiting for it to unlock outside migrate_read_lock().
+	 */
+	while (1) {
+		migrate_read_lock(zspage);
+		page = get_first_page(zspage);
+		if (trylock_page(page))
+			break;
+		get_page(page);
+		migrate_read_unlock(zspage);
+		wait_on_page_locked(page);
+		put_page(page);
+	}
+
+	curr_page = page;
+	while ((page = get_next_page(curr_page))) {
+		if (trylock_page(page)) {
+			curr_page = page;
+		} else {
+			get_page(page);
+			migrate_read_unlock(zspage);
+			wait_on_page_locked(page);
+			put_page(page);
+			migrate_read_lock(zspage);
+		}
+	}
+	migrate_read_unlock(zspage);
+}
+
 static struct dentry *zs_mount(struct file_system_type *fs_type,
 				int flags, const char *dev_name, void *data)
 {
@@ -1982,7 +1982,7 @@ static void replace_sub_page(struct size_class *class, struct zspage *zspage,
 	__SetPageMovable(newpage, page_mapping(oldpage));
 }
 
-bool zs_page_isolate(struct page *page, isolate_mode_t mode)
+static bool zs_page_isolate(struct page *page, isolate_mode_t mode)
 {
 	struct zs_pool *pool;
 	struct size_class *class;
@@ -2038,7 +2038,7 @@ bool zs_page_isolate(struct page *page, isolate_mode_t mode)
 	return true;
 }
 
-int zs_page_migrate(struct address_space *mapping, struct page *newpage,
+static int zs_page_migrate(struct address_space *mapping, struct page *newpage,
 		struct page *page, enum migrate_mode mode)
 {
 	struct zs_pool *pool;
@@ -2167,7 +2167,7 @@ unpin_objects:
 	return ret;
 }
 
-void zs_page_putback(struct page *page)
+static void zs_page_putback(struct page *page)
 {
 	struct zs_pool *pool;
 	struct size_class *class;
@@ -2198,7 +2198,7 @@ void zs_page_putback(struct page *page)
 	spin_unlock(&class->lock);
 }
 
-const struct address_space_operations zsmalloc_aops = {
+static const struct address_space_operations zsmalloc_aops = {
 	.isolate_page = zs_page_isolate,
 	.migratepage = zs_page_migrate,
 	.putback_page = zs_page_putback,
