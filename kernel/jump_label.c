@@ -394,7 +394,7 @@ static void __jump_label_update(struct static_key *key,
 		 * An entry->code of 0 indicates an entry which has been
 		 * disabled because it was in an init text area.
 		 */
-		if (!jump_entry_is_init(entry)) {
+		if (init || !jump_entry_is_init(entry)) {
 			if (kernel_text_address(jump_entry_code(entry)))
 				arch_jump_label_transform(entry, jump_label_type(entry));
 			else
@@ -447,19 +447,6 @@ void __init jump_label_init(void)
 	static_key_initialized = true;
 	jump_label_unlock();
 	cpus_read_unlock();
-}
-
-/* Disable any jump label entries in __init/__exit code */
-void __init jump_label_invalidate_initmem(void)
-{
-	struct jump_entry *iter_start = __start___jump_table;
-	struct jump_entry *iter_stop = __stop___jump_table;
-	struct jump_entry *iter;
-
-	for (iter = iter_start; iter < iter_stop; iter++) {
-		if (init_section_contains((void *)jump_entry_code(iter), 1))
-			jump_entry_set_init(iter);
-	}
 }
 
 #ifdef CONFIG_MODULES
@@ -679,19 +666,6 @@ static void jump_label_del_module(struct module *mod)
 			static_key_clear_linked(key);
 			kfree(jlm);
 		}
-	}
-}
-
-/* Disable any jump label entries in module init code */
-static void jump_label_invalidate_module_init(struct module *mod)
-{
-	struct jump_entry *iter_start = mod->jump_entries;
-	struct jump_entry *iter_stop = iter_start + mod->num_jump_entries;
-	struct jump_entry *iter;
-
-	for (iter = iter_start; iter < iter_stop; iter++) {
-		if (within_module_init(jump_entry_code(iter), mod))
-			jump_entry_set_init(iter);
 	}
 }
 
