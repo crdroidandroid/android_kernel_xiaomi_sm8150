@@ -121,32 +121,6 @@ struct static_key {
 #include <asm/jump_label.h>
 
 #ifndef __ASSEMBLY__
-#ifdef CONFIG_HAVE_ARCH_JUMP_LABEL_RELATIVE
-
-struct jump_entry {
-	s32 code;
-	s32 target;
-	long key;	// key may be far away from the core kernel under KASLR
-};
-
-static inline unsigned long jump_entry_code(const struct jump_entry *entry)
-{
-	return (unsigned long)&entry->code + entry->code;
-}
-
-static inline unsigned long jump_entry_target(const struct jump_entry *entry)
-{
-	return (unsigned long)&entry->target + entry->target;
-}
-
-static inline struct static_key *jump_entry_key(const struct jump_entry *entry)
-{
-	long offset = entry->key & ~3L;
-
-	return (struct static_key *)((unsigned long)&entry->key + offset);
-}
-
-#else
 
 static inline unsigned long jump_entry_code(const struct jump_entry *entry)
 {
@@ -160,10 +134,8 @@ static inline unsigned long jump_entry_target(const struct jump_entry *entry)
 
 static inline struct static_key *jump_entry_key(const struct jump_entry *entry)
 {
-	return (struct static_key *)((unsigned long)entry->key & ~3UL);
+	return (struct static_key *)((unsigned long)entry->key & ~1UL);
 }
-
-#endif
 
 static inline bool jump_entry_is_branch(const struct jump_entry *entry)
 {
@@ -172,12 +144,12 @@ static inline bool jump_entry_is_branch(const struct jump_entry *entry)
 
 static inline bool jump_entry_is_init(const struct jump_entry *entry)
 {
-	return (unsigned long)entry->key & 2UL;
+	return entry->code == 0;
 }
 
 static inline void jump_entry_set_init(struct jump_entry *entry)
 {
-	entry->key |= 2;
+	entry->code = 0;
 }
 
 #endif
