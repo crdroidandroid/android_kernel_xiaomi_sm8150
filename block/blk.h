@@ -79,6 +79,20 @@ static inline void blk_queue_enter_live(struct request_queue *q)
 	percpu_ref_get(&q->q_usage_counter);
 }
 
+#ifndef ARCH_BIOVEC_PHYS_MERGEABLE
+#define ARCH_BIOVEC_PHYS_MERGEABLE(vec1, vec2) true
+#endif
+
+static inline bool biovec_phys_mergeable(const struct bio_vec *vec1,
+		const struct bio_vec *vec2)
+{
+	if (bvec_to_phys(vec1) + vec1->bv_len != bvec_to_phys(vec2))
+		return false;
+	if (!ARCH_BIOVEC_PHYS_MERGEABLE(vec1, vec2))
+		return false;
+	return true;
+}
+
 #ifdef CONFIG_BLK_DEV_INTEGRITY
 void blk_flush_integrity(void);
 bool __bio_integrity_endio(struct bio *);
