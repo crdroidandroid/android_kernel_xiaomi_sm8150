@@ -1099,6 +1099,11 @@ static int smb5_parse_dt(struct smb5 *chip)
 		}
 	}
 
+	rc = of_property_read_string(node, "google,usb-port-tz-name",
+				     &chg->usb_port_tz_name);
+	if (rc < 0)
+		pr_err("cannot read usb-port-tz-name, rc=%d\n", rc);
+
 	return 0;
 }
 
@@ -1141,6 +1146,7 @@ static enum power_supply_property smb5_usb_props[] = {
 	POWER_SUPPLY_PROP_TYPE_RECHECK,
 	POWER_SUPPLY_PROP_PD_CURRENT_MAX,
 	POWER_SUPPLY_PROP_CURRENT_MAX,
+	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_TYPE,
 	POWER_SUPPLY_PROP_TYPEC_MODE,
 	POWER_SUPPLY_PROP_TYPEC_POWER_ROLE,
@@ -1240,6 +1246,9 @@ static int smb5_usb_get_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		val->intval = get_effective_result(chg->usb_icl_votable);
+		break;
+	case POWER_SUPPLY_PROP_TEMP:
+		rc = smblib_get_prop_usb_port_temp(chg, val);
 		break;
 	case POWER_SUPPLY_PROP_TYPE:
 		val->intval = POWER_SUPPLY_TYPE_USB_PD;
