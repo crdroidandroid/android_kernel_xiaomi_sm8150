@@ -796,6 +796,10 @@ config PERCPU_STATS
 	  information includes global and per chunk statistics, which can
 	  be used to help understand percpu memory usage.
 
+config VMSTAT_INTERVAL
+	int "Default interval in seconds to update vmstat"
+	default 0
+
 config ARCH_SUPPORTS_SPECULATIVE_PAGE_FAULT
        def_bool n
 
