@@ -67,8 +67,7 @@ int __blkdev_issue_discard(struct block_device *bdev, sector_t sector,
 					q->limits.max_discard_sectors);
 		if (!req_sects)
 			goto fail;
-		if (req_sects > UINT_MAX >> 9)
-			req_sects = UINT_MAX >> 9;
+		req_sects = min(req_sects, bio_allowed_max_sectors(q));
 
 		/*
 		 * If splitting a request, and the next starting sector would be
