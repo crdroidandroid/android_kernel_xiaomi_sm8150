@@ -15,35 +15,25 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/delay.h>
-#include <linux/ktime.h>
-#include <linux/math64.h>
 #include <linux/platform_device.h>
 #include <linux/pmic-voter.h>
 #include <linux/power_supply.h>
 #include <linux/printk.h>
 #include <linux/thermal.h>
+#include <linux/time.h>
 #include <linux/pm_wakeup.h>
 
 #define USB_OVERHEAT_MITIGATION_VOTER	"USB_OVERHEAT_MITIGATION_VOTER"
 
-enum {
-	USB_NO_LIMIT = 0,
-	USB_OVERHEAT_THROTTLE = 1,
-	USB_MAX_THROTTLE_STATE = USB_OVERHEAT_THROTTLE,
-};
+static int fake_port_temp = -1;
+module_param_named(
+	fake_port_temp, fake_port_temp, int, 0600
+);
 
 static bool mitigation_enabled = true;
 module_param_named(
 	enable, mitigation_enabled, bool, 0600
 );
-
-struct overheat_event_stats {
-	int plug_temp;
-	int max_temp;
-	int trip_time;
-	int hysteresis_time;
-	int cleared_time;
-};
 
 struct overheat_info {
 	struct device              *dev;
@@ -53,8 +43,6 @@ struct overheat_info {
 	struct notifier_block      psy_nb;
 	struct delayed_work        port_overheat_work;
 	struct wakeup_source	   overheat_ws;
-	struct overheat_event_stats stats;
-	struct thermal_cooling_device *cooling_dev;
 
 	bool usb_connected;
 	bool accessory_connected;
@@ -62,19 +50,13 @@ struct overheat_info {
 	bool overheat_mitigation;
 	bool overheat_work_running;
 
-	int temp;
-	int plug_temp;
-	int max_temp;
-	time_t plug_time;
-	time_t trip_time;
-	time_t hysteresis_time;
-
 	int begin_temp;
 	int clear_temp;
 	int overheat_work_delay_ms;
 	int polling_freq;
+	int monitor_accessory_s;
+	time_t accessory_connect_time;
 	int check_status;
-	unsigned long throttle_state;
 };
 
 #define PSY_GET_PROP(psy, psp) psy_get_prop(psy, psp, #psp)
@@ -97,41 +79,6 @@ static inline int psy_get_prop(struct power_supply *psy,
 	pr_debug("get %s for '%s' => %d\n", prop_name, psy->desc->name,
 		 val.intval);
 	return val.intval;
-}
-
-#define OVH_ATTR(_name)							\
-static ssize_t _name##_show(struct device *dev,				\
-				     struct device_attribute *attr,	\
-				     char *buf)				\
-{									\
-	struct overheat_info *ovh_info = dev_get_drvdata(dev);		\
-									\
-	return scnprintf(buf, PAGE_SIZE, "%d\n", ovh_info->stats._name);\
-}									\
-static DEVICE_ATTR_RO(_name);
-
-OVH_ATTR(max_temp);
-OVH_ATTR(plug_temp);
-OVH_ATTR(trip_time);
-OVH_ATTR(hysteresis_time);
-OVH_ATTR(cleared_time);
-
-static struct attribute *ovh_attr[] = {
-	&dev_attr_max_temp.attr,
-	&dev_attr_plug_temp.attr,
-	&dev_attr_hysteresis_time.attr,
-	&dev_attr_trip_time.attr,
-	&dev_attr_cleared_time.attr,
-	NULL,
-};
-
-static const struct attribute_group ovh_attr_group = {
-	.attrs = ovh_attr,
-};
-
-static inline time_t get_seconds_since_boot(void)
-{
-	return div_u64(ktime_to_ns(ktime_get_boottime()), NSEC_PER_SEC);
 }
 
 static inline int get_dts_vars(struct overheat_info *ovh_info)
@@ -173,6 +120,15 @@ static inline int get_dts_vars(struct overheat_info *ovh_info)
 		return ret;
 	}
 
+	ret = of_property_read_u32(node, "google,accessory-monitoring-period",
+				   &ovh_info->monitor_accessory_s);
+	if (ret < 0) {
+		dev_warn(ovh_info->dev,
+			"cannot read accessory-monitoring-period, ret=%d\n",
+			ret);
+		ovh_info->monitor_accessory_s = 5;
+	}
+
 	return 0;
 }
 
@@ -201,7 +157,6 @@ static int suspend_usb(struct overheat_info *ovh_info)
 		return ret;
 	}
 
-	ovh_info->trip_time = get_seconds_since_boot();
 	ovh_info->overheat_mitigation = true;
 	return ret;
 }
@@ -209,16 +164,6 @@ static int suspend_usb(struct overheat_info *ovh_info)
 static int resume_usb(struct overheat_info *ovh_info)
 {
 	int ret;
-
-	/* Fill out stats so userspace can read them. */
-	ovh_info->stats.max_temp = ovh_info->max_temp;
-	ovh_info->stats.plug_temp = ovh_info->plug_temp;
-	ovh_info->stats.trip_time =
-		(int) (ovh_info->trip_time - ovh_info->plug_time);
-	ovh_info->stats.hysteresis_time =
-		(int) (ovh_info->hysteresis_time - ovh_info->trip_time);
-	ovh_info->stats.cleared_time =
-		(int) (get_seconds_since_boot() - ovh_info->hysteresis_time);
 
 	/* enable charging */
 	ret = vote(ovh_info->usb_icl_votable,
@@ -239,39 +184,33 @@ static int resume_usb(struct overheat_info *ovh_info)
 		return ret;
 	}
 
-	/* Notify userspace to read the stats. */
-	kobject_uevent(&ovh_info->dev->kobj, KOBJ_CHANGE);
-
-	ovh_info->max_temp = INT_MIN;
-	ovh_info->plug_temp = INT_MIN;
-	ovh_info->plug_time = 0;
-	ovh_info->trip_time = 0;
-	ovh_info->hysteresis_time = 0;
 	ovh_info->overheat_mitigation = false;
 	ovh_info->usb_replug = false;
 	return ret;
 }
 
+static inline time_t get_seconds_since_boot(void)
+{
+	struct timespec boot;
+
+	getboottime(&boot);
+	return get_seconds() - boot.tv_sec;
+}
+
 /*
- * Update usb_connected, accessory_connected, usb_replug, and plug_temp
- * status in overheat_info struct.
+ * Update usb_connected, accessory_connected, and usb_replug status in
+ * overheat_info struct.
  */
 static int update_usb_status(struct overheat_info *ovh_info)
 {
 	int ret;
 	bool prev_state = ovh_info->usb_connected ||
 		ovh_info->accessory_connected;
+	bool prev_accessory_state = ovh_info->accessory_connected;
 	bool curr_state;
 	int *check_status = &ovh_info->check_status;
 
-	/* Port is too hot to safely check the connected status. */
-	if (ovh_info->overheat_mitigation &&
-	    ovh_info->temp > ovh_info->clear_temp)
-		return -EBUSY;
-
 	if (ovh_info->overheat_mitigation) {
-		if (!ovh_info->hysteresis_time)
-			ovh_info->hysteresis_time = get_seconds_since_boot();
 		// Only check USB status every polling_freq instances
 		*check_status = (*check_status + 1) % ovh_info->polling_freq;
 		if (*check_status > 0)
@@ -288,14 +227,7 @@ static int update_usb_status(struct overheat_info *ovh_info)
 	}
 
 	dev_dbg(ovh_info->dev, "Updating USB connected status\n");
-
-	/*
-	 * Update USB present status to determine if USB has been disconnected.
-	 * If we use USB online status to determine replug, we will need to
-	 * extend the delay between re-enabling CC detection and checking the
-	 * USB online status.
-	 */
-	ret = PSY_GET_PROP(ovh_info->usb_psy, POWER_SUPPLY_PROP_PRESENT);
+	ret = PSY_GET_PROP(ovh_info->usb_psy, POWER_SUPPLY_PROP_ONLINE);
 	if (ret < 0)
 		return ret;
 	ovh_info->usb_connected = ret;
@@ -306,18 +238,16 @@ static int update_usb_status(struct overheat_info *ovh_info)
 	ovh_info->accessory_connected = (ret == POWER_SUPPLY_TYPEC_SINK) ||
 			(ret == POWER_SUPPLY_TYPEC_SINK_POWERED_CABLE);
 
+	if (!prev_accessory_state && ovh_info->accessory_connected)
+		ovh_info->accessory_connect_time = get_seconds_since_boot();
 	curr_state = ovh_info->usb_connected || ovh_info->accessory_connected;
-	if (curr_state && !prev_state) {
-		ovh_info->plug_time = get_seconds_since_boot();
-		ovh_info->plug_temp = ovh_info->temp;
-	}
 
 	if (ovh_info->overheat_mitigation) {
 		ret = vote(ovh_info->disable_power_role_switch,
 			   USB_OVERHEAT_MITIGATION_VOTER, true, 0);
 		if (ret < 0) {
 			dev_err(ovh_info->dev,
-				"Couldn't vote for disable_power_role_switch ret=%d\n",
+				"Couldn't un-vote for disable_power_role_switch ret=%d\n",
 				ret);
 			return ret;
 		}
@@ -341,15 +271,13 @@ static inline int get_usb_port_temp(struct overheat_info *ovh_info)
 
 	temp = PSY_GET_PROP(ovh_info->usb_psy, POWER_SUPPLY_PROP_TEMP);
 
-	if (temp == -EINVAL || temp == -ENODATA)
-		return temp;
+	if (fake_port_temp > 0)
+		temp = fake_port_temp;
 
-	dev_info(ovh_info->dev, "Update USB port temp:%d\n", temp);
-	if (temp > ovh_info->max_temp)
-		ovh_info->max_temp = temp;
-
-	ovh_info->temp = temp;
-	return 0;
+	if (ovh_info->overheat_mitigation || temp >= ovh_info->begin_temp)
+		dev_info(ovh_info->dev, "Overheat triggered: USB port temp is %d\n",
+			 temp);
+	return temp;
 }
 
 static int psy_changed(struct notifier_block *nb, unsigned long action,
@@ -372,39 +300,65 @@ static int psy_changed(struct notifier_block *nb, unsigned long action,
 	return NOTIFY_OK;
 }
 
+static bool should_check_accessory(struct overheat_info *ovh_info)
+{
+	time_t connected;
+	bool ret;
+
+	if (!ovh_info->accessory_connected)
+		return false;
+
+	connected =
+		get_seconds_since_boot() - ovh_info->accessory_connect_time;
+	ret = (connected < ovh_info->monitor_accessory_s);
+	if (!ret)
+		dev_info(ovh_info->dev,
+			 "Stop monitoring: %d sec since USB accessory connected",
+			 (int) connected);
+	return ret;
+}
+
 static void port_overheat_work(struct work_struct *work)
 {
 	struct overheat_info *ovh_info =
 			container_of(work, struct overheat_info,
 				     port_overheat_work.work);
-	int ret = 0;
+	int temp = 0, ret = 0;
 
 	// Take a wake lock to ensure we poll the temp regularly
 	if (!ovh_info->overheat_work_running)
 		__pm_stay_awake(&ovh_info->overheat_ws);
 	ovh_info->overheat_work_running = true;
 
-	if (get_usb_port_temp(ovh_info) < 0)
-		goto rerun;
+	if (mitigation_enabled) {
+		temp = get_usb_port_temp(ovh_info);
+		if (temp < 0)
+			goto rerun;
 
-	ret = update_usb_status(ovh_info);
-	if (ret < 0)
-		goto rerun;
+		// Check USB connection status if it's safe to do so
+		if (!ovh_info->overheat_mitigation ||
+		    temp < ovh_info->clear_temp) {
+			ret = update_usb_status(ovh_info);
+			if (ret < 0)
+				goto rerun;
+		}
+	}
 
 	if (ovh_info->overheat_mitigation && (!mitigation_enabled ||
-	    (ovh_info->temp < ovh_info->clear_temp && ovh_info->usb_replug))) {
+	    (temp < ovh_info->clear_temp && ovh_info->usb_replug))) {
 		dev_err(ovh_info->dev, "Port overheat mitigated\n");
 		resume_usb(ovh_info);
 	} else if (!ovh_info->overheat_mitigation &&
-		 mitigation_enabled && ovh_info->temp > ovh_info->begin_temp) {
+		 mitigation_enabled && temp > ovh_info->begin_temp) {
 		dev_err(ovh_info->dev, "Port overheat triggered\n");
 		suspend_usb(ovh_info);
 		goto rerun;
 	}
 
-	if (ovh_info->overheat_mitigation || ovh_info->throttle_state)
+	if (ovh_info->overheat_mitigation || ovh_info->usb_connected ||
+	    should_check_accessory(ovh_info))
 		goto rerun;
-	// Do not run again, USB port isn't overheated
+	// Do not run again, USB port isn't overheated or connected to something
 	ovh_info->overheat_work_running = false;
 	__pm_relax(&ovh_info->overheat_ws);
 	return;
@@ -414,56 +368,6 @@ rerun:
 			&ovh_info->port_overheat_work,
 			msecs_to_jiffies(ovh_info->overheat_work_delay_ms));
 }
-
-static int usb_get_cur_state(struct thermal_cooling_device *cooling_dev,
-							unsigned long *state)
-{
-	struct overheat_info *ovh_info = cooling_dev->devdata;
-
-	if (!ovh_info)
-		return -EINVAL;
-
-	*state = ovh_info->throttle_state;
-
-	return 0;
-}
-
-static int usb_get_max_state(struct thermal_cooling_device *cooling_dev,
-							unsigned long *state)
-{
-	*state = USB_MAX_THROTTLE_STATE;
-
-	return 0;
-}
-
-static int usb_set_cur_state(struct thermal_cooling_device *cooling_dev,
-							unsigned long state)
-{
-	struct overheat_info *ovh_info = cooling_dev->devdata;
-	unsigned long current_state;
-
-	if (!ovh_info)
-		return -EINVAL;
-
-	if (state > USB_MAX_THROTTLE_STATE)
-		return -EINVAL;
-
-	current_state = ovh_info->throttle_state;
-	ovh_info->throttle_state = state;
-
-	if (current_state != state) {
-		dev_info(ovh_info->dev, "usb overheat throttle state=%lu\n",
-			 state);
-		mod_delayed_work(system_wq, &ovh_info->port_overheat_work, 0);
-	}
-	return 0;
-}
-
-static const struct thermal_cooling_device_ops usb_cooling_ops = {
-	.get_max_state = usb_get_max_state,
-	.get_cur_state = usb_get_cur_state,
-	.set_cur_state = usb_set_cur_state,
-};
 
 static int ovh_probe(struct platform_device *pdev)
 {
@@ -497,8 +401,10 @@ static int ovh_probe(struct platform_device *pdev)
 	ovh_info->usb_icl_votable = usb_icl_votable;
 	ovh_info->disable_power_role_switch = disable_power_role_switch;
 	ovh_info->usb_psy = usb_psy;
-	ovh_info->max_temp = INT_MIN;
-	ovh_info->plug_temp = INT_MIN;
+	ovh_info->overheat_mitigation = false;
+	ovh_info->usb_replug = false;
+	ovh_info->usb_connected = false;
+	ovh_info->overheat_work_running = false;
 
 	ret = get_dts_vars(ovh_info);
 	if (ret < 0)
@@ -510,10 +416,7 @@ static int ovh_probe(struct platform_device *pdev)
 	vote(ovh_info->disable_power_role_switch,
 	     USB_OVERHEAT_MITIGATION_VOTER, false, 0);
 
-	wakeup_source_init(&ovh_info->overheat_ws, "overheat_mitigation");
-	INIT_DELAYED_WORK(&ovh_info->port_overheat_work, port_overheat_work);
-
-	// register power supply change notifier to update usb metric data
+	// register power supply change notifier
 	ovh_info->psy_nb.notifier_call = psy_changed;
 	ret = power_supply_reg_notifier(&ovh_info->psy_nb);
 	if (ret < 0) {
@@ -522,36 +425,20 @@ static int ovh_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	/* Register cooling device */
-	ovh_info->cooling_dev = thermal_of_cooling_device_register(
-				dev_of_node(ovh_info->dev), "usb-port",
-				ovh_info, &usb_cooling_ops);
-
-	if (IS_ERR(ovh_info->cooling_dev)) {
-		ret = PTR_ERR(ovh_info->cooling_dev);
-		dev_err(ovh_info->dev, "%s: failed to register cooling device: %d\n",
-				__func__, ret);
-		return ret;
-	}
-
 	platform_set_drvdata(pdev, ovh_info);
-	ret = sysfs_create_group(&ovh_info->dev->kobj, &ovh_attr_group);
-	if (ret < 0) {
-		dev_err(ovh_info->dev,
-			"Cannot create sysfs group, ret=%d\n", ret);
-	}
+	wakeup_source_init(&ovh_info->overheat_ws, "overheat_mitigation");
+	INIT_DELAYED_WORK(&ovh_info->port_overheat_work, port_overheat_work);
+	schedule_delayed_work(&ovh_info->port_overheat_work, 0);
 
-	return 0;
+	return ret;
 }
 
 static int ovh_remove(struct platform_device *pdev)
 {
 	struct overheat_info *ovh_info = platform_get_drvdata(pdev);
-	if (ovh_info) {
-		power_supply_unreg_notifier(&ovh_info->psy_nb);
-		sysfs_remove_group(&ovh_info->dev->kobj, &ovh_attr_group);
+	if (ovh_info)
 		wakeup_source_trash(&ovh_info->overheat_ws);
-	}
+
 	return 0;
 }
 
