@@ -2966,6 +2966,17 @@ int __ipa3_release_hdr_proc_ctx(u32 proc_ctx_hdl);
 #ifdef CONFIG_DEBUG_FS
 int _ipa_read_ep_reg_v3_0(char *buf, int max_len, int pipe);
 int _ipa_read_ep_reg_v4_0(char *buf, int max_len, int pipe);
+#else
+static inline
+int _ipa_read_ep_reg_v3_0(char *buf, int max_len, int pipe)
+{
+	return 0;
+}
+static inline
+int _ipa_read_ep_reg_v4_0(char *buf, int max_len, int pipe)
+{
+	return 0;
+}
 #endif
 int _ipa_read_ipahal_regs(void);
 void _ipa_enable_clks_v3_0(void);
