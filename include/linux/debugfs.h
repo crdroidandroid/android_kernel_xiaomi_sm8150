@@ -177,10 +177,9 @@ static inline struct dentry *debugfs_create_file(const char *name, umode_t mode,
 	return ERR_PTR(-ENODEV);
 }
 
-static inline struct dentry *debugfs_create_file_unsafe(const char *name,
-					umode_t mode, struct dentry *parent,
-					void *data,
-					const struct file_operations *fops)
+static inline struct dentry *debugfs_create_file_unsafe(const char *name, umode_t mode,
+				   struct dentry *parent, void *data,
+				   const struct file_operations *fops)
 {
 	return ERR_PTR(-ENODEV);
 }
