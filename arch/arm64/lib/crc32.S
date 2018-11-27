@@ -12,8 +12,7 @@
 #include <asm/alternative.h>
 #include <asm/assembler.h>
 
-<<<<<<< HEAD
-	.arch		armv8-a+crc
+	.cpu		generic+crc
 
 	.macro		__crc32, c
 	cmp		x2, #16
@@ -69,20 +68,6 @@ CPU_BE(	rev		x6, x6		)
 	crc32\c\()x	w0, w0, x6
 	cbnz		x2, 32b
 0:	ret
-=======
-	.cpu		generic+crc
-
-	.macro		__crc32, c
-0:	subs		x2, x2, #16
-	b.mi		8f
-	ldp		x3, x4, [x1], #16
-CPU_BE(	rev		x3, x3		)
-CPU_BE(	rev		x4, x4		)
-	crc32\c\()x	w0, w0, x3
-	crc32\c\()x	w0, w0, x4
-	b.ne		0b
-	ret
->>>>>>> a6e86d2cbe76 (arm64/lib: Add accelerated CRC32 routines.)
 
 8:	tbz		x2, #3, 4f
 	ldr		x3, [x1], #8
@@ -104,22 +89,16 @@ CPU_BE(	rev16		w3, w3		)
 
 	.align		5
 ENTRY(crc32_le)
-<<<<<<< HEAD
-=======
 alternative_if_not ARM64_HAS_CRC32
 	b		crc32_le_base
 alternative_else_nop_endif
->>>>>>> a6e86d2cbe76 (arm64/lib: Add accelerated CRC32 routines.)
 	__crc32
 ENDPROC(crc32_le)
 
 	.align		5
 ENTRY(__crc32c_le)
-<<<<<<< HEAD
-=======
 alternative_if_not ARM64_HAS_CRC32
 	b		__crc32c_le_base
 alternative_else_nop_endif
->>>>>>> a6e86d2cbe76 (arm64/lib: Add accelerated CRC32 routines.)
 	__crc32		c
 ENDPROC(__crc32c_le)
