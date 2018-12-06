@@ -34389,8 +34389,9 @@ static const struct cipher_testvec xchacha20_tv_template[] = {
 			  "\x09\x7c\xfc",
 		.ilen	= 91,
 		.rlen	= 91,
-	}, { /* Taken from the ChaCha20 test vectors, appended 16 random bytes
-		to nonce, and recomputed the ciphertext with libsodium */
+	}, { /* Taken from the ChaCha20 test vectors, appended 12 random bytes
+		to the nonce, zero-padded the stream position from 4 to 8 bytes,
+		and recomputed the ciphertext using libsodium's XChaCha20 */
 		.key	= "\x00\x00\x00\x00\x00\x00\x00\x00"
 			  "\x00\x00\x00\x00\x00\x00\x00\x00"
 			  "\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -34418,8 +34419,7 @@ static const struct cipher_testvec xchacha20_tv_template[] = {
 			  "\x23\x7b\xe6\xfc\xd4\x03\x86\x54",
 		.ilen	= 64,
 		.rlen	= 64,
-	}, { /* Taken from the ChaCha20 test vectors, appended 16 random bytes
-		to nonce, and recomputed the ciphertext with libsodium */
+	}, { /* Derived from a ChaCha20 test vector, via the process above */
 		.key	= "\x00\x00\x00\x00\x00\x00\x00\x00"
 			  "\x00\x00\x00\x00\x00\x00\x00\x00"
 			  "\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -34529,8 +34529,7 @@ static const struct cipher_testvec xchacha20_tv_template[] = {
 		.np	= 3,
 		.tap	= { 375 - 20, 4, 16 },
 
-	}, { /* Taken from the ChaCha20 test vectors, appended 16 random bytes
-		to nonce, and recomputed the ciphertext with libsodium */
+	}, { /* Derived from a ChaCha20 test vector, via the process above */
 		.key	= "\x1c\x92\x40\xa5\xeb\x55\xd3\x8a"
 			  "\xf3\x33\x88\x86\x04\xf6\xb5\xf0"
 			  "\x47\x39\x17\xc1\x40\x2b\x80\x09"
@@ -34574,8 +34573,7 @@ static const struct cipher_testvec xchacha20_tv_template[] = {
 			  "\x99\xf1\x82\x25\x4f\x8d\x07",
 		.ilen	= 127,
 		.rlen	= 127,
-	}, { /* Taken from the ChaCha20 test vectors, appended 16 random bytes
-		to nonce, and recomputed the ciphertext with libsodium */
+	}, { /* Derived from a ChaCha20 test vector, via the process above */
 		.key	= "\x1c\x92\x40\xa5\xeb\x55\xd3\x8a"
 			  "\xf3\x33\x88\x86\x04\xf6\xb5\xf0"
 			  "\x47\x39\x17\xc1\x40\x2b\x80\x09"
