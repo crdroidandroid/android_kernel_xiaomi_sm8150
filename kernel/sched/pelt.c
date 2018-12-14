@@ -388,7 +388,7 @@ int update_thermal_load_avg(u64 now, struct rq *rq, u64 capacity)
 }
 #endif
 
-#if defined(CONFIG_IRQ_TIME_ACCOUNTING) || defined(CONFIG_PARAVIRT_TIME_ACCOUNTING)
+#ifdef CONFIG_HAVE_SCHED_AVG_IRQ
 /*
  * irq:
  *
