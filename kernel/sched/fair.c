@@ -7778,6 +7778,10 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 				if (best_idle_cpu != -1)
 					continue;
 
+				/* Skip CPUs which do not fit task requirements */
+				if (capacity_orig < uclamp_task_util(p))
+					continue;
+
 				/*
 				 * Case A.2: Target ACTIVE CPU
 				 * Favor CPUs with max spare capacity.
