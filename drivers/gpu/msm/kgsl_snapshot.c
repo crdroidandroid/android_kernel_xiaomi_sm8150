@@ -1137,7 +1137,7 @@ int kgsl_device_snapshot_init(struct kgsl_device *device)
 	device->snapshot = NULL;
 	device->snapshot_faultcount = 0;
 	device->force_panic = 0;
-	device->snapshot_crashdumper = 1;
+	device->snapshot_crashdumper = 0;
 	device->snapshot_legacy = 0;
 
 	/*
