@@ -259,7 +259,6 @@
 						39 01 00 00 00 00 03 51 0D B5];
 				qcom,mdss-dsi-dispparam-lcd-hbm-off-command-state = "dsi_lp_mode";
 
-				qcom,mdss-dsi-h-sync-pulse = <1>;
 				qcom,compression-mode = "dsc";
 				qcom,mdss-dsc-version = <0x11>;
 				qcom,mdss-dsc-scr-version = <0x0>;
