@@ -25,6 +25,7 @@
 /* Max window size (in ns) = 1s */
 #define MAX_SCHED_RAVG_WINDOW 1000000000
 #define NR_WINDOWS_PER_SEC (NSEC_PER_SEC / DEFAULT_SCHED_RAVG_WINDOW)
+#define MAX_NR_CLUSTERS			3
 
 #define WINDOW_STATS_RECENT		0
 #define WINDOW_STATS_MAX		1
@@ -291,6 +292,8 @@ static inline void assign_cluster_ids(struct list_head *head)
 		cluster->id = pos;
 		sched_cluster[pos++] = cluster;
 	}
+
+	WARN_ON(pos > MAX_NR_CLUSTERS);
 }
 
 static inline int same_cluster(int src_cpu, int dst_cpu)
