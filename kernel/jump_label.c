@@ -223,9 +223,7 @@ static bool static_key_slow_try_dec(struct static_key *key)
 	return true;
 }
 
-static void __static_key_slow_dec_cpuslocked(struct static_key *key,
-					   unsigned long rate_limit,
-					   struct delayed_work *work)
+static void __static_key_slow_dec_cpuslocked(struct static_key *key)
 {
 	lockdep_assert_cpus_held();
 
@@ -233,14 +231,8 @@ static void __static_key_slow_dec_cpuslocked(struct static_key *key,
 		return;
 
 	jump_label_lock();
-	if (atomic_dec_and_test(&key->enabled)) {
-		if (rate_limit) {
-			atomic_inc(&key->enabled);
-			schedule_delayed_work(work, rate_limit);
-		} else {
-			jump_label_update(key);
-		}
-	}
+	if (atomic_dec_and_test(&key->enabled))
+		jump_label_update(key);
 	jump_label_unlock();
 }
 
@@ -262,14 +254,14 @@ EXPORT_SYMBOL_GPL(jump_label_update_timeout);
 void static_key_slow_dec(struct static_key *key)
 {
 	STATIC_KEY_CHECK_USE(key);
-	__static_key_slow_dec(key, 0, NULL);
+	__static_key_slow_dec(key);
 }
 EXPORT_SYMBOL_GPL(static_key_slow_dec);
 
 void static_key_slow_dec_cpuslocked(struct static_key *key)
 {
 	STATIC_KEY_CHECK_USE(key);
-	__static_key_slow_dec_cpuslocked(key, 0, NULL);
+	__static_key_slow_dec_cpuslocked(key);
 }
 
 void __static_key_slow_dec_deferred(struct static_key *key,
@@ -277,7 +269,11 @@ void __static_key_slow_dec_deferred(struct static_key *key,
 				    unsigned long timeout)
 {
 	STATIC_KEY_CHECK_USE(key);
-	__static_key_slow_dec(key, timeout, work);
+
+	if (static_key_slow_try_dec(key))
+		return;
+
+	schedule_delayed_work(work, timeout);
 }
 EXPORT_SYMBOL_GPL(__static_key_slow_dec_deferred);
 
