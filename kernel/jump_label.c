@@ -208,7 +208,9 @@ static bool static_key_slow_try_dec(struct static_key *key)
 {
 	int val;
 
-	lockdep_assert_cpus_held();
+	val = __atomic_add_unless(&key->enabled, -1, 1);
+	if (val == 1)
+		return false;
 
 	/*
 	 * The negative count check is valid even when a negative
@@ -217,11 +219,18 @@ static bool static_key_slow_try_dec(struct static_key *key)
 	 * returns is unbalanced, because all other static_key_slow_inc()
 	 * instances block while the update is in progress.
 	 */
-	val = atomic_fetch_add_unless(&key->enabled, -1, 1);
-	if (val != 1) {
-		WARN(val < 0, "jump label: negative count!\n");
+	WARN(val < 0, "jump label: negative count!\n");
+	return true;
+}
+
+static void __static_key_slow_dec_cpuslocked(struct static_key *key,
+					   unsigned long rate_limit,
+					   struct delayed_work *work)
+{
+	lockdep_assert_cpus_held();
+
+	if (static_key_slow_try_dec(key))
 		return;
-	}
 
 	jump_label_lock();
 	if (atomic_dec_and_test(&key->enabled)) {
