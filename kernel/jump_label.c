@@ -268,21 +268,14 @@ void __static_key_slow_dec_deferred(struct static_key *key,
 				    unsigned long timeout)
 {
 	STATIC_KEY_CHECK_USE(key);
-	__static_key_slow_dec(&key->key, key->timeout, &key->work);
-}
-EXPORT_SYMBOL_GPL(static_key_slow_dec_deferred);
-
-	if (static_key_slow_try_dec(key))
-		return;
-
-	schedule_delayed_work(work, timeout);
+	__static_key_slow_dec(key, timeout, work);
 }
 EXPORT_SYMBOL_GPL(__static_key_slow_dec_deferred);
 
 void __static_key_deferred_flush(void *key, struct delayed_work *work)
 {
 	STATIC_KEY_CHECK_USE(key);
-	flush_delayed_work(&key->work);
+	flush_delayed_work(work);
 }
 EXPORT_SYMBOL_GPL(__static_key_deferred_flush);
 
