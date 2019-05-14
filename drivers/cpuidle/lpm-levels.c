@@ -1086,10 +1086,8 @@ static int cluster_configure(struct lpm_cluster *cluster, int idx,
 		 * which resources are enabled and preventing the system level
 		 * LPMs (XO and Vmin).
 		 */
-		if (!from_idle) {
-			clock_debug_print_enabled(true);
-			regulator_debug_print_enabled();
-		}
+		if (!from_idle)
+			clock_debug_print_enabled(false);
 
 		cpu = get_next_online_cpu(from_idle);
 		cpumask_copy(&cpumask, cpumask_of(cpu));
