@@ -3113,6 +3113,7 @@ int ipa_init_flt_rt_stats(void);
 
 #ifdef CONFIG_DEBUGFS
 int ipa_debugfs_init_stats(struct dentry *parent);
+void ipa_debugfs_remove_stats(void);
 #endif
 
 int ipa_init_quota_stats(u32 pipe_bitmask);
