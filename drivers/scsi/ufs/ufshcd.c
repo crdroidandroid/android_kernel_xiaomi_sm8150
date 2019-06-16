@@ -798,7 +798,7 @@ static void ufshcd_print_cmd_log(struct ufs_hba *hba)
 }
 #endif
 
-#ifdef CONFIG_TRACEPOINTS
+#if defined(CONFIG_SCSI_UFSHCD_CMD_LOGGING) || defined(CONFIG_TRACEPOINTS)
 static inline void ufshcd_cond_add_cmd_trace(struct ufs_hba *hba,
 					unsigned int tag, const char *str)
 {
