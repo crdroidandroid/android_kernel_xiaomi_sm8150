@@ -189,7 +189,7 @@ static void update_cpu_capacity(unsigned int cpu)
 
 #ifdef CONFIG_DEBUG_KERNEL
 	pr_info("CPU%u: update cpu_capacity %lu\n",
-		cpu, topology_get_cpu_scale(NULL, cpu));
+		cpu, topology_get_cpu_scale(cpu));
 #endif
 }
 

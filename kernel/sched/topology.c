@@ -1317,12 +1317,12 @@ sd_init(struct sched_domain_topology_level *tl,
 	 */
 
 	if (sd->flags & SD_ASYM_CPUCAPACITY) {
-		long capacity = arch_scale_cpu_capacity(NULL, sd_id);
+		long capacity = arch_scale_cpu_capacity(sd_id);
 		bool disable = true;
 		int i;
 
 		for_each_cpu(i, sched_domain_span(sd)) {
-			if (capacity != arch_scale_cpu_capacity(NULL, i)) {
+			if (capacity != arch_scale_cpu_capacity(i)) {
 				disable = false;
 				break;
 			}

@@ -364,7 +364,7 @@ int update_dl_rq_load_avg(u64 now, struct rq *rq, int running)
 
 int update_thermal_load_avg(u64 now, struct rq *rq, u64 capacity)
 {
-	if (___update_load_sum(now, rq->cpu, &rq->avg_thermal,
+	if (___update_load_sum(now, &rq->avg_thermal,
 			       capacity,
 			       capacity,
 			       capacity)) {
@@ -396,7 +396,7 @@ int update_irq_load_avg(struct rq *rq, u64 running)
 	 * reflect the real amount of computation
 	 */
 	running = cap_scale(running, arch_scale_freq_capacity(cpu_of(rq)));
-	running = cap_scale(running, arch_scale_cpu_capacity(NULL, cpu_of(rq)));
+	running = cap_scale(running, arch_scale_cpu_capacity(cpu_of(rq)));
 
 	/*
 	 * We know the time that has been used by interrupt since last update
