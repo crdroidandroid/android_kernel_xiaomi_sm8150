@@ -39,12 +39,18 @@
 #include <dsp/q6core.h>
 #include <dsp/q6common.h>
 #include <dsp/audio_cal_utils.h>
+#include <dsp/apr_elliptic.h>
+#include <elliptic/elliptic_mixer_controls.h>
 
 #include "msm-pcm-routing-v2.h"
 #include "msm-pcm-routing-devdep.h"
 #include "msm-qti-pp-config.h"
 #include "msm-dolby-dap-config.h"
 #include "msm-ds2-dap-config.h"
+
+#ifdef CONFIG_MSM_CSPL
+#include <dsp/msm-cirrus-playback.h>
+#endif
 
 #ifndef CONFIG_DOLBY_DAP
 #undef DOLBY_ADM_COPP_TOPOLOGY_ID
@@ -85,6 +91,8 @@ static int msm_ec_ref_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 static int msm_ec_ref_sampling_rate = 48000;
 static uint32_t voc_session_id = ALL_SESSION_VSID;
 static int msm_route_ext_ec_ref;
+static int wakeup_ext_ec_ref = 0;
+static int voip_ext_ec_common_ref = 0;
 static bool is_custom_stereo_on;
 static bool is_ds2_on;
 static bool swap_ch;
@@ -3890,9 +3898,16 @@ static const struct snd_kcontrol_new ec_ref_param_controls[] = {
 static int msm_routing_ec_ref_rx_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
-	pr_debug("%s: ec_ref_rx  = %d", __func__, msm_route_ec_ref_rx);
+	struct snd_soc_dapm_widget *widget =
+		snd_soc_dapm_kcontrol_widget(kcontrol);
+
+	pr_debug("%s: wakeup_ext_ec_ref  = %d, voip_ext_ec_common_ref = %d",
+			__func__, wakeup_ext_ec_ref, voip_ext_ec_common_ref);
 	mutex_lock(&routing_lock);
-	ucontrol->value.integer.value[0] = msm_route_ec_ref_rx;
+	if (!strncmp(widget->name, "AUDIO_REF_EC_UL10 MUX", strlen("AUDIO_REF_EC_UL10 MUX")))
+		ucontrol->value.integer.value[0] = voip_ext_ec_common_ref;
+	else
+		ucontrol->value.integer.value[0] = wakeup_ext_ec_ref;
 	mutex_unlock(&routing_lock);
 	return 0;
 }
@@ -3905,6 +3920,7 @@ static int msm_routing_ec_ref_rx_put(struct snd_kcontrol *kcontrol,
 		snd_soc_dapm_kcontrol_widget(kcontrol);
 	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
 	struct snd_soc_dapm_update *update = NULL;
+	bool state = true;
 
 
 	mutex_lock(&routing_lock);
@@ -3912,6 +3928,7 @@ static int msm_routing_ec_ref_rx_put(struct snd_kcontrol *kcontrol,
 	case 0:
 		msm_route_ec_ref_rx = 0;
 		ec_ref_port_id = AFE_PORT_INVALID;
+		state = false;
 		break;
 	case 1:
 		msm_route_ec_ref_rx = 1;
@@ -4058,14 +4075,29 @@ static int msm_routing_ec_ref_rx_put(struct snd_kcontrol *kcontrol,
 		pr_err("%s EC ref rx %ld not valid\n",
 			__func__, ucontrol->value.integer.value[0]);
 		ec_ref_port_id = AFE_PORT_INVALID;
+		state = false;
 		break;
 	}
-	adm_ec_ref_rx_id(ec_ref_port_id);
+
 	pr_debug("%s: msm_route_ec_ref_rx = %d\n",
 	    __func__, msm_route_ec_ref_rx);
-	mutex_unlock(&routing_lock);
-	snd_soc_dapm_mux_update_power(widget->dapm, kcontrol,
+
+	if (!strncmp(widget->name, "AUDIO_REF_EC_UL10 MUX", strlen("AUDIO_REF_EC_UL10 MUX")))
+		voip_ext_ec_common_ref = msm_route_ec_ref_rx;
+	else
+		wakeup_ext_ec_ref = msm_route_ec_ref_rx;
+	pr_debug("%s: state %d, wakeup_ext_ec_ref %d, voip_ext_ec_common_ref %d\n", __func__,
+			state, wakeup_ext_ec_ref, voip_ext_ec_common_ref);
+
+	if (state || (!state && wakeup_ext_ec_ref == 0 && voip_ext_ec_common_ref == 0)) {
+		pr_info("%s: update state!\n", __func__);
+		adm_ec_ref_rx_id(ec_ref_port_id);
+		mutex_unlock(&routing_lock);
+		snd_soc_dapm_mux_update_power(widget->dapm, kcontrol,
 					msm_route_ec_ref_rx, e, update);
+	} else {
+		mutex_unlock(&routing_lock);
+	}
 	return 0;
 }
 
@@ -24639,6 +24671,8 @@ static int msm_routing_probe(struct snd_soc_platform *platform)
 	snd_soc_add_platform_controls(platform,
 			port_multi_channel_map_mixer_controls,
 			ARRAY_SIZE(port_multi_channel_map_mixer_controls));
+
+	elliptic_add_platform_controls(platform);
 
 	return 0;
 }
