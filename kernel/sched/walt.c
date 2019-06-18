@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -86,10 +86,16 @@ static void acquire_rq_locks_irqsave(const cpumask_t *cpus,
 				     unsigned long *flags)
 {
 	int cpu;
+	int level = 0;
 
 	local_irq_save(*flags);
-	for_each_cpu(cpu, cpus)
-		raw_spin_lock(&cpu_rq(cpu)->lock);
+	for_each_cpu(cpu, cpus) {
+		if (level == 0)
+			raw_spin_lock(&cpu_rq(cpu)->lock);
+		else
+			raw_spin_lock_nested(&cpu_rq(cpu)->lock, level);
+		level++;
+	}
 }
 
 static void release_rq_locks_irqrestore(const cpumask_t *cpus,
@@ -105,10 +111,10 @@ static void release_rq_locks_irqrestore(const cpumask_t *cpus,
 /* 1 -> use PELT based load stats, 0 -> use window-based load stats */
 unsigned int __read_mostly walt_disabled = 0;
 
-__read_mostly unsigned int sysctl_sched_cpu_high_irqload = (10 * NSEC_PER_MSEC);
+__read_mostly unsigned int sysctl_sched_cpu_high_irqload = TICK_NSEC;
 
 unsigned int sysctl_sched_walt_rotate_big_tasks;
-unsigned int walt_rotation_enabled = 1;
+unsigned int walt_rotation_enabled;
 
 /*
  * sched_window_stats_policy and sched_ravg_hist_size have a 'sysctl' copy
@@ -118,6 +124,7 @@ unsigned int walt_rotation_enabled = 1;
  * IMPORTANT: Initialize both copies to same value!!
  */
 
+__read_mostly unsigned int sysctl_sched_asym_cap_sibling_freq_match_pct = 100;
 __read_mostly unsigned int sched_ravg_hist_size = 5;
 __read_mostly unsigned int sysctl_sched_ravg_hist_size = 5;
 
@@ -426,22 +433,27 @@ void sched_account_irqtime(int cpu, struct task_struct *curr,
 				 u64 delta, u64 wallclock)
 {
 	struct rq *rq = cpu_rq(cpu);
-	unsigned long flags, nr_windows;
+	unsigned long nr_windows;
 	u64 cur_jiffies_ts;
 
-	raw_spin_lock_irqsave(&rq->lock, flags);
-
 	/*
-	 * cputime (wallclock) uses sched_clock so use the same here for
-	 * consistency.
+	 * We called with interrupts disabled. Take the rq lock only
+	 * if we are in idle context in which case update_task_ravg()
+	 * call is needed.
 	 */
-	delta += sched_clock() - wallclock;
-	cur_jiffies_ts = get_jiffies_64();
-
-	if (is_idle_task(curr))
+	if (is_idle_task(curr)) {
+		raw_spin_lock(&rq->lock);
+		/*
+		 * cputime (wallclock) uses sched_clock so use the same here
+		 * for consistency.
+		 */
+		delta += sched_clock() - wallclock;
 		update_task_ravg(curr, rq, IRQ_UPDATE, sched_ktime_clock(),
 				 delta);
+		raw_spin_unlock(&rq->lock);
+	}
 
+	cur_jiffies_ts = get_jiffies_64();
 	nr_windows = cur_jiffies_ts - rq->irqload_ts;
 
 	if (nr_windows) {
@@ -459,7 +471,6 @@ void sched_account_irqtime(int cpu, struct task_struct *curr,
 
 	rq->cur_irqload += delta;
 	rq->irqload_ts = cur_jiffies_ts;
-	raw_spin_unlock_irqrestore(&rq->lock, flags);
 }
 
 /*
@@ -902,6 +913,7 @@ void set_window_start(struct rq *rq)
 unsigned int max_possible_efficiency = 1;
 unsigned int min_possible_efficiency = UINT_MAX;
 
+unsigned int sysctl_sched_conservative_pl;
 unsigned int sysctl_sched_many_wakeup_threshold = 1000;
 
 #define INC_STEP 8
@@ -2056,6 +2068,7 @@ struct sched_cluster *sched_cluster[NR_CPUS];
 int num_clusters;
 
 struct list_head cluster_head;
+cpumask_t asym_cap_sibling_cpus = CPU_MASK_NONE;
 
 static void
 insert_cluster(struct sched_cluster *cluster, struct list_head *head)
@@ -2083,11 +2096,17 @@ static struct sched_cluster *alloc_new_cluster(const struct cpumask *cpus)
 	}
 
 	INIT_LIST_HEAD(&cluster->list);
-	cluster->max_power_cost		=	1;
-	cluster->min_power_cost		=	1;
+	cluster->efficiency = topology_get_cpu_efficiency(cpumask_first(cpus));
+	/*
+	 * Assume power cost is proportional to efficiency of the CPU,
+	 * which most of the times would be true. By assiging
+	 * power cost early, the clusters remain sorted even when
+	 * cpufreq is disabled.
+	 */
+	cluster->max_power_cost		=	cluster->efficiency;
+	cluster->min_power_cost		=	cluster->efficiency;
 	cluster->capacity		=	1024;
 	cluster->max_possible_capacity	=	1024;
-	cluster->efficiency		=	1;
 	cluster->load_scale_factor	=	1024;
 	cluster->cur_freq		=	1;
 	cluster->max_freq		=	1;
@@ -2101,7 +2120,6 @@ static struct sched_cluster *alloc_new_cluster(const struct cpumask *cpus)
 
 	raw_spin_lock_init(&cluster->load_lock);
 	cluster->cpus = *cpus;
-	cluster->efficiency = topology_get_cpu_efficiency(cpumask_first(cpus));
 
 	if (cluster->efficiency > max_possible_efficiency)
 		max_possible_efficiency = cluster->efficiency;
@@ -2244,6 +2262,7 @@ void update_cluster_topology(void)
 {
 	struct cpumask cpus = *cpu_possible_mask;
 	const struct cpumask *cluster_cpus;
+	struct sched_cluster *cluster;
 	struct list_head new_head;
 	int i;
 
@@ -2264,6 +2283,15 @@ void update_cluster_topology(void)
 	 */
 	move_list(&cluster_head, &new_head, false);
 	update_all_clusters_stats();
+
+	for_each_sched_cluster(cluster) {
+		if (cpumask_weight(&cluster->cpus) == 1)
+			cpumask_or(&asym_cap_sibling_cpus,
+				   &asym_cap_sibling_cpus, &cluster->cpus);
+	}
+
+	if (cpumask_weight(&asym_cap_sibling_cpus) == 1)
+		cpumask_clear(&asym_cap_sibling_cpus);
 }
 
 struct sched_cluster init_cluster = {
@@ -2427,14 +2455,19 @@ core_initcall(register_walt_callback);
 
 int register_cpu_cycle_counter_cb(struct cpu_cycle_counter_cb *cb)
 {
+	unsigned long flags;
+
 	mutex_lock(&cluster_lock);
 	if (!cb->get_cpu_cycle_counter) {
 		mutex_unlock(&cluster_lock);
 		return -EINVAL;
 	}
 
+	acquire_rq_locks_irqsave(cpu_possible_mask, &flags);
 	cpu_cycle_counter_cb = *cb;
 	use_cycle_counter = true;
+	release_rq_locks_irqrestore(cpu_possible_mask, &flags);
+
 	mutex_unlock(&cluster_lock);
 
 	cpufreq_unregister_notifier(&notifier_trans_block,
@@ -2449,7 +2482,6 @@ static void transfer_busy_time(struct rq *rq, struct related_thread_group *grp,
  * Enable colocation and frequency aggregation for all threads in a process.
  * The children inherits the group id from the parent.
  */
-unsigned int __read_mostly sysctl_sched_enable_thread_grouping;
 
 struct related_thread_group *related_thread_groups[MAX_NUM_CGROUP_COLOC_ID];
 static LIST_HEAD(active_related_thread_groups);
@@ -2500,13 +2532,14 @@ out:
 int preferred_cluster(struct sched_cluster *cluster, struct task_struct *p)
 {
 	struct related_thread_group *grp;
-	int rc = 1;
+	int rc = -1;
 
 	rcu_read_lock();
 
 	grp = task_related_thread_group(p);
 	if (grp)
-		rc = (grp->preferred_cluster == cluster);
+		rc = ((grp->preferred_cluster == cluster) ||
+		      cpumask_subset(&cluster->cpus, &asym_cap_sibling_cpus));
 
 	rcu_read_unlock();
 	return rc;
@@ -2723,8 +2756,6 @@ void add_new_task_to_grp(struct task_struct *new)
 {
 	unsigned long flags;
 	struct related_thread_group *grp;
-	struct task_struct *leader = new->group_leader;
-	unsigned int leader_grp_id = sched_get_group_id(leader);
 
 	/*
 	 * If the task does not belong to colocated schedtune
@@ -2735,25 +2766,13 @@ void add_new_task_to_grp(struct task_struct *new)
 	if (!uclamp_task_colocated(new))
 		return;
 
-	if (thread_group_leader(new))
-		return;
-
-	if (leader_grp_id == DEFAULT_CGROUP_COLOC_ID) {
-		if (!same_schedtune(new, leader))
-			return;
-	}
-
+	grp = lookup_related_thread_group(DEFAULT_CGROUP_COLOC_ID);
 	write_lock_irqsave(&related_thread_group_lock, flags);
-
-	rcu_read_lock();
-	grp = task_related_thread_group(leader);
-	rcu_read_unlock();
 
 	/*
 	 * It's possible that someone already added the new task to the
-	 * group. A leader's thread group is updated prior to calling
-	 * this function. It's also possible that the leader has exited
-	 * the group. In either case, there is nothing else to do.
+	 * group. or it might have taken out from the colocated schedtune
+	 * cgroup. check these conditions under lock.
 	 */
 	if (!uclamp_task_colocated(new) || new->grp) {
 		write_unlock_irqrestore(&related_thread_group_lock, flags);
@@ -3132,7 +3151,7 @@ static int kp_mode_notifier_callback(struct notifier_block *nb, unsigned long ev
 {
 	struct rq *rq;
 	unsigned long flags;
-	unsigned int profile_mode = (unsigned int)data;
+	unsigned int profile_mode = (unsigned int long)data;
 	if (event == KP_MODE_CHANGE) {
 		rq = cpu_rq(cpumask_first(cpu_possible_mask));
 		//sufficient for atomic updates of tunables
@@ -3201,8 +3220,8 @@ void walt_irq_work(struct irq_work *irq_work)
 	struct rq *rq;
 	int cpu;
 	u64 wc;
-	bool is_migration = false;
-	u64 total_grp_load = 0;
+	bool is_migration = false, is_asym_migration = false;
+	u64 total_grp_load = 0, min_cluster_grp_load = 0;
 	int level = 0;
 
 	/* Am I the window rollover work or the migration work? */
@@ -3232,17 +3251,32 @@ void walt_irq_work(struct irq_work *irq_work)
 				account_load_subtractions(rq);
 				aggr_grp_load += rq->grp_time.prev_runnable_sum;
 			}
+			if (is_migration && rq->notif_pending &&
+			    cpumask_test_cpu(cpu, &asym_cap_sibling_cpus)) {
+				is_asym_migration = true;
+				rq->notif_pending = false;
+			}
 		}
 
 		cluster->aggr_grp_load = aggr_grp_load;
 		total_grp_load += aggr_grp_load;
 		cluster->coloc_boost_load = 0;
 
+		if (is_min_capacity_cluster(cluster))
+			min_cluster_grp_load = aggr_grp_load;
 		raw_spin_unlock(&cluster->load_lock);
 	}
 
-	if (total_grp_load)
+	if (total_grp_load) {
+		if (cpumask_weight(&asym_cap_sibling_cpus)) {
+			u64 big_grp_load =
+					  total_grp_load - min_cluster_grp_load;
+
+			for_each_cpu(cpu, &asym_cap_sibling_cpus)
+				cpu_cluster(cpu)->aggr_grp_load = big_grp_load;
+		}
 		walt_update_coloc_boost_load();
+	}
 
 	for_each_sched_cluster(cluster) {
 		cpumask_t cluster_online_cpus;
@@ -3263,27 +3297,16 @@ void walt_irq_work(struct irq_work *irq_work)
 				}
 			}
 
+			if (is_asym_migration && cpumask_test_cpu(cpu,
+							&asym_cap_sibling_cpus))
+				flag |= SCHED_CPUFREQ_INTERCLUSTER_MIG;
+
 			if (i == num_cpus)
 				cpufreq_update_util(cpu_rq(cpu), flag);
 			else
 				cpufreq_update_util(cpu_rq(cpu), flag |
 							SCHED_CPUFREQ_CONTINUE);
 			i++;
-		}
-	}
-
-	/*
-	 * If the window change request is in pending, good place to
-	 * change sched_ravg_window since all rq locks are acquired.
-	 */
-	if (!is_migration) {
-		if (sched_ravg_window != new_sched_ravg_window) {
-			printk_deferred("ALERT: changing window size from %u to %u at %lu\n",
-					sched_ravg_window,
-					new_sched_ravg_window,
-					sched_ktime_clock());
-			sched_ravg_window = new_sched_ravg_window;
-			walt_tunables_fixup();
 		}
 	}
 
@@ -3387,7 +3410,7 @@ int walt_proc_group_thresholds_handler(struct ctl_table *table, int write,
 	return ret;
 }
 
-static void walt_init_once(void)
+static void walt_init_window_dep(void)
 {
 	walt_cpu_util_freq_divisor =
 	    (sched_ravg_window >> SCHED_CAPACITY_SHIFT) * 100;
@@ -3400,19 +3423,29 @@ static void walt_init_once(void)
 		scale_demand(sched_init_task_load_windows);
 }
 
+static void walt_init_once(void)
+{
+	init_irq_work(&walt_migration_irq_work, walt_irq_work);
+	init_irq_work(&walt_cpufreq_irq_work, walt_irq_work);
+	walt_rotate_work_init();
+	walt_init_window_dep();
+}
+
 void walt_sched_init_rq(struct rq *rq)
 {
 	int j;
+	static bool init;
 
-	if (cpu_of(rq) == 0)
+	if (!init) {
 		walt_init_once();
+		init = true;
+	}
 
 	cpumask_set_cpu(cpu_of(rq), &rq->freq_domain_cpumask);
 
 	rq->walt_stats.cumulative_runnable_avg_scaled = 0;
 	rq->prev_window_size = sched_ravg_window;
 	rq->window_start = 0;
-	rq->cum_window_start = 0;
 	rq->walt_stats.nr_big_tasks = 0;
 	rq->walt_flags = 0;
 	rq->cur_irqload = 0;
