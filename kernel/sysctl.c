@@ -135,8 +135,33 @@ static unsigned long one_ul = 1;
 static unsigned long long_max = LONG_MAX;
 static int one_hundred = 100;
 static int one_thousand = 1000;
+
 #ifdef CONFIG_SCHED_WALT
 static int two_million = 2000000;
+#endif
+
+#ifdef CONFIG_MACH_XIAOMI_RAPHAEL
+/*Huacai.Zhou@PSW.BSP.Kernel.Performance, 2018-04-28, add foreground task io opt*/
+unsigned int sysctl_fg_io_opt = 1;
+#endif /*CONFIG_MACH_XIAOMI_RAPHAEL*/
+
+//#ifdef COLOROS_EDIT
+/*Tiren.Ma@ROM.Framework, 2019-12-10, add for improving ed task migration*/
+int sysctl_ed_task_enabled = 1;
+//#endif /*COLOROS_EDIT*/
+
+#ifdef CONFIG_MACH_XIAOMI_RAPHAEL
+/*jason.tang@TECH.BSP.Kernel.Storage, 2019-05-20, add control ext4 fsync*/
+unsigned int sysctl_ext4_fsync_enable = 1;
+unsigned int ext4_fsync_enable_status = 0;
+#endif /*CONFIG_MACH_XIAOMI_RAPHAEL*/
+#ifdef CONFIG_MACH_XIAOMI_RAPHAEL
+/*jason.tang@TECH.BSP.Kernel.Storage, 2019-05-20, add to count flush*/
+unsigned long sysctl_blkdev_issue_flush_count = 0;
+#endif /*CONFIG_MACH_XIAOMI_RAPHAEL*/
+
+#ifdef CONFIG_INCREASE_MAXIMUM_SWAPPINESS
+static int max_swappiness = 200;
 #endif
 #ifdef CONFIG_PRINTK
 static int ten_thousand = 10000;
@@ -1597,7 +1622,11 @@ static struct ctl_table vm_table[] = {
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &zero,
+#ifdef CONFIG_INCREASE_MAXIMUM_SWAPPINESS
+		.extra2         = &max_swappiness,
+#else
 		.extra2		= &one_hundred,
+#endif
 	},
 	{
 		.procname       = "want_old_faultaround_pte",
