@@ -57,8 +57,6 @@
 #ifdef CONFIG_DRM
 #include <drm/drm_notifier.h>
 #endif
-#include <linux/backlight.h>
-
 
 #include <linux/fb.h>
 #include <linux/proc_fs.h>
@@ -5633,55 +5631,6 @@ static struct notifier_block fts_noti_block = {
 };
 #endif
 
-static int fts_bl_state_chg_callback(struct notifier_block *nb,
-				      unsigned long val, void *data)
-{
-	struct fts_ts_info *info = container_of(nb, struct fts_ts_info, bl_notifier);
-	unsigned int blank;
-	int ret;
-
-	if (val != BACKLIGHT_UPDATED)
-		return NOTIFY_OK;
-	if (data && info) {
-		blank = *(int *)(data);
-		logError(1, "%s %s: val:%lu,blank:%u\n", tag, __func__, val, blank);
-		flush_workqueue(info->event_wq);
-		if (blank == BACKLIGHT_OFF && (info->fod_status_set &&
-		!info->sensor_sleep && !info->touch_id)) {
-#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
-			if (info->p_sensor_switch) {
-				logError(1, "%s eardet enabled, skip disableirq\n", tag, __func__);
-				return NOTIFY_OK;
-			}
-#endif
-			if (info->sensor_sleep)
-				return NOTIFY_OK;
-			logError(1, "%s %s: BL_EVENT_BLANK\n", tag, __func__);
-			ret = fts_disableInterrupt();
-			setScanMode(SCAN_MODE_ACTIVE, 0x00);
-			info->sensor_scan = false;
-			flushFIFO();
-			release_all_touches(info);
-			if (ret < OK)
-				logError(1, "%s fts_disableInterrupt ERROR %08X\n", tag, ret | ERROR_ENABLE_INTER);
-		} else if (blank == BACKLIGHT_ON) {
-			logError(1, "%s %s: BL_EVENT_UNBLANK\n", tag, __func__);
-			if (!info->sensor_sleep) {
-				ret = fts_enableInterrupt();
-				if (ret < OK)
-					logError(1, "%s fts_enableInterrupt ERROR %08X\n", tag, ret | ERROR_ENABLE_INTER);
-			if (!info->sensor_scan)
-				setScanMode(SCAN_MODE_ACTIVE, 0x01);
-			}
-		}
-	}
-	return NOTIFY_OK;
-}
-
-static struct notifier_block fts_bl_noti_block = {
-	.notifier_call = fts_bl_state_chg_callback,
-};
-
 /**
  * From the name of the power regulator get/put the actual regulator structs (copying their references into fts_ts_info variable)
  * @param info pointer to fts_ts_info which contains info about the device and its hw setup
@@ -6923,7 +6872,6 @@ static int fts_probe(struct spi_device *client)
 #ifdef CONFIG_DRM
 	info->notifier = fts_noti_block;
 #endif
-	info->bl_notifier = fts_bl_noti_block;
 	logError(0, "%s Init Core Lib: \n", tag);
 	initCore(info);
 	/* init hardware device */
@@ -7029,10 +6977,6 @@ static int fts_probe(struct spi_device *client)
 		tp_maker = NULL;
 	}
 	device_init_wakeup(&client->dev, 1);
-
-	if (backlight_register_notifier(&info->bl_notifier) < 0) {
-		logError(1, "%s register bl_notifier failed!\n", tag);
-	}
 
 	init_completion(&info->pm_resume_completion);
 #ifdef CONFIG_TOUCHSCREEN_ST_DEBUG_FS
@@ -7189,7 +7133,6 @@ static int fts_remove(struct spi_device *client)
 	sysfs_remove_group(&client->dev.kobj, &info->attrs);
 	/* remove interrupt and event handlers */
 	fts_interrupt_uninstall(info);
-	backlight_unregister_notifier(&info->bl_notifier);
 #ifdef CONFIG_DRM
 	drm_unregister_client(&info->notifier);
 #endif
