@@ -28,6 +28,8 @@ static struct kmem_cache *kmem_buf_pool;
 
 #define MSM_VIDC_QBUF_BATCH_TIMEOUT 300
 
+static struct kmem_cache *kmem_buf_pool;
+
 #define IS_ALREADY_IN_STATE(__p, __d) (\
 	(__p >= __d)\
 )
@@ -627,6 +629,12 @@ int msm_comm_ctrl_init(struct msm_vidc_inst *inst,
 	if (!inst || !drv_ctrls || !ctrl_ops || !num_ctrls) {
 		dprintk(VIDC_ERR, "%s - invalid input\n", __func__);
 		return -EINVAL;
+	}
+	
+	kmem_buf_pool = KMEM_CACHE(msm_vidc_buffer, SLAB_HWCACHE_ALIGN);
+	if (!kmem_buf_pool) {
+		dprintk(VIDC_ERR, "%s - failed to allocate kmem pool\n", __func__);
+		return -ENOMEM;
 	}
 
 	kmem_buf_pool = KMEM_CACHE(msm_vidc_buffer, SLAB_HWCACHE_ALIGN);
