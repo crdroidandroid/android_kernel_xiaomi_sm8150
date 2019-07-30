@@ -2656,6 +2656,11 @@ static inline bool uclamp_is_used(void)
 {
 	return static_branch_likely(&sched_uclamp_used);
 }
+
+static inline bool uclamp_boosted(struct task_struct *p)
+{
+	return uclamp_eff_value(p, UCLAMP_MIN) > 0;
+}
 #else /* CONFIG_UCLAMP_TASK */
 static inline unsigned long uclamp_util_with(struct rq *rq, unsigned long util,
 					     struct task_struct *p)
@@ -2680,6 +2685,25 @@ walt_task_in_cum_window_demand(struct rq *rq, struct task_struct *p)
 }
 
 #endif /* CONFIG_SCHED_WALT */
+
+#ifdef CONFIG_UCLAMP_TASK_GROUP
+static inline bool uclamp_latency_sensitive(struct task_struct *p)
+{
+	struct cgroup_subsys_state *css = task_css(p, cpu_cgrp_id);
+	struct task_group *tg;
+
+	if (!css)
+		return false;
+	tg = container_of(css, struct task_group, css);
+
+	return tg->latency_sensitive;
+}
+#else
+static inline bool uclamp_latency_sensitive(struct task_struct *p)
+{
+	return false;
+}
+#endif /* CONFIG_UCLAMP_TASK_GROUP */
 
 #ifdef arch_scale_freq_capacity
 #ifndef arch_scale_freq_invariant
