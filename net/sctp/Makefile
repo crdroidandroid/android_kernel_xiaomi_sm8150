@@ -12,8 +12,9 @@ sctp-y := sm_statetable.o sm_statefuns.o sm_sideeffect.o \
 	  transport.o chunk.o sm_make_chunk.o ulpevent.o \
 	  inqueue.o outqueue.o ulpqueue.o \
 	  tsnmap.o bind_addr.o socket.o primitive.o \
-	  output.o input.o debug.o stream.o auth.o \
-	  offload.o
+	  output.o input.o stream.o auth.o offload.o \
+
+stcp-$(CONFIG_DEBUG_KERNEL) += debug.o
 
 sctp_probe-y := probe.o
 
