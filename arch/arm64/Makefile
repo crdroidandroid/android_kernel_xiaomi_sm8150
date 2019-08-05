@@ -17,9 +17,16 @@ GZFLAGS		:=-9
 ifeq ($(CONFIG_RELOCATABLE), y)
 # Pass --no-apply-dynamic-relocs to restore pre-binutils-2.27 behaviour
 # for relative relocs, since this leads to better Image compression
-# with the relocation offsets always being zero.
-LDFLAGS_vmlinux		+= -shared -Bsymbolic -z notext \
+# with the relocation offsets always being zero
+LDFLAGS_vmlinux		+= -Bsymbolic -z notext \
 			$(call ld-option, --no-apply-dynamic-relocs)
+
+# Pass -pie for lld to minimize image size
+ifeq ($(ld-name),lld)
+LDFLAGS_vmlinux		+= -pie
+else
+LDFLAGS_vmlinux		+= -shared
+endif
 endif
 
 ifeq ($(CONFIG_ARM64_ERRATUM_843419),y)
