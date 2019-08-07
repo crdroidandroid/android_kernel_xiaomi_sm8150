@@ -151,8 +151,11 @@ struct seemp_logk_blk {
 	struct blk_payload payload;
 } __packed;
 
-
+#ifdef CONFIG_DEBUG_KERNEL
 extern unsigned int kmalloc_flag;
+#else
+static const unsigned int kmalloc_flag;
+#endif
 
 struct seemp_source_mask {
 	__u32       hash;
