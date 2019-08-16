@@ -77,7 +77,6 @@ struct phy {
 	struct mutex		mutex;
 	int			init_count;
 	int			power_count;
-	bool			is_binary_power_count;
 	struct phy_attrs	attrs;
 	struct regulator	*pwr;
 };
