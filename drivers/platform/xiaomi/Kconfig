@@ -1,0 +1,54 @@
+# Xiaomi configuration options
+
+config MACH_XIAOMI
+	bool "Xiaomi device"
+	depends on ARCH_QCOM
+	help
+	  Support for Xiaomi products
+
+config MACH_XIAOMI_SM8150
+	bool "Xiaomi SM8150"
+	depends on ARCH_QCOM
+	select MACH_XIAOMI
+	help
+	  Support for Xiaomi SM8150 devices
+
+menu "Xiaomi board selection"
+
+config MACH_XIAOMI_ANDROMEDA
+	bool "Xiaomi andromeda board"
+	select MACH_XIAOMI_SM8150
+	help
+	  Support for Mi MIX 3 5G
+
+config MACH_XIAOMI_CEPHEUS
+	bool "Xiaomi cepheus board"
+	select MACH_XIAOMI_SM8150
+	help
+	  Support for Mi 9
+
+config MACH_XIAOMI_CRUX
+	bool "Xiaomi crux board"
+	select MACH_XIAOMI_SM8150
+	help
+	  Support for Mi 9 Pro 5G
+
+config MACH_XIAOMI_NABU
+	bool "Xiaomi nabu board"
+	select MACH_XIAOMI_SM8150
+	help
+	  Support for Xiaomi Pad 5
+
+config MACH_XIAOMI_RAPHAEL
+	bool "Xiaomi raphael board"
+	select MACH_XIAOMI_SM8150
+	help
+	  Support for Redmi K20 Pro/Mi 9T Pro
+
+config MACH_XIAOMI_VAYU
+	bool "Xiaomi vayu board"
+	select MACH_XIAOMI_SM8150
+	help
+	  Support for POCO X3 Pro
+
+endmenu
