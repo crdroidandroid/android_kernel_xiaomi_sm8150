@@ -750,7 +750,6 @@ static int qcom_smp2p_restore(struct device *dev)
 		}
 	}
 
-	enable_irq_wake(smp2p->irq);
 	/* Kick the outgoing edge after allocating entries */
 	qcom_smp2p_kick(smp2p);
 	return ret;
@@ -771,7 +770,6 @@ static int qcom_smp2p_freeze(struct device *dev)
 	struct smp2p_entry *entry;
 	struct smp2p_entry *next_entry;
 
-	disable_irq_wake(smp2p->irq);
 	/* Walk through the out bound list and release state and entry */
 	list_for_each_entry_safe(entry, next_entry, &smp2p->outbound, node) {
 		qcom_smem_state_unregister(entry->state);
