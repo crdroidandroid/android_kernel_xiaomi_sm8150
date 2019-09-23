@@ -196,15 +196,13 @@ struct kmemleak_object {
 #define HEX_ASCII		1
 /* max number of lines to be printed */
 #define HEX_MAX_LINES		2
-/* memory pool size */
-#define MEM_POOL_SIZE		16000
 
 /* the list of all allocated objects */
 static LIST_HEAD(object_list);
 /* the list of gray-colored objects (see color_gray comment below) */
 static LIST_HEAD(gray_list);
 /* memory pool allocation */
-static struct kmemleak_object mem_pool[MEM_POOL_SIZE];
+static struct kmemleak_object mem_pool[CONFIG_DEBUG_KMEMLEAK_MEM_POOL_SIZE];
 static int mem_pool_free_count = ARRAY_SIZE(mem_pool);
 static LIST_HEAD(mem_pool_free_list);
 /* search tree for object boundaries */
@@ -432,9 +430,11 @@ static struct kmemleak_object *mem_pool_alloc(gfp_t gfp)
 	struct kmemleak_object *object;
 
 	/* try the slab allocator first */
-	object = kmem_cache_alloc(object_cache, gfp_kmemleak_mask(gfp));
-	if (object)
-		return object;
+	if (object_cache) {
+		object = kmem_cache_alloc(object_cache, gfp_kmemleak_mask(gfp));
+		if (object)
+			return object;
+	}
 
 	/* slab allocation failed, try the memory pool */
 	write_lock_irqsave(&kmemleak_lock, flags);
@@ -444,6 +444,8 @@ static struct kmemleak_object *mem_pool_alloc(gfp_t gfp)
 		list_del(&object->object_list);
 	else if (mem_pool_free_count)
 		object = &mem_pool[--mem_pool_free_count];
+	else
+		pr_warn_once("Memory pool empty, consider increasing CONFIG_DEBUG_KMEMLEAK_MEM_POOL_SIZE\n");
 	write_unlock_irqrestore(&kmemleak_lock, flags);
 
 	return object;
@@ -804,7 +806,8 @@ static void add_scan_area(unsigned long ptr, size_t size, gfp_t gfp)
 		return;
 	}
 
-	area = kmem_cache_alloc(scan_area_cache, gfp_kmemleak_mask(gfp));
+	if (scan_area_cache)
+		area = kmem_cache_alloc(scan_area_cache, gfp_kmemleak_mask(gfp));
 
 	spin_lock_irqsave(&object->lock, flags);
 	if (!area) {
@@ -1883,7 +1886,6 @@ static void kmemleak_disable(void)
 
 	/* stop any memory operation tracing */
 	kmemleak_enabled = 0;
-	kmemleak_early_log = 0;
 
 	/* check whether it is too early for a kernel thread */
 	if (kmemleak_initialized)
