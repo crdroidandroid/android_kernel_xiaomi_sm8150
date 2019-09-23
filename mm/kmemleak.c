@@ -196,13 +196,15 @@ struct kmemleak_object {
 #define HEX_ASCII		1
 /* max number of lines to be printed */
 #define HEX_MAX_LINES		2
+/* memory pool size */
+#define MEM_POOL_SIZE		16000
 
 /* the list of all allocated objects */
 static LIST_HEAD(object_list);
 /* the list of gray-colored objects (see color_gray comment below) */
 static LIST_HEAD(gray_list);
 /* memory pool allocation */
-static struct kmemleak_object mem_pool[CONFIG_DEBUG_KMEMLEAK_MEM_POOL_SIZE];
+static struct kmemleak_object mem_pool[MEM_POOL_SIZE];
 static int mem_pool_free_count = ARRAY_SIZE(mem_pool);
 static LIST_HEAD(mem_pool_free_list);
 /* search tree for object boundaries */
@@ -430,11 +432,9 @@ static struct kmemleak_object *mem_pool_alloc(gfp_t gfp)
 	struct kmemleak_object *object;
 
 	/* try the slab allocator first */
-	if (object_cache) {
-		object = kmem_cache_alloc(object_cache, gfp_kmemleak_mask(gfp));
-		if (object)
-			return object;
-	}
+	object = kmem_cache_alloc(object_cache, gfp_kmemleak_mask(gfp));
+	if (object)
+		return object;
 
 	/* slab allocation failed, try the memory pool */
 	write_lock_irqsave(&kmemleak_lock, flags);
@@ -444,8 +444,6 @@ static struct kmemleak_object *mem_pool_alloc(gfp_t gfp)
 		list_del(&object->object_list);
 	else if (mem_pool_free_count)
 		object = &mem_pool[--mem_pool_free_count];
-	else
-		pr_warn_once("Memory pool empty, consider increasing CONFIG_DEBUG_KMEMLEAK_MEM_POOL_SIZE\n");
 	write_unlock_irqrestore(&kmemleak_lock, flags);
 
 	return object;
@@ -487,7 +485,7 @@ static void free_object_rcu(struct rcu_head *rcu)
 		hlist_del(&area->node);
 		kmem_cache_free(scan_area_cache, area);
 	}
-	kmem_cache_free(object_cache, object);
+	mem_pool_free(object);
 }
 
 /*
@@ -586,7 +584,7 @@ static struct kmemleak_object *create_object(unsigned long ptr, size_t size,
 	struct rb_node **link, *rb_parent;
 	unsigned long untagged_ptr;
 
-	object = kmem_cache_alloc(object_cache, gfp_kmemleak_mask(gfp));
+	object = mem_pool_alloc(gfp);
 	if (!object) {
 		pr_warn("Cannot allocate a kmemleak_object structure\n");
 		kmemleak_disable();
