@@ -31,16 +31,16 @@ void blake2s_compress_arch(struct blake2s_state *state,
 			   const u32 inc)
 {
 	/* SIMD disables preemption, so relax after processing each page. */
-	BUILD_BUG_ON(SZ_4K / BLAKE2S_BLOCK_SIZE < 8);
+	BUILD_BUG_ON(PAGE_SIZE / BLAKE2S_BLOCK_SIZE < 8);
 
 	if (!static_branch_likely(&blake2s_use_ssse3) || !may_use_simd()) {
 		blake2s_compress_generic(state, block, nblocks, inc);
 		return;
 	}
 
-	do {
+	for (;;) {
 		const size_t blocks = min_t(size_t, nblocks,
-					    SZ_4K / BLAKE2S_BLOCK_SIZE);
+					    PAGE_SIZE / BLAKE2S_BLOCK_SIZE);
 
 		kernel_fpu_begin();
 		if (IS_ENABLED(CONFIG_AS_AVX512) &&
@@ -51,8 +51,10 @@ void blake2s_compress_arch(struct blake2s_state *state,
 		kernel_fpu_end();
 
 		nblocks -= blocks;
+		if (!nblocks)
+			break;
 		block += blocks * BLAKE2S_BLOCK_SIZE;
-	} while (nblocks);
+	}
 }
 EXPORT_SYMBOL(blake2s_compress_arch);
 
@@ -207,14 +209,12 @@ static int __init blake2s_mod_init(void)
 			      XFEATURE_MASK_AVX512, NULL))
 		static_branch_enable(&blake2s_use_avx512);
 
-	return IS_REACHABLE(CONFIG_CRYPTO_HASH) ?
-		crypto_register_shashes(blake2s_algs,
-					ARRAY_SIZE(blake2s_algs)) : 0;
+	return crypto_register_shashes(blake2s_algs, ARRAY_SIZE(blake2s_algs));
 }
 
 static void __exit blake2s_mod_exit(void)
 {
-	if (IS_REACHABLE(CONFIG_CRYPTO_HASH) && boot_cpu_has(X86_FEATURE_SSSE3))
+	if (boot_cpu_has(X86_FEATURE_SSSE3))
 		crypto_unregister_shashes(blake2s_algs, ARRAY_SIZE(blake2s_algs));
 }
 
