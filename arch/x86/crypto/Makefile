@@ -37,6 +37,8 @@ obj-$(CONFIG_CRYPTO_SHA512_SSSE3) += sha512-ssse3.o
 obj-$(CONFIG_CRYPTO_CRCT10DIF_PCLMUL) += crct10dif-pclmul.o
 obj-$(CONFIG_CRYPTO_POLY1305_X86_64) += poly1305-x86_64.o
 
+obj-$(CONFIG_CRYPTO_CURVE25519_X86) += curve25519-x86_64.o
+
 # These modules require assembler to support AVX.
 ifeq ($(avx_supported),yes)
 	obj-$(CONFIG_CRYPTO_CAMELLIA_AESNI_AVX_X86_64) += \
