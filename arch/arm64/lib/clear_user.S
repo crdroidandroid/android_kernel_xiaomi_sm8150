@@ -33,7 +33,7 @@
 	// Alignment is for the loop, but since the prologue (including BTI)
 	// is also 16 bytes we can keep any padding outside the function
 SYM_FUNC_START(__arch_clear_user)
-	add	x2, x0, x1
+	mov	x2, x1			// save the size for fixup return
 	subs	x1, x1, #8
 	b.mi	2f
 1:
@@ -61,8 +61,6 @@ SYM_FUNC_END(__arch_clear_user)
 
 	.section .fixup,"ax"
 	.align	2
-7:	sub	x0, x2, #5	// Adjust for faulting on the final byte...
-8:	add	x0, x0, #4	// ...or the second word of the 4-7 byte case
-9:	sub	x0, x2, x0
+9:	mov	x0, x2			// return the original size
 	ret
 	.previous
