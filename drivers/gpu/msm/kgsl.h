@@ -330,7 +330,7 @@ struct kgsl_event {
 	void *priv;
 	struct list_head node;
 	unsigned int created;
-	struct work_struct work;
+	struct kthread_work work;
 	int result;
 	enum kgsl_priority prio;
 	struct kgsl_event_group *group;
