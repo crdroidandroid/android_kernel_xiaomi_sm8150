@@ -254,7 +254,7 @@ static void sugov_get_util(unsigned long *util, unsigned long *max, int cpu,
 	}
 
 #ifdef CONFIG_UCLAMP_TASK
-   	*util = uclamp_util_with(rq, *util, NULL);
+   	*util = uclamp_rq_util_with(rq, *util, NULL);
 #endif	
 }
 
