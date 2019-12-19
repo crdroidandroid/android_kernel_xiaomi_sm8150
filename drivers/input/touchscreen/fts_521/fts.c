@@ -149,7 +149,6 @@ static int fts_mode_handler(struct fts_ts_info *info, int force);
 static int fts_chip_initialization(struct fts_ts_info *info, int init_type);
 static const char *fts_get_limit(struct fts_ts_info *info);
 static irqreturn_t fts_event_handler(int irq, void *ts_info);
-extern void lpm_disable_for_input(bool on);
 
 /**
 * Release all the touches in the linux input subsystem
@@ -180,7 +179,6 @@ void release_all_touches(struct fts_ts_info *info)
 #ifdef STYLUS_MODE
 	info->stylus_id = 0;
 #endif
-	lpm_disable_for_input(false);
 }
 
 /**
@@ -3376,7 +3374,6 @@ static void fts_leave_pointer_event_handler(struct fts_ts_info *info,
 	input_mt_report_slot_state(info->input_dev, tool, 0);
 	if (info->touch_id == 0) {
 		input_report_key(info->input_dev, BTN_TOUCH, touch_condition);
-		lpm_disable_for_input(false);
 		if (!touch_condition)
 			input_report_key(info->input_dev, BTN_TOOL_FINGER, 0);
 #ifdef CONFIG_FTS_FOD_AREA_REPORT
@@ -4036,7 +4033,6 @@ static void fts_ts_sleep_work(struct work_struct *work)
 			logError(1, "%s pm_resume_completion timeout, i2c is closed", tag);
 			pm_relax(info->dev);
 			fts_enableInterrupt();
-			lpm_disable_for_input(false);
 			return;
 		} else {
 			logError(1, "%s pm_resume_completion be completed, handling irq", tag);
@@ -4091,7 +4087,6 @@ static void fts_ts_sleep_work(struct work_struct *work)
 #endif
 	pm_relax(info->dev);
 	fts_enableInterrupt();
-	lpm_disable_for_input(false);
 	return;
 }
 
@@ -4129,7 +4124,6 @@ static irqreturn_t fts_event_handler(int irq, void *ts_info)
 		return IRQ_HANDLED;
 	}
 #endif
-	lpm_disable_for_input(true);
 
 	info->irq_status = true;
 	error = fts_writeReadU8UX(regAdd, 0, 0, data, FIFO_EVENT_SIZE,
@@ -4174,8 +4168,6 @@ static irqreturn_t fts_event_handler(int irq, void *ts_info)
 	}
 	input_sync(info->input_dev);
 	info->irq_status = false;
-	if (!info->touch_id)
-		lpm_disable_for_input(false);
 #ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 	wake_up(&info->wait_queue);
 #endif
@@ -5577,7 +5569,6 @@ static void fts_suspend_work(struct work_struct *work)
 	sysfs_notify(&fts_info->fts_touch_dev->kobj, NULL,
 		     "touch_suspend_notify");
 #endif
-	lpm_disable_for_input(false);
 }
 
 #ifdef CONFIG_DRM
