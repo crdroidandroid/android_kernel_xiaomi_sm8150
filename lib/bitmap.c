@@ -164,22 +164,21 @@ EXPORT_SYMBOL(__bitmap_shift_left);
  *
  * In pictures, example for a big-endian 32-bit architecture:
  *
- * The @src bitmap is::
+ * @src:
+ * 31                                   63
+ * |                                    |
+ * 10000000 11000001 11110010 00010101  10000000 11000001 01110010 00010101
+ *                 |  |              |                                    |
+ *                16  14             0                                   32
  *
- *   31                                   63
- *   |                                    |
- *   10000000 11000001 11110010 00010101  10000000 11000001 01110010 00010101
- *                   |  |              |                                    |
- *                  16  14             0                                   32
+ * if @cut is 3, and @first is 14, bits 14-16 in @src are cut and @dst is:
  *
- * if @cut is 3, and @first is 14, bits 14-16 in @src are cut and @dst is::
- *
- *   31                                   63
- *   |                                    |
- *   10110000 00011000 00110010 00010101  00010000 00011000 00101110 01000010
- *                      |              |                                    |
- *                      14 (bit 17     0                                   32
- *                          from @src)
+ * 31                                   63
+ * |                                    |
+ * 10110000 00011000 00110010 00010101  00010000 00011000 00101110 01000010
+ *                    |              |                                    |
+ *                    14 (bit 17     0                                   32
+ *                        from @src)
  *
  * Note that @dst and @src might overlap partially or entirely.
  *
@@ -194,12 +193,12 @@ void bitmap_cut(unsigned long *dst, const unsigned long *src,
 	unsigned long keep = 0, carry;
 	int i;
 
+	memmove(dst, src, len * sizeof(*dst));
+
 	if (first % BITS_PER_LONG) {
 		keep = src[first / BITS_PER_LONG] &
 		       (~0UL >> (BITS_PER_LONG - first % BITS_PER_LONG));
 	}
-
-	memmove(dst, src, len * sizeof(*dst));
 
 	while (cut--) {
 		for (i = first / BITS_PER_LONG; i < len; i++) {
