@@ -66,6 +66,7 @@
 #include <linux/kthread.h>
 #include <linux/memcontrol.h>
 #include <linux/show_mem_notifier.h>
+#include <linux/devfreq_boost.h>
 #include <linux/ftrace.h>
 #include <linux/lockdep.h>
 #include <linux/nmi.h>
@@ -4207,6 +4208,10 @@ retry:
 	/* Ensure kswapd doesn't accidentally go to sleep as long as we loop */
 	if (gfp_mask & __GFP_KSWAPD_RECLAIM)
 		wake_all_kswapds(order, ac);
+
+	/* Boost when memory is low so allocation latency doesn't get too bad */
+	devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 100);
+	devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 100);
 
 	reserve_flags = __gfp_pfmemalloc_flags(gfp_mask);
 	if (reserve_flags)
