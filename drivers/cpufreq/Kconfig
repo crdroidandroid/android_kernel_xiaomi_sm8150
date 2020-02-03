@@ -242,38 +242,52 @@ config CPU_FREQ_GOV_SCHEDUTIL
 
 if CPU_FREQ_GOV_SCHEDUTIL
 
-config SCHEDUTIL_UP_RATE_LIMIT
-	int "Default up rate-limit for schedutil"
-	default 0
+config SCHEDUTIL_UP_RATE_LIMIT_BIG
+	int "Default up rate-limit for schedutil on big cluster"
+	default 2000
 	help
-	  This sets schedutil's default frequency up rate-limit in
+	  This sets schedutil's default frequency up rate-limit for big cluster in
 	  microseconds.
 
-config SCHEDUTIL_DOWN_RATE_LIMIT
-	int "Default down rate-limit for schedutil"
-	default 0
+config SCHEDUTIL_DOWN_RATE_LIMIT_BIG
+	int "Default down rate-limit for schedutil on big cluster"
+	default 2000
 	help
 	  This sets schedutil's default frequency down rate-limit in
+	  microseconds.
+
+config SCHEDUTIL_UP_RATE_LIMIT_LITTLE
+	int "Default up rate-limit for schedutil on little cluster"
+	default 2000
+	help
+	  This sets schedutil's default frequency up rate-limit for little cluster in
+	  microseconds.
+
+config SCHEDUTIL_DOWN_RATE_LIMIT_LITTLE
+	int "Default down rate-limit for schedutil on little cluster"
+	default 2000
+	help
+	  This sets schedutil's default frequency down rate-limit for little cluster in
 	  microseconds.
 
 endif
 
 config CPU_FREQ_GOV_PIXEL_SCHEDUTIL
-	bool "'pixel_schedutil' cpufreq policy governor"
-	depends on CPU_FREQ && SMP
-	select CPU_FREQ_GOV_ATTR_SET
-	select IRQ_WORK
-	help
-	  This governor makes decisions based on the utilization data provided
-	  by the scheduler.  It sets the CPU frequency to be proportional to
-	  the utilization/capacity ratio coming from the scheduler.  If the
-	  utilization is frequency-invariant, the new frequency is also
-	  proportional to the maximum available frequency.  If that is not the
-	  case, it is proportional to the current frequency of the CPU.  The
-	  frequency tipping point is at utilization/capacity equal to 80% in
-	  both cases.
+        bool "'pixel_schedutil' cpufreq policy governor"
+        depends on CPU_FREQ && SMP
+        select CPU_FREQ_GOV_ATTR_SET
+        select IRQ_WORK
+        help
+          This governor makes decisions based on the utilization data provided
+          by the scheduler.  It sets the CPU frequency to be proportional to
+          the utilization/capacity ratio coming from the scheduler.  If the
+          utilization is frequency-invariant, the new frequency is also
+          proportional to the maximum available frequency.  If that is not the
+          case, it is proportional to the current frequency of the CPU.  The
+          frequency tipping point is at utilization/capacity equal to 80% in
+          both cases.
 
-	  If in doubt, say N.
+          If in doubt, say N.
 
 comment "CPU frequency scaling drivers"
 
