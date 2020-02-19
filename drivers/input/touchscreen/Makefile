@@ -113,3 +113,4 @@ obj-$(CONFIG_TOUCHSCREEN_IQS5XX)	+= iqs5xx.o
 obj-$(CONFIG_TOUCHSCREEN_ST)	+= st/
 obj-$(CONFIG_TOUCHSCREEN_FTS)	+= focaltech_touch/
 obj-y += xiaomi/
+obj-$(CONFIG_TOUCHSCREEN_COMMON)	+= tp_common.o
