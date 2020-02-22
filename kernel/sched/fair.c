@@ -9532,6 +9532,9 @@ static inline bool others_have_blocked(struct rq *rq)
 	if (READ_ONCE(rq->avg_dl.util_avg))
 		return true;
 
+	if (thermal_load_avg(rq))
+		return true;
+
 #if defined(CONFIG_IRQ_TIME_ACCOUNTING) || defined(CONFIG_PARAVIRT_TIME_ACCOUNTING)
 	if (READ_ONCE(rq->avg_irq.util_avg))
 		return true;
@@ -9550,6 +9553,7 @@ static void update_blocked_averages(int cpu)
 
 	rq_lock_irqsave(rq, &rf);
 	update_rq_clock(rq);
+	unsigned long thermal_pressure;
 
 	/*
 	 * Iterates the task_group tree in a bottom up fashion, see
@@ -9570,8 +9574,12 @@ static void update_blocked_averages(int cpu)
 		if (se && !skip_blocked_update(se))
 			update_load_avg(cfs_rq_of(se), se, 0);
 	}
+
+	thermal_pressure = arch_scale_thermal_pressure(cpu_of(rq));
+
 	update_rt_rq_load_avg(rq_clock_task(rq), rq, 0);
 	update_dl_rq_load_avg(rq_clock_task(rq), rq, 0);
+	update_thermal_load_avg(rq_clock_task(rq), rq, thermal_pressure);
 	update_irq_load_avg(rq, 0);
 #ifdef CONFIG_NO_HZ_COMMON
 	rq->last_blocked_load_update_tick = jiffies;
