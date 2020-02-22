@@ -6,6 +6,26 @@ int __update_load_avg_cfs_rq(u64 now, int cpu, struct cfs_rq *cfs_rq);
 int update_rt_rq_load_avg(u64 now, struct rq *rq, int running);
 int update_dl_rq_load_avg(u64 now, struct rq *rq, int running);
 
+#ifdef CONFIG_SCHED_THERMAL_PRESSURE
+int update_thermal_load_avg(u64 now, struct rq *rq, u64 capacity);
+
+static inline u64 thermal_load_avg(struct rq *rq)
+{
+	return READ_ONCE(rq->avg_thermal.load_avg);
+}
+#else
+static inline int
+update_thermal_load_avg(u64 now, struct rq *rq, u64 capacity)
+{
+	return 0;
+}
+
+static inline u64 thermal_load_avg(struct rq *rq)
+{
+	return 0;
+}
+#endif
+
 #if defined(CONFIG_IRQ_TIME_ACCOUNTING) || defined(CONFIG_PARAVIRT_TIME_ACCOUNTING)
 int update_irq_load_avg(struct rq *rq, u64 running);
 #else
@@ -58,6 +78,17 @@ update_rt_rq_load_avg(u64 now, struct rq *rq, int running)
 
 static inline int
 update_dl_rq_load_avg(u64 now, struct rq *rq, int running)
+{
+	return 0;
+}
+
+static inline int
+update_thermal_load_avg(u64 now, struct rq *rq, u64 capacity)
+{
+	return 0;
+}
+
+static inline u64 thermal_load_avg(struct rq *rq)
 {
 	return 0;
 }
