@@ -30,6 +30,11 @@ static struct kmem_cache *kmem_buf_pool;
 
 static struct kmem_cache *kmem_buf_pool;
 
+void __init init_vidc_kmem_buf_pool(void)
+{
+	kmem_buf_pool = KMEM_CACHE(msm_vidc_buffer, SLAB_HWCACHE_ALIGN | SLAB_PANIC);
+}
+
 #define IS_ALREADY_IN_STATE(__p, __d) (\
 	(__p >= __d)\
 )
@@ -630,12 +635,6 @@ int msm_comm_ctrl_init(struct msm_vidc_inst *inst,
 		dprintk(VIDC_ERR, "%s - invalid input\n", __func__);
 		return -EINVAL;
 	}
-	
-	kmem_buf_pool = KMEM_CACHE(msm_vidc_buffer, SLAB_HWCACHE_ALIGN);
-	if (!kmem_buf_pool) {
-		dprintk(VIDC_ERR, "%s - failed to allocate kmem pool\n", __func__);
-		return -ENOMEM;
-	}
 
 	kmem_buf_pool = KMEM_CACHE(msm_vidc_buffer, SLAB_HWCACHE_ALIGN);
 	if (!kmem_buf_pool) {
@@ -739,7 +738,6 @@ int msm_comm_ctrl_deinit(struct msm_vidc_inst *inst)
 	kfree(inst->ctrls);
 	kfree(inst->cluster);
 	v4l2_ctrl_handler_free(&inst->ctrl_handler);
-	kmem_cache_destroy(kmem_buf_pool);
 
 	return 0;
 }
