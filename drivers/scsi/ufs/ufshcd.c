@@ -4556,7 +4556,6 @@ int ufshcd_read_desc_param(struct ufs_hba *hba,
 	int ret;
 	u8 *desc_buf;
 	int buff_len;
-	bool is_kmalloc = true;
 
 	/* Safety check */
 	if (desc_id >= QUERY_DESC_IDN_MAX || !param_size)
@@ -4591,15 +4590,16 @@ int ufshcd_read_desc_param(struct ufs_hba *hba,
 		return -EINVAL;
 	}
 
-	/* Check whether we need temp memory */
-	if (param_offset != 0 || param_size < buff_len) {
-		desc_buf = kzalloc(buff_len, GFP_KERNEL);
-		if (!desc_buf)
-			return -ENOMEM;
-	} else {
-		desc_buf = param_read_buf;
-		is_kmalloc = false;
+	/* Boundary check */
+	if (param_size == 0 || (param_offset + param_size) > buff_len) {
+		dev_err(hba->dev, "%s: Out of desc boundary or null size",
+			__func__);
+		return -EINVAL;
 	}
+
+	desc_buf = kmalloc(buff_len, GFP_KERNEL);
+	if (!desc_buf)
+		return -ENOMEM;
 
 	/* Request for full descriptor */
 	ret = ufshcd_query_descriptor_retry(hba, UPIU_QUERY_OPCODE_READ_DESC,
@@ -4620,15 +4620,9 @@ int ufshcd_read_desc_param(struct ufs_hba *hba,
 		goto out;
 	}
 
-	/* Check wherher we will not copy more data, than available */
-	if (is_kmalloc && param_offset + param_size > buff_len)
-		param_size = buff_len - param_offset;
-
-	if (is_kmalloc)
-		memcpy(param_read_buf, &desc_buf[param_offset], param_size);
+	memcpy(param_read_buf, &desc_buf[param_offset], param_size);
 out:
-	if (is_kmalloc)
-		kfree(desc_buf);
+	kfree(desc_buf);
 	return ret;
 }
 
