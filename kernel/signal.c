@@ -42,8 +42,6 @@
 #include <linux/cn_proc.h>
 #include <linux/compiler.h>
 #include <linux/posix-timers.h>
-#include <linux/oom.h>
-#include <linux/capability.h>
 #include <linux/cgroup.h>
 
 #define CREATE_TRACE_POINTS
@@ -1346,11 +1344,8 @@ int group_send_sig_info(int sig, struct siginfo *info, struct task_struct *p)
 	ret = check_kill_permission(sig, info, p);
 	rcu_read_unlock();
 
-	if (!ret && sig) {
+	if (!ret && sig)
 		ret = do_send_sig_info(sig, info, p, true);
-		if (capable(CAP_KILL) && sig == SIGKILL)
-			add_to_oom_reaper(p);
-	}
 
 	return ret;
 }
