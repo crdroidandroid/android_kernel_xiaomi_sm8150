@@ -150,8 +150,6 @@ do {\
 
 #define TSP_BUF_SIZE						PAGE_SIZE
 
-#define CONFIG_FTS_TOUCH_COUNT_DUMP
-
 #ifdef CONFIG_FTS_TOUCH_COUNT_DUMP
 #define TOUCH_COUNT_FILE_MAXSIZE 50
 #endif
@@ -334,11 +332,9 @@ struct fts_ts_info {
 	struct dentry *debugfs;
 #endif
 	int dbclick_count;
-#ifdef CONFIG_FTS_TOUCH_COUNT_DUMP
 	struct class *fts_tp_class;
 	struct device *fts_touch_dev;
 	char *current_clicknum_file;
-#endif
 #ifdef CONFIG_SECURE_TOUCH
 	struct fts_secure_info *secure_info;
 #endif
