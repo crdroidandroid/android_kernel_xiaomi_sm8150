@@ -83,7 +83,11 @@ torture_param(int, object_debug, 0,
 	     "Enable debug-object double call_rcu() testing");
 torture_param(int, onoff_holdoff, 0, "Time after boot before CPU hotplugs (s)");
 torture_param(int, onoff_interval, 0,
-	     "Time between CPU hotplugs (s), 0=disable");
+	     "Time between CPU hotplugs (jiffies), 0=disable");
+torture_param(int, read_exit_delay, 13,
+	      "Delay between read-then-exit episodes (s)");
+torture_param(int, read_exit_burst, 16,
+	      "# of read-then-exit bursts per episode, zero to disable");
 torture_param(int, shuffle_interval, 3, "Number of seconds between shuffles");
 torture_param(int, shutdown_secs, 0, "Shutdown time (s), <= zero to disable.");
 torture_param(int, stall_cpu, 0, "Stall duration (s), zero to disable.");
@@ -118,6 +122,7 @@ static struct task_struct *boost_tasks[NR_CPUS];
 static struct task_struct *stall_task;
 static struct task_struct **barrier_cbs_tasks;
 static struct task_struct *barrier_task;
+static struct task_struct *read_exit_task;
 
 #define RCU_TORTURE_PIPE_LEN 10
 
@@ -150,6 +155,7 @@ static long n_rcu_torture_timers;
 static long n_barrier_attempts;
 static long n_barrier_successes;
 static atomic_long_t n_cbfloods;
+static unsigned long n_read_exits;
 static struct list_head rcu_torture_removed;
 
 static int rcu_torture_writer_state;
@@ -1265,10 +1271,10 @@ rcu_torture_stats_print(void)
 		n_rcu_torture_timers);
 	torture_onoff_stats();
 	pr_cont("barrier: %ld/%ld:%ld ",
-		n_barrier_successes,
-		n_barrier_attempts,
-		n_rcu_torture_barrier_error);
-	pr_cont("cbflood: %ld\n", atomic_long_read(&n_cbfloods));
+		data_race(n_barrier_successes),
+		data_race(n_barrier_attempts),
+		data_race(n_rcu_torture_barrier_error));
+	pr_cont("read-exits: %ld\n", data_race(n_read_exits));
 
 	pr_alert("%s%s ", torture_type, TORTURE_FLAG);
 	if (atomic_read(&n_rcu_torture_mberror) != 0 ||
@@ -1353,7 +1359,8 @@ rcu_torture_print_module_parms(struct rcu_torture_ops *cur_ops, const char *tag)
 		 "test_boost_duration=%d shutdown_secs=%d "
 		 "stall_cpu=%d stall_cpu_holdoff=%d "
 		 "n_barrier_cbs=%d "
-		 "onoff_interval=%d onoff_holdoff=%d\n",
+		 "onoff_interval=%d onoff_holdoff=%d "
+		 "read_exit_delay=%d read_exit_burst=%d\n",
 		 torture_type, tag, nrealreaders, nfakewriters,
 		 stat_interval, verbose, test_no_idle_hz, shuffle_interval,
 		 stutter, irqreader, fqs_duration, fqs_holdoff, fqs_stutter,
@@ -1361,7 +1368,8 @@ rcu_torture_print_module_parms(struct rcu_torture_ops *cur_ops, const char *tag)
 		 test_boost_interval, test_boost_duration, shutdown_secs,
 		 stall_cpu, stall_cpu_holdoff,
 		 n_barrier_cbs,
-		 onoff_interval, onoff_holdoff);
+		 onoff_interval, onoff_holdoff,
+		 read_exit_delay, read_exit_burst);
 }
 
 static int rcutorture_booster_cleanup(unsigned int cpu)
@@ -1580,6 +1588,123 @@ static void rcu_torture_barrier_cleanup(void)
 	}
 }
 
+static bool rcu_torture_can_boost(void)
+{
+	static int boost_warn_once;
+	int prio;
+
+	if (!(test_boost == 1 && cur_ops->can_boost) && test_boost != 2)
+		return false;
+
+	prio = rcu_get_gp_kthreads_prio();
+	if (!prio)
+		return false;
+
+	if (prio < 2) {
+		if (boost_warn_once  == 1)
+			return false;
+
+		pr_alert("%s: WARN: RCU kthread priority too low to test boosting.  Skipping RCU boost test. Try passing rcutree.kthread_prio > 1 on the kernel command line.\n", KBUILD_MODNAME);
+		boost_warn_once = 1;
+		return false;
+	}
+
+	return true;
+}
+
+static bool read_exit_child_stop;
+static bool read_exit_child_stopped;
+static wait_queue_head_t read_exit_wq;
+
+// Child kthread which just does an rcutorture reader and exits.
+static int rcu_torture_read_exit_child(void *trsp_in)
+{
+	struct torture_random_state *trsp = trsp_in;
+
+	set_user_nice(current, MAX_NICE);
+	// Minimize time between reading and exiting.
+	while (!kthread_should_stop())
+		schedule_timeout_uninterruptible(1);
+	(void)rcu_torture_one_read(trsp);
+	return 0;
+}
+
+// Parent kthread which creates and destroys read-exit child kthreads.
+static int rcu_torture_read_exit(void *unused)
+{
+	int count = 0;
+	bool errexit = false;
+	int i;
+	struct task_struct *tsp;
+	DEFINE_TORTURE_RANDOM(trs);
+
+	// Allocate and initialize.
+	set_user_nice(current, MAX_NICE);
+	VERBOSE_TOROUT_STRING("rcu_torture_read_exit: Start of test");
+
+	// Each pass through this loop does one read-exit episode.
+	do {
+		if (++count > read_exit_burst) {
+			VERBOSE_TOROUT_STRING("rcu_torture_read_exit: End of episode");
+			rcu_barrier(); // Wait for task_struct free, avoid OOM.
+			for (i = 0; i < read_exit_delay; i++) {
+				schedule_timeout_uninterruptible(HZ);
+				if (READ_ONCE(read_exit_child_stop))
+					break;
+			}
+			if (!READ_ONCE(read_exit_child_stop))
+				VERBOSE_TOROUT_STRING("rcu_torture_read_exit: Start of episode");
+			count = 0;
+		}
+		if (READ_ONCE(read_exit_child_stop))
+			break;
+		// Spawn child.
+		tsp = kthread_run(rcu_torture_read_exit_child,
+				     &trs, "%s",
+				     "rcu_torture_read_exit_child");
+		if (IS_ERR(tsp)) {
+			VERBOSE_TOROUT_ERRSTRING("out of memory");
+			errexit = true;
+			tsp = NULL;
+			break;
+		}
+		cond_resched();
+		kthread_stop(tsp);
+		n_read_exits ++;
+		stutter_wait("rcu_torture_read_exit");
+	} while (!errexit && !READ_ONCE(read_exit_child_stop));
+
+	// Clean up and exit.
+	smp_store_release(&read_exit_child_stopped, true); // After reaping.
+	smp_mb(); // Store before wakeup.
+	wake_up(&read_exit_wq);
+	while (!torture_must_stop())
+		schedule_timeout_uninterruptible(1);
+	torture_kthread_stopping("rcu_torture_read_exit");
+	return 0;
+}
+
+static int rcu_torture_read_exit_init(void)
+{
+	if (read_exit_burst <= 0)
+		return -EINVAL;
+	init_waitqueue_head(&read_exit_wq);
+	read_exit_child_stop = false;
+	read_exit_child_stopped = false;
+	return torture_create_kthread(rcu_torture_read_exit, NULL,
+				      read_exit_task);
+}
+
+static void rcu_torture_read_exit_cleanup(void)
+{
+	if (!read_exit_task)
+		return;
+	WRITE_ONCE(read_exit_child_stop, true);
+	smp_mb(); // Above write before wait.
+	wait_event(read_exit_wq, smp_load_acquire(&read_exit_child_stopped));
+	torture_stop_kthread(rcutorture_read_exit, read_exit_task);
+}
+
 static enum cpuhp_state rcutor_hp;
 
 static void
@@ -1598,6 +1723,8 @@ rcu_torture_cleanup(void)
 		return;
 	}
 
+	show_rcu_gp_kthreads();
+	rcu_torture_read_exit_cleanup();
 	rcu_torture_barrier_cleanup();
 	torture_stop_kthread(rcu_torture_stall, stall_task);
 	torture_stop_kthread(rcu_torture_writer, writer_task);
@@ -1871,6 +1998,9 @@ rcu_torture_init(void)
 	if (firsterr)
 		goto unwind;
 	firsterr = rcu_torture_barrier_init();
+	if (firsterr)
+		goto unwind;
+	firsterr = rcu_torture_read_exit_init();
 	if (firsterr)
 		goto unwind;
 	if (object_debug)
