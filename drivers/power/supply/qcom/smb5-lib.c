@@ -3025,10 +3025,6 @@ static int smblib_therm_charging(struct smb_charger *chg)
 			pr_err("Couldn't disable USB thermal ICL vote rc=%d\n",
 				rc);
 	} else {
-		pr_info("thermal_icl_ua is %d, chg->system_temp_level: %d\n",
-				thermal_icl_ua, chg->system_temp_level);
-		pr_info("thermal_fcc_ua is %d\n", thermal_fcc_ua);
-
 		if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3
 			|| (chg->cp_reason == POWER_SUPPLY_CP_PPS
 				&& chg->real_charger_type == POWER_SUPPLY_TYPE_USB_PD)) {
@@ -3066,6 +3062,7 @@ static int smblib_therm_charging(struct smb_charger *chg)
 		}
 	}
 
+	pr_info("thermal_icl_ua: %d", thermal_icl_ua);
 	return rc;
 }
 #endif
