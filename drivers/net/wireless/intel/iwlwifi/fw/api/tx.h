@@ -291,7 +291,7 @@ struct iwl_tx_cmd {
 	__le16 pm_frame_timeout;
 	__le16 reserved4;
 	u8 payload[0];
-	struct ieee80211_hdr hdr[0];
+	struct ieee80211_hdr hdr[];
 } __packed; /* TX_CMD_API_S_VER_6 */
 
 struct iwl_dram_sec_info {
@@ -317,7 +317,7 @@ struct iwl_tx_cmd_gen2 {
 	__le32 flags;
 	struct iwl_dram_sec_info dram_info;
 	__le32 rate_n_flags;
-	struct ieee80211_hdr hdr[0];
+	struct ieee80211_hdr hdr[];
 } __packed; /* TX_CMD_API_S_VER_7 */
 
 /*
@@ -741,8 +741,8 @@ struct iwl_mvm_compressed_ba_notif {
 	__le32 tx_rate;
 	__le16 tfd_cnt;
 	__le16 ra_tid_cnt;
-	struct iwl_mvm_compressed_ba_tfd tfd[0];
 	struct iwl_mvm_compressed_ba_ratid ra_tid[0];
+	struct iwl_mvm_compressed_ba_tfd tfd[];
 } __packed; /* COMPRESSED_BA_RES_API_S_VER_4 */
 
 /**
@@ -759,7 +759,7 @@ struct iwl_mac_beacon_cmd_v6 {
 	__le32 template_id;
 	__le32 tim_idx;
 	__le32 tim_size;
-	struct ieee80211_hdr frame[0];
+	struct ieee80211_hdr frame[];
 } __packed; /* BEACON_TEMPLATE_CMD_API_S_VER_6 */
 
 /**
@@ -780,7 +780,7 @@ struct iwl_mac_beacon_cmd_v7 {
 	__le32 tim_size;
 	__le32 ecsa_offset;
 	__le32 csa_offset;
-	struct ieee80211_hdr frame[0];
+	struct ieee80211_hdr frame[];
 } __packed; /* BEACON_TEMPLATE_CMD_API_S_VER_7 */
 
 enum iwl_mac_beacon_flags {
@@ -812,7 +812,7 @@ struct iwl_mac_beacon_cmd {
 	__le32 tim_size;
 	__le32 ecsa_offset;
 	__le32 csa_offset;
-	struct ieee80211_hdr frame[0];
+	struct ieee80211_hdr frame[];
 } __packed; /* BEACON_TEMPLATE_CMD_API_S_VER_9 */
 
 struct iwl_beacon_notif {
