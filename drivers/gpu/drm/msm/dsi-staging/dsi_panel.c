@@ -4395,6 +4395,9 @@ int dsi_panel_get_mode(struct dsi_panel *panel,
 
 		if (mode->panel_mode == DSI_OP_VIDEO_MODE)
 			mode->priv_info->mdp_transfer_time_us = 0;
+		
+		mode->splash_dms = of_property_read_bool(child_np,
+				"qcom,mdss-dsi-splash-dms-switch-to-this-timing");
 	}
 	goto done;
 
