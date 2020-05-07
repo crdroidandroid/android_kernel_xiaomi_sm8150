@@ -258,7 +258,7 @@ struct qlink_cmd_mgmt_frame_tx {
 	__le32 cookie;
 	__le16 freq;
 	__le16 flags;
-	u8 frame_data[0];
+	u8 frame_data[];
 } __packed;
 
 /**
@@ -273,7 +273,7 @@ struct qlink_cmd_mgmt_append_ie {
 	struct qlink_cmd chdr;
 	u8 type;
 	u8 flags;
-	u8 ie_data[0];
+	u8 ie_data[];
 } __packed;
 
 /**
@@ -303,7 +303,7 @@ struct qlink_cmd_add_key {
 	u8 addr[ETH_ALEN];
 	__le32 cipher;
 	__le16 vlanid;
-	u8 key_data[0];
+	u8 key_data[];
 } __packed;
 
 /**
@@ -395,7 +395,7 @@ struct qlink_cmd_connect {
 	__le16 channel;
 	__le16 bg_scan_period;
 	u8 bssid[ETH_ALEN];
-	u8 payload[0];
+	u8 payload[];
 } __packed;
 
 /**
@@ -570,7 +570,7 @@ struct qlink_resp_get_mac_info {
 	u8 phymode_cap;
 	__le16 max_ap_assoc_sta;
 	__le16 radar_detect_widths;
-	u8 var_info[0];
+	u8 var_info[];
 } __packed;
 
 /**
@@ -615,7 +615,7 @@ struct qlink_resp_get_hw_info {
 	u8 alpha2[2];
 	u8 n_reg_rules;
 	u8 dfs_region;
-	u8 info[0];
+	u8 info[];
 } __packed;
 
 /**
@@ -642,7 +642,7 @@ struct qlink_resp_manage_intf {
 struct qlink_resp_get_sta_info {
 	struct qlink_resp rhdr;
 	u8 sta_addr[ETH_ALEN];
-	u8 info[0];
+	u8 info[];
 } __packed;
 
 /**
@@ -657,7 +657,7 @@ struct qlink_resp_get_chan_info {
 	u8 band;
 	u8 num_chans;
 	u8 rsvd[2];
-	u8 info[0];
+	u8 info[];
 } __packed;
 
 /**
@@ -667,7 +667,7 @@ struct qlink_resp_get_chan_info {
  */
 struct qlink_resp_phy_params {
 	struct qlink_resp rhdr;
-	u8 info[0];
+	u8 info[];
 } __packed;
 
 /**
@@ -677,7 +677,7 @@ struct qlink_resp_phy_params {
  */
 struct qlink_resp_get_chan_stats {
 	struct qlink_cmd rhdr;
-	u8 info[0];
+	u8 info[];
 } __packed;
 
 /* QLINK Events messages related definitions
@@ -724,7 +724,7 @@ struct qlink_event_sta_assoc {
 	struct qlink_event ehdr;
 	u8 sta_addr[ETH_ALEN];
 	__le16 frame_control;
-	u8 ies[0];
+	u8 ies[];
 } __packed;
 
 /**
@@ -788,7 +788,7 @@ struct qlink_event_rxmgmt {
 	__le32 freq;
 	__le32 sig_dbm;
 	__le32 flags;
-	u8 frame_data[0];
+	u8 frame_data[];
 } __packed;
 
 enum qlink_frame_type {
@@ -823,7 +823,7 @@ struct qlink_event_scan_result {
 	u8 bssid[ETH_ALEN];
 	u8 ssid_len;
 	u8 ssid[IEEE80211_MAX_SSID_LEN];
-	u8 payload[0];
+	u8 payload[];
 } __packed;
 
 /**
@@ -875,7 +875,7 @@ enum qlink_tlv_id {
 struct qlink_tlv_hdr {
 	__le16 type;
 	__le16 len;
-	u8 val[0];
+	u8 val[];
 } __packed;
 
 struct qlink_iface_limit {
