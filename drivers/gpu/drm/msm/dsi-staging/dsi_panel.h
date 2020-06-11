@@ -231,6 +231,7 @@ struct dsi_panel {
 	enum dsi_panel_physical_type panel_type;
 
 	int hbm_mode;
+	bool resend_ea;
 
 	struct brightness_alpha_pair *fod_dim_lut;
 	u32 fod_dim_lut_count;
