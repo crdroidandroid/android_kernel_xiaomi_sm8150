@@ -31,7 +31,7 @@ cc32-disable-warning = $(call try-run,\
 
 # From top-level Makefile
 # NOSTDINC_FLAGS
-VDSO_CPPFLAGS := -nostdinc -isystem $(shell $(CC_ARM32) -print-file-name=include)
+VDSO_CPPFLAGS := -DBUILD_VDSO -nostdinc -isystem $(shell $(CC_ARM32) -print-file-name=include)
 VDSO_CPPFLAGS += $(LINUXINCLUDE)
 VDSO_CPPFLAGS += $(KBUILD_CPPFLAGS)
 
