@@ -112,8 +112,15 @@ static int rmnet_register_real_device(struct net_device *real_dev)
 
 	ASSERT_RTNL();
 
-	if (rmnet_is_real_dev_registered(real_dev))
+	if (rmnet_is_real_dev_registered(real_dev)) {
+		port = rmnet_get_port_rtnl(real_dev);
+		if (port->rmnet_mode != RMNET_EPMODE_VND) {
+			//NL_SET_ERR_MSG_MOD(extack, "bridge device already exists");
+			return -EINVAL;
+		}
+
 		return 0;
+	}
 
 	port = kzalloc(sizeof(*port), GFP_ATOMIC);
 	if (!port)
