@@ -736,7 +736,6 @@ config TRACE_EVAL_MAP_FILE
 config TRACING_EVENTS_GPIO
 	bool "Trace gpio events"
 	depends on GPIOLIB
-	default y
 	help
 	  Enable tracing events for gpio subsystem
 
