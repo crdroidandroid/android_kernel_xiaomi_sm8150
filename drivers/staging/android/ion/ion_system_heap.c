@@ -412,7 +412,7 @@ err_free_sg2:
 		if (ion_hyp_unassign_sg(table, &vmid, 1, true, false))
 			goto err_free_table_sync;
 
-	for_each_sg(table->sgl, sg, table->nents, i)
+	for_each_sg(table->sgl, sg, table->orig_nents, i)
 		free_buffer_page(sys_heap, buffer, sg_page(sg),
 				 get_order(sg->length));
 err_free_table_sync:
@@ -456,7 +456,7 @@ void ion_system_heap_free(struct ion_buffer *buffer)
 			return;
 	}
 
-	for_each_sg(table->sgl, sg, table->nents, i)
+	for_each_sg(table->sgl, sg, table->orig_nents, i)
 		free_buffer_page(sys_heap, buffer, sg_page(sg),
 				 get_order(sg->length));
 	sg_free_table(table);
