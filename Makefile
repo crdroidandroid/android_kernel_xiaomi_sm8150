@@ -781,6 +781,9 @@ KBUILD_CFLAGS   += -mllvm -hot-cold-split=true
 KBUILD_CFLAGS	+= -march=armv8.2-a+lse+fp16+dotprod -mcpu=cortex-a76+crypto+crc
 endif
 
+# Tell compiler to use pipes instead of temporary files during compilation
+KBUILD_CFLAGS += $(call cc-option, -pipe)
+
 # Tell gcc to never replace conditional load with a non-conditional one
 KBUILD_CFLAGS	+= $(call cc-option,--param=allow-store-data-races=0)
 KBUILD_CFLAGS	+= $(call cc-option,-fno-allow-store-data-races)
