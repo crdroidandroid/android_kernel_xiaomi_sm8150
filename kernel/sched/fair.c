@@ -13110,6 +13110,13 @@ void check_for_migration(struct rq *rq, struct task_struct *p)
 		if (task_will_be_throttled(p))
 			return;
 
+		if (walt_rotation_enabled) {
+			raw_spin_lock(&migration_lock);
+			walt_check_for_rotation(rq);
+			raw_spin_unlock(&migration_lock);
+			return;
+		}
+
 		raw_spin_lock(&migration_lock);
 		rcu_read_lock();
 		new_cpu = find_energy_efficient_cpu(sd, p, cpu, prev_cpu, 0, 1);
@@ -13129,8 +13136,6 @@ void check_for_migration(struct rq *rq, struct task_struct *p)
 					wake_up_if_idle(new_cpu);
 				return;
 			}
-		} else {
-			walt_check_for_rotation(rq);
 		}
 		raw_spin_unlock(&migration_lock);
 	}
