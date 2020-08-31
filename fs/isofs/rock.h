@@ -22,7 +22,7 @@ struct SU_ER_s {
 	unsigned char len_des;
 	unsigned char len_src;
 	unsigned char ext_ver;
-	char data[0];
+	char data[];
 } __attribute__ ((packed));
 
 struct RR_RR_s {
@@ -44,7 +44,7 @@ struct RR_PN_s {
 struct SL_component {
 	unsigned char flags;
 	unsigned char len;
-	char text[0];
+	char text[];
 } __attribute__ ((packed));
 
 struct RR_SL_s {
@@ -54,7 +54,7 @@ struct RR_SL_s {
 
 struct RR_NM_s {
 	unsigned char flags;
-	char name[0];
+	char name[];
 } __attribute__ ((packed));
 
 struct RR_CL_s {
@@ -71,7 +71,7 @@ struct stamp {
 
 struct RR_TF_s {
 	char flags;
-	struct stamp times[0];	/* Variable number of these beasts */
+	struct stamp times[];	/* Variable number of these beasts */
 } __attribute__ ((packed));
 
 /* Linux-specific extension for transparent decompression */
