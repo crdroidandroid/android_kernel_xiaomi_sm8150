@@ -57,7 +57,7 @@ static DEFINE_MUTEX(tracepoints_mutex);
  */
 struct tp_probes {
 	struct rcu_head rcu;
-	struct tracepoint_func probes[0];
+	struct tracepoint_func probes[];
 };
 
 /* Called in removal of a func but failed to allocate a new tp_funcs */
