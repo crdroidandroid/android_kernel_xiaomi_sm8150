@@ -9561,7 +9561,7 @@ redo:
 		 */
 		if (((cpu_rq(env->src_cpu)->nr_running > 2) ||
 			(env->flags & LBF_IGNORE_BIG_TASKS)) &&
-			((load / 2) > env->imbalance))
+			((load >> env->sd->nr_balance_failed) > env->imbalance))
 			goto next;
 
 		detach_task(p, env);
