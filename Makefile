@@ -902,7 +902,7 @@ KBUILD_CFLAGS   += $(call cc-option, -gsplit-dwarf, -g)
 else
 KBUILD_CFLAGS	+= -g
 endif
-ifeq ($(LLVM_IAS),0)
+ifneq ($(cc-name),clang)
 KBUILD_AFLAGS	+= -Wa,-gdwarf-2
 endif
 endif
