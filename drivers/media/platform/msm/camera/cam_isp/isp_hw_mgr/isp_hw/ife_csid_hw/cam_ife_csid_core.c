@@ -368,6 +368,9 @@ static int cam_ife_csid_global_reset(struct cam_ife_csid_hw *csid_hw)
 	int rc = 0;
 	uint32_t val = 0, i;
 	uint32_t status;
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	unsigned long flags;
+#endif
 
 	soc_info = &csid_hw->hw_info->soc_info;
 	csid_reg = csid_hw->csid_info->csid_reg;
@@ -381,6 +384,10 @@ static int cam_ife_csid_global_reset(struct cam_ife_csid_hw *csid_hw)
 
 	CAM_DBG(CAM_ISP, "CSID:%d Csid reset",
 		csid_hw->hw_intf->hw_idx);
+
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	spin_lock_irqsave(&csid_hw->hw_info->hw_lock, flags);
+#endif
 
 	/* Mask all interrupts */
 	cam_io_w_mb(0, soc_info->reg_map[0].mem_base +
@@ -423,6 +430,10 @@ static int cam_ife_csid_global_reset(struct cam_ife_csid_hw *csid_hw)
 
 	cam_io_w_mb(1, soc_info->reg_map[0].mem_base +
 		csid_reg->cmn_reg->csid_irq_cmd_addr);
+
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	spin_unlock_irqrestore(&csid_hw->hw_info->hw_lock, flags);
+#endif
 
 	cam_io_w_mb(0x80, soc_info->reg_map[0].mem_base +
 		csid_hw->csid_info->csid_reg->csi2_reg->csid_csi2_rx_cfg1_addr);
@@ -1045,6 +1056,9 @@ static int cam_ife_csid_enable_hw(struct cam_ife_csid_hw  *csid_hw)
 	const struct cam_ife_csid_reg_offset      *csid_reg;
 	struct cam_hw_soc_info              *soc_info;
 	uint32_t i, val, clk_lvl;
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	unsigned long flags;
+#endif
 
 	csid_reg = csid_hw->csid_info->csid_reg;
 	soc_info = &csid_hw->hw_info->soc_info;
@@ -1083,6 +1097,10 @@ static int cam_ife_csid_enable_hw(struct cam_ife_csid_hw  *csid_hw)
 		goto disable_soc;
 	}
 
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	spin_lock_irqsave(&csid_hw->hw_info->hw_lock, flags);
+#endif
+
 	/* clear all interrupts */
 	cam_io_w_mb(1, soc_info->reg_map[0].mem_base +
 		csid_reg->cmn_reg->csid_top_irq_clear_addr);
@@ -1108,6 +1126,10 @@ static int cam_ife_csid_enable_hw(struct cam_ife_csid_hw  *csid_hw)
 
 	cam_io_w_mb(1, soc_info->reg_map[0].mem_base +
 		csid_reg->cmn_reg->csid_irq_cmd_addr);
+
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	spin_unlock_irqrestore(&csid_hw->hw_info->hw_lock, flags);
+#endif
 
 	val = cam_io_r_mb(soc_info->reg_map[0].mem_base +
 			csid_reg->cmn_reg->csid_hw_version_addr);
@@ -2682,6 +2704,10 @@ static int cam_ife_csid_reset(void *hw_priv,
 	csid_hw = (struct cam_ife_csid_hw   *)csid_hw_info->core_info;
 	reset   = (struct cam_csid_reset_cfg_args  *)reset_args;
 
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	mutex_lock(&csid_hw->hw_info->hw_mutex);
+#endif
+
 	switch (reset->reset_type) {
 	case CAM_IFE_CSID_RESET_GLOBAL:
 		rc = cam_ife_csid_global_reset(csid_hw);
@@ -2695,6 +2721,10 @@ static int cam_ife_csid_reset(void *hw_priv,
 		rc = -EINVAL;
 		break;
 	}
+
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	mutex_unlock(&csid_hw->hw_info->hw_mutex);
+#endif
 
 	return rc;
 }
@@ -2838,8 +2868,16 @@ static int cam_ife_csid_reset_retain_sw_reg(
 	const struct cam_ife_csid_reg_offset *csid_reg =
 		csid_hw->csid_info->csid_reg;
 	struct cam_hw_soc_info          *soc_info;
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	unsigned long flags;
+#endif
 
 	soc_info = &csid_hw->hw_info->soc_info;
+
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	spin_lock_irqsave(&csid_hw->hw_info->hw_lock, flags);
+#endif
+
 	/* clear the top interrupt first */
 	cam_io_w_mb(1, soc_info->reg_map[0].mem_base +
 		csid_reg->cmn_reg->csid_top_irq_clear_addr);
@@ -2852,6 +2890,11 @@ static int cam_ife_csid_reset_retain_sw_reg(
 	cam_io_w_mb(csid_reg->cmn_reg->csid_rst_stb,
 		soc_info->reg_map[0].mem_base +
 		csid_reg->cmn_reg->csid_rst_strobes_addr);
+
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	spin_unlock_irqrestore(&csid_hw->hw_info->hw_lock, flags);
+#endif
+
 	rc = readl_poll_timeout(soc_info->reg_map[0].mem_base +
 		csid_reg->cmn_reg->csid_top_irq_status_addr,
 			status, (status & 0x1) == 0x1,
@@ -2865,10 +2908,19 @@ static int cam_ife_csid_reset_retain_sw_reg(
 			csid_hw->hw_intf->hw_idx, rc);
 		rc = 0;
 	}
+
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	spin_lock_irqsave(&csid_hw->hw_info->hw_lock, flags);
+#endif
+
 	cam_io_w_mb(1, soc_info->reg_map[0].mem_base +
 		csid_reg->cmn_reg->csid_top_irq_clear_addr);
 	cam_io_w_mb(1, soc_info->reg_map[0].mem_base +
 		csid_reg->cmn_reg->csid_irq_cmd_addr);
+
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	spin_unlock_irqrestore(&csid_hw->hw_info->hw_lock, flags);
+#endif
 
 	return rc;
 }
@@ -3577,6 +3629,10 @@ irqreturn_t cam_ife_csid_irq(int irq_num, void *data)
 			cam_io_r_mb(soc_info->reg_map[0].mem_base +
 			csid_reg->rdi_reg[i]->csid_rdi_irq_status_addr);
 
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	spin_lock_irqsave(&csid_hw->hw_info->hw_lock, flags);
+#endif
+
 	/* clear */
 	cam_io_w_mb(irq_status[CSID_IRQ_STATUS_RX],
 		soc_info->reg_map[0].mem_base +
@@ -3598,6 +3654,10 @@ irqreturn_t cam_ife_csid_irq(int irq_num, void *data)
 	}
 	cam_io_w_mb(1, soc_info->reg_map[0].mem_base +
 		csid_reg->cmn_reg->csid_irq_cmd_addr);
+
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	spin_unlock_irqrestore(&csid_hw->hw_info->hw_lock, flags);
+#endif
 
 	if (irq_status[CSID_IRQ_STATUS_RX] &
 		BIT(csid_reg->csi2_reg->csi2_rst_done_shift_val)) {
