@@ -436,7 +436,11 @@ void cam_isp_hw_get_timestamp(struct cam_isp_timestamp *time_stamp)
 {
 	struct timespec ts;
 
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	ktime_get_ts(&ts);
+#else
 	get_monotonic_boottime(&ts);
+#endif
 	time_stamp->mono_time.tv_sec    = ts.tv_sec;
 	time_stamp->mono_time.tv_usec   = ts.tv_nsec/1000;
 	time_stamp->time_usecs =  ts.tv_sec * 1000000 +
