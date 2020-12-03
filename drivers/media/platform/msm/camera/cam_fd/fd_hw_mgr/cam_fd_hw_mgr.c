@@ -880,7 +880,9 @@ static int cam_fd_mgr_util_submit_frame(void *priv, void *data)
 	trace_cam_submit_to_hw("FD", frame_req->request_id);
 
 	list_del_init(&frame_req->list);
+#ifndef CONFIG_MACH_XIAOMI_NABU
 	mutex_unlock(&hw_mgr->frame_req_mutex);
+#endif
 
 	if (hw_device->hw_intf->hw_ops.start) {
 		start_args.hw_ctx = hw_ctx;
@@ -896,20 +898,30 @@ static int cam_fd_mgr_util_submit_frame(void *priv, void *data)
 		if (rc) {
 			CAM_ERR(CAM_FD, "Failed in HW Start %d", rc);
 			mutex_unlock(&hw_device->lock);
+#ifdef CONFIG_MACH_XIAOMI_NABU
+			mutex_unlock(&hw_mgr->frame_req_mutex);
+#endif
 			goto put_req_into_free_list;
 		}
 	} else {
 		CAM_ERR(CAM_FD, "Invalid hw_ops.start");
 		mutex_unlock(&hw_device->lock);
 		rc = -EPERM;
+#ifdef CONFIG_MACH_XIAOMI_NABU
+		mutex_unlock(&hw_mgr->frame_req_mutex);
+#endif
 		goto put_req_into_free_list;
 	}
 
 	hw_device->ready_to_process = false;
 	hw_device->cur_hw_ctx = hw_ctx;
 	hw_device->req_id = frame_req->request_id;
+#ifdef CONFIG_MACH_XIAOMI_NABU
+	list_add_tail(&frame_req->list, &hw_mgr->frame_processing_list);
+#endif
 	mutex_unlock(&hw_device->lock);
 
+#ifndef CONFIG_MACH_XIAOMI_NABU
 	cam_common_util_get_curr_timestamp(&frame_req->submit_timestamp);
 	rc = cam_fd_mgr_util_put_frame_req(
 		&hw_mgr->frame_processing_list, &frame_req);
@@ -918,9 +930,15 @@ static int cam_fd_mgr_util_submit_frame(void *priv, void *data)
 			"Failed in putting frame req in processing list");
 		goto stop_unlock;
 	}
+#endif
+
+#ifdef CONFIG_MACH_XIAOMI_NABU
+	mutex_unlock(&hw_mgr->frame_req_mutex);
+#endif
 
 	return rc;
 
+#ifndef CONFIG_MACH_XIAOMI_NABU
 stop_unlock:
 	if (hw_device->hw_intf->hw_ops.stop) {
 		struct cam_fd_hw_stop_args stop_args;
@@ -933,6 +951,7 @@ stop_unlock:
 			sizeof(stop_args)))
 			CAM_ERR(CAM_FD, "Failed in HW Stop %d", rc);
 	}
+#endif
 put_req_into_free_list:
 	cam_fd_mgr_util_put_frame_req(&hw_mgr->frame_free_list, &frame_req);
 
