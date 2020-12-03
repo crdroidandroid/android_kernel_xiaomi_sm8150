@@ -36,7 +36,11 @@
 #define CAM_SOC_MAX_BASE            CAM_SOC_MAX_BLOCK
 
 /* maximum number of device regulator */
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+#define CAM_SOC_MAX_REGULATOR       6
+#else
 #define CAM_SOC_MAX_REGULATOR       5
+#endif
 
 /* maximum number of device clock */
 #define CAM_SOC_MAX_CLK             32
