@@ -67,7 +67,7 @@
 			compatible = "arm,armv8";
 			reg = <0x0 0x0>;
 			enable-method = "psci";
-			capacity-dmips-mhz = <1024>;
+			capacity-dmips-mhz = <488>;
 			next-level-cache = <&L2_0>;
 			sched-energy-costs = <&CPU_COST_0 &CLUSTER_COST_0>;
 			qcom,lmh-dcvs = <&lmh_dcvs0>;
@@ -103,7 +103,7 @@
 			compatible = "arm,armv8";
 			reg = <0x0 0x100>;
 			enable-method = "psci";
-			capacity-dmips-mhz = <1024>;
+			capacity-dmips-mhz = <488>;
 			next-level-cache = <&L2_1>;
 			sched-energy-costs = <&CPU_COST_0 &CLUSTER_COST_0>;
 			qcom,lmh-dcvs = <&lmh_dcvs0>;
@@ -134,7 +134,7 @@
 			compatible = "arm,armv8";
 			reg = <0x0 0x200>;
 			enable-method = "psci";
-			capacity-dmips-mhz = <1024>;
+			capacity-dmips-mhz = <488>;
 			next-level-cache = <&L2_2>;
 			sched-energy-costs = <&CPU_COST_0 &CLUSTER_COST_0>;
 			qcom,lmh-dcvs = <&lmh_dcvs0>;
@@ -165,7 +165,7 @@
 			compatible = "arm,armv8";
 			reg = <0x0 0x300>;
 			enable-method = "psci";
-			capacity-dmips-mhz = <1024>;
+			capacity-dmips-mhz = <488>;
 			next-level-cache = <&L2_3>;
 			sched-energy-costs = <&CPU_COST_0 &CLUSTER_COST_0>;
 			qcom,lmh-dcvs = <&lmh_dcvs0>;
@@ -196,7 +196,7 @@
 			compatible = "arm,armv8";
 			reg = <0x0 0x400>;
 			enable-method = "psci";
-			capacity-dmips-mhz = <1740>;
+			capacity-dmips-mhz = <1024>;
 			next-level-cache = <&L2_4>;
 			sched-energy-costs = <&CPU_COST_1 &CLUSTER_COST_1>;
 			qcom,lmh-dcvs = <&lmh_dcvs1>;
@@ -236,7 +236,7 @@
 			compatible = "arm,armv8";
 			reg = <0x0 0x500>;
 			enable-method = "psci";
-			capacity-dmips-mhz = <1740>;
+			capacity-dmips-mhz = <1024>;
 			next-level-cache = <&L2_5>;
 			sched-energy-costs = <&CPU_COST_1 &CLUSTER_COST_1>;
 			qcom,lmh-dcvs = <&lmh_dcvs1>;
@@ -276,7 +276,7 @@
 			compatible = "arm,armv8";
 			reg = <0x0 0x600>;
 			enable-method = "psci";
-			capacity-dmips-mhz = <1740>;
+			capacity-dmips-mhz = <1024>;
 			next-level-cache = <&L2_6>;
 			sched-energy-costs = <&CPU_COST_1 &CLUSTER_COST_1>;
 			qcom,lmh-dcvs = <&lmh_dcvs1>;
@@ -316,7 +316,7 @@
 			compatible = "arm,armv8";
 			reg = <0x0 0x700>;
 			enable-method = "psci";
-			capacity-dmips-mhz = <1740>;
+			capacity-dmips-mhz = <1024>;
 			next-level-cache = <&L2_7>;
 			sched-energy-costs = <&CPU_COST_2 &CLUSTER_COST_2>;
 			qcom,lmh-dcvs = <&lmh_dcvs1>;
