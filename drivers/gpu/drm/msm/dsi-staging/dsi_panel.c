@@ -692,13 +692,9 @@ static u32 dsi_panel_get_backlight(struct dsi_panel *panel)
 {
 	u32 bl_level;
 
-	if (panel->doze_enabled) {
-		bl_level = panel->doze_mode ? panel->bl_config.bl_doze_hbm : panel->bl_config.bl_doze_lpm;
-	} else {
-		bl_level = panel->bl_config.bl_level;
-	}
+	bl_level = panel->bl_config.bl_level;
 
-	return bl_level;
+    return bl_level;
 }
 
 static u32 interpolate(uint32_t x, uint32_t xa, uint32_t xb, uint32_t ya, uint32_t yb)
@@ -729,47 +725,9 @@ u32 dsi_panel_get_fod_dim_alpha(struct dsi_panel *panel)
 			panel->fod_dim_lut[i - 1].alpha, panel->fod_dim_lut[i].alpha);
 }
 
-int dsi_panel_update_doze(struct dsi_panel *panel) {
-	int rc = 0;
-
-	if (panel->doze_enabled) {
-		rc = dsi_panel_tx_cmd_set(panel, panel->doze_mode ? DSI_CMD_SET_DOZE_HBM : DSI_CMD_SET_DOZE_LBM);
-	} else {
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_NOLP);
-	}
-
-	if (rc)
-		pr_err("[%s] failed to send DOZE, rc=%d\n", panel->name, rc);
-	return rc;
-}
-
-int dsi_panel_set_doze_status(struct dsi_panel *panel, bool status) {
-	if (panel->doze_enabled == status)
-		return 0;
-
-	panel->doze_enabled = status;
-
-	return dsi_panel_update_doze(panel);
-}
-
-int dsi_panel_set_doze_mode(struct dsi_panel *panel, enum dsi_doze_mode_type mode) {
-	if (panel->doze_mode == mode)
-		return 0;
-
-	panel->doze_mode = mode;
-
-	if (!panel->doze_enabled)
-		return 0;
-
-	return dsi_panel_update_doze(panel);
-}
-
 int dsi_panel_set_fod_hbm(struct dsi_panel *panel, bool status)
 {
 	int rc = 0;
-
-	if (panel->doze_enabled)
-		rc = dsi_panel_update_doze(panel);
 
 	rc = dsi_panel_tx_cmd_set(panel, status ? DSI_CMD_SET_DISP_HBM_FOD_ON : DSI_CMD_SET_DISP_HBM_FOD_OFF);
 
@@ -1854,8 +1812,6 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-post-mode-switch-on-command",
 	"qcom,mdss-dsi-qsync-on-commands",
 	"qcom,mdss-dsi-qsync-off-commands",
-	"qcom,mdss-dsi-doze-hbm-command",
-	"qcom,mdss-dsi-doze-lbm-command",
 	"qcom,mdss-dsi-dispparam-hbm-fod-on-command",
 	"qcom,mdss-dsi-dispparam-hbm-fod-off-command",
 };
@@ -1884,8 +1840,6 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-post-mode-switch-on-command-state",
 	"qcom,mdss-dsi-qsync-on-commands-state",
 	"qcom,mdss-dsi-qsync-off-commands-state",
-	"qcom,mdss-dsi-doze-hbm-command-state",
-	"qcom,mdss-dsi-doze-lbm-command-state",
 	"qcom,mdss-dsi-dispparam-hbm-fod-on-command-state",
 	"qcom,mdss-dsi-dispparam-hbm-fod-off-command-state",
 };
@@ -2517,24 +2471,6 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel)
 
 	panel->bl_config.bl_inverted_dbv = utils->read_bool(utils->data,
 		"qcom,mdss-dsi-bl-inverted-dbv");
-
-	rc = utils->read_u32(utils->data,
-			"qcom,disp-doze-lpm-backlight", &val);
-	if (rc) {
-		panel->bl_config.bl_doze_lpm = 0;
-		pr_debug("set doze lpm backlight to 0\n");
-	} else {
-		panel->bl_config.bl_doze_lpm = val;
-	}
-
-	rc = utils->read_u32(utils->data,
-			"qcom,disp-doze-hbm-backlight", &val);
-	if (rc) {
-		panel->bl_config.bl_doze_hbm = 0;
-		pr_debug("set doze hbm backlight to 0\n");
-	} else {
-		panel->bl_config.bl_doze_hbm = val;
-	}
 
 	rc = dsi_panel_parse_fod_dim_lut(panel, utils);
 	if (rc)
@@ -3587,9 +3523,6 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 	if (rc)
 		pr_debug("failed to parse esd config, rc=%d\n", rc);
 
-	panel->doze_mode = DSI_DOZE_LPM;
-	panel->doze_enabled = false;
-
 	panel->power_mode = SDE_MODE_DPMS_OFF;
 	drm_panel_init(&panel->drm_panel);
 	mutex_init(&panel->panel_lock);
@@ -4157,9 +4090,6 @@ int dsi_panel_set_lp1(struct dsi_panel *panel)
 		pr_err("[%s] failed to send DSI_CMD_SET_LP1 cmd, rc=%d\n",
 		       panel->name, rc);
 
-	rc = dsi_panel_set_doze_status(panel, true);
-	if (rc)
-		pr_err("unable to set doze on\n");
 exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -4183,9 +4113,6 @@ int dsi_panel_set_lp2(struct dsi_panel *panel)
 		pr_err("[%s] failed to send DSI_CMD_SET_LP2 cmd, rc=%d\n",
 		       panel->name, rc);
 
-	rc = dsi_panel_set_doze_status(panel, true);
-	if (rc)
-		pr_err("unable to set doze on\n");
 exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -4217,9 +4144,6 @@ int dsi_panel_set_nolp(struct dsi_panel *panel)
 		pr_err("[%s] failed to send DSI_CMD_SET_NOLP cmd, rc=%d\n",
 		       panel->name, rc);
 
-	rc = dsi_panel_set_doze_status(panel, false);
-	if (rc)
-		pr_err("unable to set doze on\n");
 exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -4647,7 +4571,6 @@ int dsi_panel_disable(struct dsi_panel *panel)
 	}
 	panel->panel_initialized = false;
 	panel->power_mode = SDE_MODE_DPMS_OFF;
-	panel->doze_enabled = false;
 
 	mutex_unlock(&panel->panel_lock);
 	return rc;
