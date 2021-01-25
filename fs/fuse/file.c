@@ -969,9 +969,10 @@ static ssize_t fuse_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
 
 	if (ff->sct.filp)
 		ret_val = fuse_shortcircuit_read_iter(iocb, to);
-	else
-		ret_val = generic_file_read_iter(iocb, to);
-
+	else if (ff->passthrough.filp)
+			return fuse_passthrough_read_iter(iocb, to);
+		else
+			ret_val = generic_file_read_iter(iocb, to);
 	return ret_val;
 }
 
@@ -1215,6 +1216,10 @@ static ssize_t fuse_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
 	struct inode *inode = mapping->host;
 	ssize_t err;
 	loff_t endbyte = 0;
+	struct fuse_file *ff = file->private_data;
+
+	if (ff->passthrough.filp)
+		return fuse_passthrough_write_iter(iocb, from);
 
 	if (fuse_is_bad(inode))
 		return -EIO;
