@@ -137,6 +137,14 @@ struct fuse_shortcircuit {
 	struct cred *cred;
 };
 
+/**
+ * Reference to lower filesystem file for read/write operations handled in
+ * passthrough mode
+ */
+struct fuse_passthrough {
+	struct file *filp;
+};
+
 /** FUSE specific file data */
 struct fuse_file {
 	/** Fuse connection for this file */
@@ -164,6 +172,9 @@ struct fuse_file {
 	struct list_head write_entry;
 
 	struct fuse_shortcircuit sct;
+
+	/** Container for data related to the passthrough functionality */
+	struct fuse_passthrough passthrough;
 
 	/** RB node to be linked on fuse_conn->polled_files */
 	struct rb_node polled_node;
@@ -669,6 +680,9 @@ struct fuse_conn {
 
 	/** shortcircuit mode for read/write IO */
 	unsigned int shortcircuit:1;
+	
+	/** Passthrough mode for read/write IO */
+	unsigned int passthrough:1;
 
 	/** The number of requests waiting for completion */
 	atomic_t num_waiting;
@@ -708,6 +722,12 @@ struct fuse_conn {
 
 	/** List of device instances belonging to this connection */
 	struct list_head devices;
+
+	/** IDR for passthrough requests */
+	struct idr passthrough_req;
+
+	/** Protects passthrough_req */
+	spinlock_t passthrough_req_lock;
 };
 
 static inline struct fuse_conn *get_fuse_conn_super(struct super_block *sb)
@@ -1043,5 +1063,12 @@ ssize_t fuse_shortcircuit_read_iter(struct kiocb *iocb, struct iov_iter *to);
 ssize_t fuse_shortcircuit_write_iter(struct kiocb *iocb, struct iov_iter *from);
 ssize_t fuse_shortcircuit_mmap(struct file *file, struct vm_area_struct *vma);
 void fuse_shortcircuit_release(struct fuse_file *ff);
+
+/* passthrough.c */
+int fuse_passthrough_open(struct fuse_dev *fud,
+			  struct fuse_passthrough_out *pto);
+int fuse_passthrough_setup(struct fuse_conn *fc, struct fuse_file *ff,
+			   struct fuse_open_out *openarg);
+void fuse_passthrough_release(struct fuse_passthrough *passthrough);
 
 #endif /* _FS_FUSE_I_H */
