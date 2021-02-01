@@ -41,7 +41,6 @@ static void chacha_doneon(u32 *state, u8 *dst, const u8 *src,
 	u8 buf[CHACHA_BLOCK_SIZE];
 
 	while (bytes >= CHACHA_BLOCK_SIZE * 4) {
-		chacha20_4block_xor_neon(state, dst, src);
 		chacha_4block_xor_neon(state, dst, src, nrounds);
 		bytes -= CHACHA_BLOCK_SIZE * 4;
 		src += CHACHA_BLOCK_SIZE * 4;
