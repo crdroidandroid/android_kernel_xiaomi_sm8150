@@ -27,11 +27,6 @@ static inline int do_settimeofday(const struct timespec *ts)
 	return do_settimeofday64(ts);
 }
 
-static inline int __getnstimeofday(struct timespec *ts)
-{
-	return __getnstimeofday64(ts);
-}
-
 static inline void getnstimeofday(struct timespec *ts)
 {
 	getnstimeofday64(ts);
