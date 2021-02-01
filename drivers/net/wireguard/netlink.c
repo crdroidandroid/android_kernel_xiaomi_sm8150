@@ -236,7 +236,7 @@ static int wg_get_device_dump(struct sk_buff *skb, struct netlink_callback *cb)
 			  &genl_family, NLM_F_MULTI, WG_CMD_GET_DEVICE);
 	if (!hdr)
 		goto out;
-	genl_dump_check_consistent(cb, hdr);
+	genl_dump_check_consistent(cb, hdr, &genl_family);
 
 	if (!ctx->next_peer) {
 		if (nla_put_u16(skb, WGDEVICE_A_LISTEN_PORT,
