@@ -1849,9 +1849,6 @@ static int msm_drm_notifier_callback(struct notifier_block *self, unsigned long 
 	if (event != MSM_DRM_EVENT_BLANK)
 		return 0;
 
-	if (evdata->id != MSM_DRM_PRIMARY_DISPLAY)
-		return 0;
-
 	if (evdata && evdata->data) {
 		blank = evdata->data;
 
