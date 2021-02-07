@@ -145,7 +145,7 @@ static int binder_set_stop_on_user_error(const char *val,
 module_param_call(stop_on_user_error, binder_set_stop_on_user_error,
 	param_get_int, &binder_stop_on_user_error, 0644);
 
-#ifdef DEBUG
+#ifdef CONFIG_DEBUG_KERNEL
 #define binder_debug(mask, x...) \
 	do { \
 		if (binder_debug_mask & mask) \
