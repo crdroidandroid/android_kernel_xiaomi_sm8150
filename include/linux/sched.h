@@ -1429,6 +1429,10 @@ struct task_struct {
 	struct task_struct		*simple_lmk_next;
 #endif
 
+#ifdef CONFIG_MACH_XIAOMI_RAPHAEL
+	int static_ux;
+#endif /* CONFIG_MACH_XIAOMI_RAPHAEL */
+
 	struct {
 		struct work_struct work;
 		atomic_t running;
