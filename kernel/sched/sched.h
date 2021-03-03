@@ -26,6 +26,7 @@
 #include <linux/kernel_stat.h>
 #include <linux/binfmts.h>
 #include <linux/mutex.h>
+#include <linux/bitops.h>
 #include <linux/psi.h>
 #include <linux/spinlock.h>
 #include <linux/stop_machine.h>
