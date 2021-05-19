@@ -834,6 +834,13 @@ static int sugov_init(struct cpufreq_policy *policy)
 
 	tunables->iowait_boost_enable = true;
 
+	if (cpumask_test_cpu(policy->cpu, cpu_prime_mask)) {
+		tunables->up_rate_limit_us =
+					CONFIG_SCHEDUTIL_UP_RATE_LIMIT_PRIME;
+		tunables->down_rate_limit_us =
+					CONFIG_SCHEDUTIL_DOWN_RATE_LIMIT_PRIME;
+	}
+
 	if (cpumask_test_cpu(policy->cpu, cpu_perf_mask)) {
 		tunables->up_rate_limit_us =
 					CONFIG_SCHEDUTIL_UP_RATE_LIMIT_BIG;
