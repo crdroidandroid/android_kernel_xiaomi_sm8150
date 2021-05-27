@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2013-2021, Arm Limited.
+ * Copyright (c) 2013, Arm Limited.
  *
  * Adapted from the original at:
- * https://github.com/ARM-software/optimized-routines/blob/98e4d6a5c13c8e54/string/aarch64/strlen.S
+ * https://github.com/ARM-software/optimized-routines/blob/master/string/aarch64/strlen.S
  */
 
 #include <linux/linkage.h>
@@ -69,7 +69,7 @@
 	   whether the first fetch, which may be misaligned, crosses a page
 	   boundary.  */
 
-SYM_FUNC_START_WEAK_PI(strlen)
+WEAK(strlen)
 	and	tmp1, srcin, MIN_PAGE_SIZE - 1
 	mov	zeroones, REP8_01
 	cmp	tmp1, MIN_PAGE_SIZE - 16
@@ -199,4 +199,5 @@ L(page_cross):
 	csel	data2, data2, tmp2, eq
 	b	L(page_cross_entry)
 
-SYM_FUNC_END_PI(strlen)
+ENDPIPROC(strlen)
+EXPORT_SYMBOL_NOKASAN(strlen)
