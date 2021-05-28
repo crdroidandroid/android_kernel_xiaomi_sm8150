@@ -13,11 +13,7 @@
 #ifndef __STEP_CHG_H__
 #define __STEP_CHG_H__
 
-#ifdef CONFIG_QPNP_SMB5_VAYU
-#define MAX_STEP_CHG_ENTRIES	6
-#else
-#define MAX_STEP_CHG_ENTRIES    5
-#endif
+#define MAX_STEP_CHG_ENTRIES    6
 
 #define BATT_CP_COOL_THRESHOLD		100
 #define BATT_CP_WARM_THRESHOLD		450
