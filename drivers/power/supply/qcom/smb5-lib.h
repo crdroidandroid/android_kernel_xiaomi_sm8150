@@ -134,11 +134,7 @@ enum print_reason {
 #define MAX_PULSE			38
 #define MAX_PLUSE_COUNT_ALLOWED		30
 #define HIGH_NUM_PULSE_THR		12
-#if defined(CONFIG_QPNP_SMB5_VAYU)
-#define PD_UNVERIFED_CURRENT           4800000
-#else
-#define PD_UNVERIFED_CURRENT		3000000
-#endif
+#define PD_UNVERIFED_CURRENT		4800000
 #define PD_UNVERIFED_VOLTAGE		4450000
 #define PD_REMOVE_COMP_CURRENT		7000000
 
@@ -1222,9 +1218,7 @@ void smblib_apsd_enable(struct smb_charger *chg, bool enable);
 int smblib_force_vbus_voltage(struct smb_charger *chg, u8 val);
 int smblib_get_irq_status(struct smb_charger *chg,
 		union power_supply_propval *val);
-#ifdef CONFIG_QPNP_SMB5_VAYU
 int smb5_config_iterm(struct smb_charger *chg, int hi_thresh, int low_thresh);
-#endif
 int smblib_get_prop_battery_charging_enabled(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_get_prop_battery_charging_limited(struct smb_charger *chg,
