@@ -9,11 +9,11 @@ restore='\033[0m'
 clear
 
 # Resources
-export CLANG_PATH=${HOME}/android/syb/prebuilts/clang/host/linux-x86/clang-proton/bin
+export CLANG_PATH=/datadrive/syb/prebuilts/clang/host/linux-x86/clang-proton/bin
 export PATH=${CLANG_PATH}:${PATH}
 export CROSS_COMPILE=${CLANG_PATH}/aarch64-linux-gnu-
 export CROSS_COMPILE_ARM32=${CLANG_PATH}/arm-linux-gnueabi-
-export THINLTO_CACHE=${HOME}/android/syb/kernel/ltocache/
+export THINLTO_CACHE=/datadrive/kernel/ltocache/
 DEFCONFIG="raphael_defconfig"
 
 # Kernel Details
@@ -21,8 +21,8 @@ VER="R1"
 
 # Paths
 KERNEL_DIR=`pwd`
-REPACK_DIR=${HOME}/android/AnyKernel3
-ZIP_MOVE=${HOME}/android/AK-releases
+REPACK_DIR=/datadrive/AnyKernel3
+ZIP_MOVE=/datadrive/AK-releases
 
 # Functions
 function clean_all {
