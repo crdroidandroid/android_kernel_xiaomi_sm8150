@@ -443,7 +443,7 @@ static struct ctl_table kern_table[] = {
 		.procname	= "sched_min_task_util_for_colocation",
 		.data		= &sysctl_sched_min_task_util_for_colocation,
 		.maxlen		= sizeof(unsigned int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &zero,
 		.extra2		= &one_thousand,
@@ -461,7 +461,7 @@ static struct ctl_table kern_table[] = {
 		.procname	= "sched_coloc_downmigrate_ns",
 		.data		= &sysctl_sched_coloc_downmigrate_ns,
 		.maxlen		= sizeof(unsigned int),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_douintvec_minmax,
 	},
 	{
