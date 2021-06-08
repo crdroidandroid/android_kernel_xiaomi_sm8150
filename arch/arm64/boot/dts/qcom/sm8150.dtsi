@@ -4123,7 +4123,6 @@
 #include "sm8150-bus.dtsi"
 #include "sm8150-pcie.dtsi"
 #include "sm8150-smp2p.dtsi"
-#include "sm8150-coresight.dtsi"
 #include "msm-arm-smmu-sm8150.dtsi"
 #include "sm8150-qupv3.dtsi"
 #include "sm8150-npu.dtsi"
