@@ -189,10 +189,6 @@
 #define __compiler_offsetof(a, b)					\
 	__builtin_offsetof(a, b)
 
-#if GCC_VERSION >= 40100
-# define __compiletime_object_size(obj) __builtin_object_size(obj, 0)
-#endif
-
 #if GCC_VERSION >= 40300
 /* Mark functions as cold. gcc will assume any path leading to a call
  * to them will be unlikely.  This means a lot of manual unlikely()s

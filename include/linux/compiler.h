@@ -283,10 +283,6 @@ unsigned long read_word_at_a_time(const void *addr)
 # define __optimize(level)
 #endif
 
-/* Compile time object size, -1 for unknown */
-#ifndef __compiletime_object_size
-# define __compiletime_object_size(obj) -1
-#endif
 #ifndef __compiletime_warning
 # define __compiletime_warning(message)
 #endif
