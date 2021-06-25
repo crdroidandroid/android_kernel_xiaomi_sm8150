@@ -5297,7 +5297,7 @@ static int __init kgsl_core_init(void)
 	}
 
 	kgsl_driver.mem_workqueue = alloc_workqueue("kgsl-mementry",
-		WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_FREEZABLE, 0);
+		WQ_HIGHPRI | WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_FREEZABLE, 0);
 
 	if (!kgsl_driver.mem_workqueue) {
 		pr_err("kgsl: Failed to allocate mem workqueue\n");
@@ -5313,8 +5313,8 @@ static int __init kgsl_core_init(void)
 			"kgsl_low_prio_worker_thread")))
 		goto err;
 
-	sched_setscheduler(kgsl_driver.worker_thread, SCHED_FIFO, &param);
 	/* kgsl_driver.low_prio_worker_thread should not be SCHED_FIFO */
+	sched_setscheduler(kgsl_driver.worker_thread, SCHED_RR, &param);
 
 	kgsl_events_init();
 
