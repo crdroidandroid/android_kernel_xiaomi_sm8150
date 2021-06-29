@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2013, Arm Limited.
+ * Copyright (c) 2013-2021, Arm Limited.
  *
  * Adapted from the original at:
- * https://github.com/ARM-software/optimized-routines/blob/master/string/aarch64/strncmp.S
+ * https://github.com/ARM-software/optimized-routines/blob/e823e3abf5f89ecb/string/aarch64/strncmp.S
  */
 
 #include <linux/linkage.h>
@@ -44,7 +44,7 @@
 #define endloop		x15
 #define count		mask
 
-WEAK(strncmp)
+SYM_FUNC_START_WEAK_PI(strncmp)
 	cbz	limit, L(ret0)
 	eor	tmp1, src1, src2
 	mov	zeroones, #REP8_01
@@ -257,4 +257,5 @@ L(ret0):
 	mov	result, #0
 	ret
 
-ENDPIPROC(strncmp)
+SYM_FUNC_END_PI(strncmp)
+EXPORT_SYMBOL_NOKASAN(strncmp)
