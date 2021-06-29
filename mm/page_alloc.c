@@ -3651,6 +3651,9 @@ should_compact_retry(struct alloc_context *ac, int order, int alloc_flags,
 	if (should_compact_lmk_retry(ac, order, alloc_flags))
 		return true;
 
+	if (fatal_signal_pending(current))
+		return false;
+
 	if (compaction_made_progress(compact_result))
 		(*compaction_retries)++;
 
