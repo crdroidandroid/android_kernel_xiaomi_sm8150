@@ -1,0 +1,14 @@
+menu "HALO Electronics, Inc. Charger support"
+
+config HALO_7221
+	tristate "HALO7221 Charge Pump"
+	depends on I2C
+	help
+	  Say Y to include support for HALO 7221 charger pump.
+	  HALO 7221 is a charger pump chip.
+	  The driver supports charger enable/disable.
+	  The driver reports the charger status via the power supply framework.
+	  The driver controls 7221 via I2C and
+	  supports device-tree interface.
+
+endmenu
