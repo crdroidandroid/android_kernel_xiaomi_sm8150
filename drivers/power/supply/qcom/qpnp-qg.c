@@ -4558,6 +4558,14 @@ static int qpnp_qg_probe(struct platform_device *pdev)
 		return rc;
 	}
 
+#ifdef CONFIG_MACH_XIAOMI_VAYU
+	rc = qg_sanitize_sdam(chip);
+	if (rc < 0) {
+		pr_err("Failed to sanitize SDAM, rc=%d\n", rc);
+		return rc;
+	}
+#endif
+
 	rc = qg_soc_init(chip);
 	if (rc < 0) {
 		pr_err("Failed to initialize SOC scaling init rc=%d\n", rc);
