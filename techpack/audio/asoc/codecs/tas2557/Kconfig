@@ -1,0 +1,23 @@
+config SND_SOC_TAS2557
+	tristate "Texas Instruments TAS2557 Smart Amplifier"
+	help
+	  Say Y here if you want to add support for the TAS2557 Smart Amplifier.
+
+if SND_SOC_TAS2557
+
+config TAS2557_REGMAP
+	bool "Texas Instruments TAS2557 Regmap"
+	help
+	  Say Y here if you want to add support for the TAS2557 Regmap.
+
+config TAS2557_CODEC
+	bool "Texas Instruments TAS2557 Codec"
+	help
+	  Say Y here if you want to add support for the TAS2557 Codec.
+
+config TAS2557_MISC
+	bool "Texas Instruments TAS2557 Misc"
+	help
+	  Say Y here if you want to add support for the TAS2557 Misc.
+
+endif
