@@ -1,3 +1,13 @@
 menu "Qualcomm DSP"
 
+config MSM_CSPL
+	tristate "Cirrus Playback driver"
+	help
+	  Say Y here if you want to enable the Cirrus Playback driver.
+
+config MSM_CSPL_V2
+	tristate "Cirrus Playback driver"
+	help
+	  Say Y here if you want to enable the Cirrus Playback driver.
+
 endmenu
