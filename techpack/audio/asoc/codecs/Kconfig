@@ -1,3 +1,9 @@
 menu "Qualcomm ASoC additional codecs"
 
+source "techpack/audio/asoc/codecs/cs35l41/Kconfig"
+source "techpack/audio/asoc/codecs/cs35l41_v2/Kconfig"
+source "techpack/audio/asoc/codecs/tas2557/Kconfig"
+source "techpack/audio/asoc/codecs/tas256x/Kconfig"
+source "techpack/audio/asoc/codecs/tfa98xx/Kconfig"
+
 endmenu
