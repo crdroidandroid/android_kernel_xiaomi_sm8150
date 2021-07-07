@@ -1,4 +1,4 @@
-ccflags-y += -O3
+ccflags-y += -Ofast
 
 obj-$(CONFIG_LZ4_COMPRESS) += lz4_compress.o
 obj-$(CONFIG_LZ4HC_COMPRESS) += lz4hc_compress.o
