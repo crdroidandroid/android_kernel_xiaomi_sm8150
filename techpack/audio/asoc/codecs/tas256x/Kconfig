@@ -1,0 +1,23 @@
+#
+# TAS256X codec
+#
+
+menuconfig SND_SOC_TAS256X
+    tristate "SND_SOC_TAS256X"
+    default n
+
+if SND_SOC_TAS256X
+
+config TAS256X_CODEC
+    tristate "TAS256X_CODEC"
+    default n
+
+config TAS256X_REGMAP
+    tristate "TAS256X_REGMAP"
+    default n
+
+config TAS25XX_ALGO
+    tristate "TAS25XX_ALGO"
+    default n
+
+endif
