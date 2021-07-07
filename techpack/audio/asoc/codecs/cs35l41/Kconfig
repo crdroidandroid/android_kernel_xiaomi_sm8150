@@ -1,0 +1,5 @@
+config SND_SOC_CS35L41
+	tristate "Cirrus Logic CS35L41 codec"
+	help
+	  Say Y or M here if you want to add support for the Cirrus Logic
+	  CS35L41 codec.
