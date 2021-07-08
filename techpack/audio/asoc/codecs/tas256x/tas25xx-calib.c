@@ -32,6 +32,7 @@
 #include <linux/uaccess.h>
 #include <linux/miscdevice.h>
 #include <dsp/tas_smart_amp_v2.h>
+#include "tas25xx-debug.h"
 
 /* Holds the Packet data required for processing */
 struct tas_dsp_pkt {
