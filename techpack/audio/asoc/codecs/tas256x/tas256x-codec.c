@@ -53,6 +53,7 @@
 #endif /*CONFIG_PLATFORM_EXYNOS*/
 #include "tas25xx-calib.h"
 #endif /*CONFIG_TAS25XX_ALGO*/
+#include "tas25xx-debug.h"
 
 #define TAS256X_MDELAY 0xFFFFFFFE
 #define TAS256X_MSLEEP 0xFFFFFFFD
