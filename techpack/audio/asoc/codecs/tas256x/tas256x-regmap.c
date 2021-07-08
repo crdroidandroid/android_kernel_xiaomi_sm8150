@@ -42,6 +42,7 @@
 #include "tas2564.h"
 #include "tas256x-device.h"
 #include "tas256x-codec.h"
+#include "tas25xx-debug.h"
 
 #ifdef CONFIG_TAS25XX_ALGO
 #ifdef CONFIG_PLATFORM_EXYNOS
