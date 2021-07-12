@@ -63,10 +63,8 @@
 
 /* ---SPI driver info.--- */
 #define NVT_SPI_NAME "NVT-ts-spi"
-#define NVT_LOG(fmt, args...) \
-	pr_info("[%s] %s %d: " fmt, NVT_SPI_NAME, __func__, __LINE__, ##args)
-#define NVT_ERR(fmt, args...) \
-	pr_err("[%s] %s %d: " fmt, NVT_SPI_NAME, __func__, __LINE__, ##args)
+#define NVT_LOG(fmt, args...)	{}
+#define NVT_ERR(fmt, args...)	{}
 
 /* ---Input device info.--- */
 #define NVT_TS_NAME "NVTCapacitiveTouchScreen"
@@ -102,7 +100,7 @@
 
 /* ---ESD Protect.--- */
 #define NVT_TOUCH_ESD_PROTECT 1
-#define NVT_TOUCH_ESD_CHECK_PERIOD 1500 /* ms */
+#define NVT_TOUCH_ESD_CHECK_PERIOD 125 /* ms */
 #define NVT_TOUCH_WDT_RECOVERY 1
 #define NVT_TOUCH_ESD_DISP_RECOVERY 1
 
