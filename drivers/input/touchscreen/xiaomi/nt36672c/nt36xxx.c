@@ -63,6 +63,8 @@ static struct workqueue_struct *nvt_esd_check_wq;
 static unsigned long irq_timer = 0;
 uint8_t esd_check = false;
 uint8_t esd_retry = 0;
+static int esd_check_force = 0;
+static int esd_check_scale = 8;
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
 
 #if NVT_TOUCH_EXT_PROC
@@ -1293,8 +1295,10 @@ bool nvt_get_dbgfw_status(void)
 }
 
 #if NVT_TOUCH_ESD_PROTECT
+module_param_named(esd_check_force, esd_check_force, int, 0664);
 void nvt_esd_check_enable(uint8_t enable)
 {
+	enable = esd_check_force;
 	/* update interrupt timer */
 	irq_timer = jiffies;
 	/* clear esd_retry counter, if protect function is enabled */
@@ -1319,11 +1323,18 @@ static uint8_t nvt_fw_recovery(uint8_t *point_data)
 	return detected;
 }
 
+module_param_named(esd_check_scale, esd_check_scale, int, 0664);
 static void nvt_esd_check_func(struct work_struct *work)
 {
 	unsigned int timer = jiffies_to_msecs(jiffies - irq_timer);
 
-	if ((timer > NVT_TOUCH_ESD_CHECK_PERIOD) && esd_check) {
+	if (esd_check_scale > 24)
+		esd_check_scale = 24;
+	if (esd_check_scale < 4)
+		esd_check_scale = 4;
+
+	if ((timer > esd_check_scale * NVT_TOUCH_ESD_CHECK_PERIOD + 50)
+		&& (timer < 2 * esd_check_scale * NVT_TOUCH_ESD_CHECK_PERIOD - 50) && esd_check) {
 		mutex_lock(&ts->lock);
 		NVT_LOG("do ESD recovery, timer = %d, retry = %d\n", timer,
 			esd_retry);
@@ -3012,6 +3023,12 @@ static int32_t nvt_ts_suspend(struct device *dev)
 		buf[0] = EVENT_MAP_HOST_CMD;
 		buf[1] = 0x11;
 		CTP_SPI_WRITE(ts->client, buf, 2);
+
+		nvt_set_page(0x11a50);
+		buf[0] = 0x11a50 & 0xff;
+		buf[1] = 0x11;
+		CTP_SPI_WRITE(ts->client, buf, 2);
+
 		if (ts->ts_pinctrl) {
 			ret = pinctrl_select_state(ts->ts_pinctrl,
 						   ts->pinctrl_state_suspend);
