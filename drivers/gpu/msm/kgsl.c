@@ -4949,6 +4949,7 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 {
 	int status = -EINVAL;
 	struct resource *res;
+	unsigned long irqflags = 0;
 
 	status = _register_device(device);
 	if (status)
@@ -5017,8 +5018,13 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 		goto error_pwrctrl_close;
 	}
 
+	irqflags = IRQF_TRIGGER_HIGH;
+	pr_info("registering %s", device->name);
+	if (!strcmp(device->name, "kgsl-3d0")) {
+		irqflags |= IRQF_PERF_AFFINE;
+	}
 	status = devm_request_irq(device->dev, device->pwrctrl.interrupt_num,
-				  kgsl_irq_handler, IRQF_TRIGGER_HIGH,
+				  kgsl_irq_handler, irqflags,
 				  device->name, device);
 	if (status) {
 		KGSL_DRV_ERR(device, "request_irq(%d) failed: %d\n",
