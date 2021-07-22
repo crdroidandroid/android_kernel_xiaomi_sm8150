@@ -96,7 +96,7 @@ static void osif_psoc_sync_put(struct osif_psoc_sync *psoc_sync)
 int osif_psoc_sync_create(struct osif_psoc_sync **out_psoc_sync)
 {
 	QDF_STATUS status;
-	struct osif_psoc_sync *psoc_sync;
+	struct osif_psoc_sync *psoc_sync = {0};
 
 	QDF_BUG(out_psoc_sync);
 	if (!out_psoc_sync)
@@ -127,7 +127,7 @@ sync_put:
 int __osif_psoc_sync_create_and_trans(struct osif_psoc_sync **out_psoc_sync,
 				      const char *desc)
 {
-	struct osif_psoc_sync *psoc_sync;
+	struct osif_psoc_sync *psoc_sync = {0};
 	QDF_STATUS status;
 	int errno;
 
@@ -177,7 +177,7 @@ void osif_psoc_sync_register(struct device *dev,
 
 struct osif_psoc_sync *osif_psoc_sync_unregister(struct device *dev)
 {
-	struct osif_psoc_sync *psoc_sync;
+	struct osif_psoc_sync *psoc_sync = {0};
 
 	QDF_BUG(dev);
 	if (!dev)
@@ -201,7 +201,7 @@ __osif_psoc_sync_start_callback(struct device *dev,
 				psoc_start_func psoc_start_cb)
 {
 	QDF_STATUS status;
-	struct osif_psoc_sync *psoc_sync;
+	struct osif_psoc_sync *psoc_sync = {0};
 
 	osif_psoc_sync_lock_assert();
 
@@ -227,7 +227,7 @@ __osif_psoc_sync_start_wait_callback(struct device *dev,
 				     psoc_start_func psoc_start_cb)
 {
 	QDF_STATUS status;
-	struct osif_psoc_sync *psoc_sync;
+	struct osif_psoc_sync *psoc_sync = {0};
 
 	*out_psoc_sync = NULL;
 
@@ -300,7 +300,7 @@ void osif_psoc_sync_trans_stop(struct osif_psoc_sync *psoc_sync)
 
 void osif_psoc_sync_assert_trans_protected(struct device *dev)
 {
-	struct osif_psoc_sync *psoc_sync;
+	struct osif_psoc_sync *psoc_sync = {0};
 
 	osif_psoc_sync_lock();
 
@@ -351,7 +351,7 @@ static QDF_STATUS
 __osif_psoc_sync_dsc_vdev_create(struct device *dev,
 				 struct dsc_vdev **out_dsc_vdev)
 {
-	struct osif_psoc_sync *psoc_sync;
+	struct osif_psoc_sync *psoc_sync = {0};
 
 	osif_psoc_sync_lock_assert();
 
