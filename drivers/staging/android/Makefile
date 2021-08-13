@@ -1,3 +1,5 @@
+ccflags-y += -Ofast
+
 ccflags-y += -I$(src)			# needed for trace events
 
 obj-y					+= ion/
