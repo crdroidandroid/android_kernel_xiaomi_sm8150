@@ -4047,7 +4047,7 @@ static int qg_parse_dt(struct qpnp_qg *chip)
 	else
 		chip->dt.esr_min_ibat_ua = (int)temp;
 
-	rc = of_property_read_u32(node, "qcom,shutdown_soc_threshold", &temp);
+	rc = of_property_read_u32(node, "qcom,shutdown-soc-threshold", &temp);
 	if (rc < 0)
 		chip->dt.shutdown_soc_threshold = -EINVAL;
 	else
