@@ -48,6 +48,15 @@ qcom,gyu{
 	qcom,rslow-low-coeffs = <0x4e 0x15 0x4a 0x06>;
 	qcom,checksum = <0xD688>;
 	qcom,gui-version = "PM855GUI - 1.0.0.13";
+	/* Tweak SOC curve to be more linear and monotonic */
+	/* necessary for linearize-soc, like TCSS */
+	qcom,hold-soc-while-full;
+	/* scale MSOC with delta SOC after 100% */
+	qcom,linearize-soc;
+	/* scale SSOC with chg term current >= 90% to avoid jumps */
+	qcom,tcss-enable;
+	/* scale SSOC with BSOC to mitigate jumps */
+	qcom,bass-enable;
 	qcom,fg-profile-data = [
 		 09 00 46 00
 		 2D DC 99 E3
