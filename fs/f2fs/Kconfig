@@ -164,3 +164,12 @@ config F2FS_FAKE_KERNEL_RELEASE
 config F2FS_FAKE_KERNEL_VERSION
 	string "Kernel version for fsck.f2fs"
 	depends on F2FS_REPORT_FAKE_KERNEL_VERSION
+
+config F2FS_IOSTAT
+	bool "F2FS IO statistics information"
+	depends on F2FS_FS
+	default y
+	help
+	  Support getting IO statistics through sysfs and printing out periodic
+	  IO statistics tracepoint events. You have to turn on "iostat_enable"
+	  sysfs node to enable this feature.
