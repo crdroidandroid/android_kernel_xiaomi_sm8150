@@ -743,8 +743,8 @@ ifdef CONFIG_LTO_CLANG
 KBUILD_CFLAG	+= -fwhole-program-vtables
 endif
 ifdef CONFIG_INLINE_OPTIMIZATION
-KBUILD_CFLAGS	+= -mllvm -inline-threshold=1000
-KBUILD_CFLAGS	+= -mllvm -inlinehint-threshold=750
+KBUILD_CFLAGS	+= -mllvm -inline-threshold=12000
+KBUILD_CFLAGS	+= -mllvm -inlinehint-threshold=9000
 endif
 
 # Tell gcc to never replace conditional load with a non-conditional one
