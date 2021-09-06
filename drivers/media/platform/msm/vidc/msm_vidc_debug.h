@@ -99,6 +99,7 @@ extern bool msm_vidc_syscache_disable;
 	} while (0)
 
 
+#ifdef CONFIG_DEBUG_KERNEL
 struct dentry *msm_vidc_debugfs_init_drv(void);
 struct dentry *msm_vidc_debugfs_init_core(struct msm_vidc_core *core,
 		struct dentry *parent);
@@ -108,6 +109,20 @@ void msm_vidc_debugfs_deinit_inst(struct msm_vidc_inst *inst);
 void msm_vidc_debugfs_update(struct msm_vidc_inst *inst,
 		enum msm_vidc_debugfs_event e);
 int msm_vidc_check_ratelimit(void);
+#else
+static inline struct dentry *msm_vidc_debugfs_init_drv(void) { return NULL; }
+static inline struct dentry *msm_vidc_debugfs_init_core(struct msm_vidc_core *core,
+		struct dentry *parent) { return NULL; }
+static inline struct dentry *msm_vidc_debugfs_init_inst(struct msm_vidc_inst *inst,
+		struct dentry *parent) { return NULL; }
+static inline void msm_vidc_debugfs_deinit_inst(struct msm_vidc_inst *inst) {}
+static inline void msm_vidc_debugfs_update(struct msm_vidc_inst *inst,
+		enum msm_vidc_debugfs_event e) {}
+static inline int msm_vidc_check_ratelimit(void)
+{
+	return 0;
+}
+#endif
 
 static inline char *get_debug_level_str(int level)
 {

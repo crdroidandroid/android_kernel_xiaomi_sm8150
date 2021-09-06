@@ -44,6 +44,22 @@ void __init init_vidc_kmem_buf_pool(void)
 		V4L2_EVENT_MSM_VIDC_RELEASE_BUFFER_REFERENCE
 #define L_MODE V4L2_MPEG_VIDEO_H264_LOOP_FILTER_MODE_DISABLED_AT_SLICE_BOUNDARY
 
+#ifndef CONFIG_DEBUG_KERNEL
+int msm_vidc_debug = 0;
+EXPORT_SYMBOL(msm_vidc_debug);
+
+int msm_vidc_debug_out = VIDC_OUT_PRINTK;
+EXPORT_SYMBOL(msm_vidc_debug_out);
+
+int msm_vidc_fw_debug = 0x18;
+int msm_vidc_fw_debug_mode = 0;
+int msm_vidc_fw_low_power_mode = 1;
+bool msm_vidc_fw_coverage = !true;
+bool msm_vidc_thermal_mitigation_disabled = !true;
+int msm_vidc_clock_voting = !1;
+bool msm_vidc_syscache_disable = !true;
+#endif
+
 const char *const mpeg_video_vidc_extradata[] = {
 	"Extradata none",
 	"Extradata MB Quantization",
