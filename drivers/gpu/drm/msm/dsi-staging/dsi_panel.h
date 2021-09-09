@@ -128,6 +128,7 @@ struct dsi_backlight_config {
 	bool bl_inverted_dbv;
 	u32 bl_doze_lpm;
 	u32 bl_doze_hbm;
+	u32 real_bl_level;
 
 	int en_gpio;
 	bool dcs_type_ss;
