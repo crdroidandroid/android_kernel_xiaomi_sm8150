@@ -77,17 +77,19 @@ int suid_dumpable = 0;
 static LIST_HEAD(formats);
 static DEFINE_RWLOCK(binfmt_lock);
 
-#define HWCOMPOSER_BIN_PREFIX "/vendor/bin/hw/android.hardware.graphics.composer"
+#define SURFACEFLINGER_BIN_PREFIX "/system/bin/surfaceflinger"
+#define HWCOMPOSER_BIN_PREFIX "/vendor/bin/hw/android.hardware.graphics.composer@2.4-service"
 #define UDFPS_BIN_PREFIX "/vendor/bin/hw/android.hardware.biometrics.fingerprint@2.3-service.xiaomi_raphael"
 #define ZYGOTE32_BIN "/system/bin/app_process32"
 #define ZYGOTE64_BIN "/system/bin/app_process64"
-static struct signal_struct *zygote32_sig;
-static struct signal_struct *zygote64_sig;
+static struct task_struct *zygote32_task;
+static struct task_struct *zygote64_task;
 
-bool task_is_zygote(struct task_struct *p)
+bool task_is_zygote(struct task_struct *task)
 {
-	return p->signal == zygote32_sig || p->signal == zygote64_sig;
+	return task == zygote32_task || task == zygote64_task;
 }
+
 
 void __register_binfmt(struct linux_binfmt * fmt, int insert)
 {
@@ -1870,16 +1872,16 @@ static int do_execveat_common(int fd, struct filename *filename,
 	if (retval < 0)
 		goto out;
 
-	if (is_global_init(current->parent)) {
+	if (capable(CAP_SYS_ADMIN)) {
 		if (unlikely(!strcmp(filename->name, ZYGOTE32_BIN)))
-			zygote32_sig = current->signal;
+			zygote32_task = current;
 		else if (unlikely(!strcmp(filename->name, ZYGOTE64_BIN)))
-			zygote64_sig = current->signal;
+                        zygote64_task = current;
 		else if (unlikely(!strncmp(filename->name,
 					   UDFPS_BIN_PREFIX,
-					   strlen(UDFPS_BIN_PREFIX)))) {
-			current->flags |= PF_PERF_CRITICAL;
-			set_cpus_allowed_ptr(current, cpu_perf_mask);
+                                           strlen(UDFPS_BIN_PREFIX)))) {
+			current->pc_flags |= PC_PRIME_AFFINE;
+			set_cpus_allowed_ptr(current, cpu_prime_mask);
 		}
 	}
 
