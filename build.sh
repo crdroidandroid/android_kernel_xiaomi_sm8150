@@ -17,7 +17,7 @@ export THINLTO_CACHE=/datadrive/kernel/ltocache/
 DEFCONFIG="raphael_defconfig"
 
 # Kernel Details
-VER="R2.1"
+VER="R2.4"
 
 # Paths
 KERNEL_DIR=`pwd`
@@ -64,7 +64,7 @@ echo -e "${restore}"
 
 
 # Vars
-BASE_AK_VER="SOVIET-STAR-"
+BASE_AK_VER="SOVIET-STAR-K20P-"
 DATE=`date +"%Y%m%d-%H%M"`
 AK_VER="$BASE_AK_VER$VER"
 ZIP_NAME="$AK_VER"-"$DATE"
