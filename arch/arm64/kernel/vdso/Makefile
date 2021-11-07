@@ -15,7 +15,7 @@ obj-vdso-s := $(addprefix $(obj)/, $(obj-vdso-s))
 obj-vdso-c := $(addprefix $(obj)/, $(obj-vdso-c))
 obj-vdso   := $(obj-vdso-c) $(obj-vdso-s)
 
-ldflags-y := -shared -nostdlib -soname=linux-vdso.so.1  --hash-style=sysv \
+ldflags-y := -shared -soname=linux-vdso.so.1  --hash-style=sysv \
 		--build-id -n -T
 ccflags-y := -fno-stack-protector
 ccflags-y += -DDISABLE_BRANCH_PROFILING -ffixed-x18
@@ -30,6 +30,7 @@ CFLAGS_vgettimeofday.o = -O3
 else
 CFLAGS_vgettimeofday.o = -O2
 CFLAGS_vgettimeofday.o += -mcmodel=tiny
+CFLAGS_vgettimeofday.o += -fasynchronous-unwind-tables
 endif
 
 CFLAGS_REMOVE_vgettimeofday.o += $(CC_FLAGS_SCS)
