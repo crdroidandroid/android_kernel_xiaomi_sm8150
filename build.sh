@@ -9,7 +9,7 @@ restore='\033[0m'
 clear
 
 # Resources
-export CLANG_PATH=/datadrive/syb/prebuilts/clang/host/linux-x86/clang-proton/bin
+export CLANG_PATH=/datadrive/sov/prebuilts/clang/host/linux-x86/clang-proton/bin
 export PATH=${CLANG_PATH}:${PATH}
 export CROSS_COMPILE=${CLANG_PATH}/aarch64-linux-gnu-
 export CROSS_COMPILE_ARM32=${CLANG_PATH}/arm-linux-gnueabi-
@@ -17,7 +17,7 @@ export THINLTO_CACHE=/datadrive/kernel/ltocache/
 DEFCONFIG="raphael_defconfig"
 
 # Kernel Details
-VER="R2.4"
+VER="R2.5"
 
 # Paths
 KERNEL_DIR=`pwd`
