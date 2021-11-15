@@ -1753,6 +1753,7 @@ static int dsi_panel_parse_phy_props(struct dsi_panel *panel)
 error:
 	return rc;
 }
+
 const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-pre-on-command",
 	"qcom,mdss-dsi-on-command",
@@ -1831,9 +1832,6 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-dispparam-crc-off-command",
 	"qcom,mdss-dsi-dispparam-elvss-dimming-off-command",
 	"mi,mdss-dsi-read-lockdown-info-command",
-	"qcom,mdss-dsi-dispparam-lcd-hbm-l1-on-command",
-	"qcom,mdss-dsi-dispparam-lcd-hbm-l2-on-command",
-	"qcom,mdss-dsi-dispparam-lcd-hbm-off-command",
 	"qcom,mdss-dsi-dispparam-cabcuion-command",
 	"qcom,mdss-dsi-dispparam-cabcstillon-command",
 	"qcom,mdss-dsi-dispparam-cabcmovieon-command",
@@ -1918,9 +1916,6 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-dispparam-crc-off-command-state",
 	"qcom,mdss-dsi-dispparam-elvss-dimming-off-command-state",
 	"mi,mdss-dsi-read-lockdown-info-command-state",
-	"qcom,mdss-dsi-dispparam-lcd-hbm-l1-on-command-state",
-	"qcom,mdss-dsi-dispparam-lcd-hbm-l2-on-command-state",
-	"qcom,mdss-dsi-dispparam-lcd-hbm-off-command-state",
 	"qcom,mdss-dsi-dispparam-cabcuion-command-state",
 	"qcom,mdss-dsi-dispparam-cabcstillon-command-state",
 	"qcom,mdss-dsi-dispparam-cabcmovieon-command-state",
