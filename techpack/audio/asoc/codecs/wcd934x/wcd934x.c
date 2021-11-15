@@ -51,8 +51,6 @@
 #include "../wcdcal-hwdep.h"
 #include "wcd934x-dsd.h"
 
-#define CONFIG_SOUND_CONTROL
-
 #define WCD934X_RATES_MASK (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |\
 			    SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_48000 |\
 			    SNDRV_PCM_RATE_96000 | SNDRV_PCM_RATE_192000 |\
