@@ -14,7 +14,6 @@
  *
  */
 
-#define DEBUG
 #define pr_fmt(fmt)	"drv8846: %s: %d " fmt, __func__, __LINE__
 
 #include <linux/delay.h>
