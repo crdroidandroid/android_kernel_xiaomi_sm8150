@@ -2755,17 +2755,12 @@ static int fastrpc_mmap_remove_ssr(struct fastrpc_file *fl)
 					kfree(ramdump_segments_rh);
 				}
 			}
-			mutex_lock(&fl->map_mutex);
 			fastrpc_mmap_free(match, 0);
-			mutex_unlock(&fl->map_mutex);
 		}
 	} while (match);
 bail:
-	if (err && match) {
-		mutex_lock(&fl->map_mutex);
+	if (err && match)
 		fastrpc_mmap_add(match);
-		mutex_unlock(&fl->map_mutex);
-	}
 	return err;
 }
 
@@ -3509,12 +3504,11 @@ static int fastrpc_channel_open(struct fastrpc_file *fl)
 
 	if (cid == ADSP_DOMAIN_ID && me->channel[cid].ssrcount !=
 			 me->channel[cid].prevssrcount) {
-		mutex_unlock(&me->channel[cid].smd_mutex);
-		if (fastrpc_mmap_remove_ssr(fl)) {
+		mutex_lock(&fl->map_mutex);
+		if (fastrpc_mmap_remove_ssr(fl))
 			pr_err("adsprpc: %s: SSR: Failed to unmap remote heap for %s\n",
 				__func__, me->channel[cid].name);
-		}
-		mutex_lock(&me->channel[cid].smd_mutex);
+		mutex_unlock(&fl->map_mutex);
 		me->channel[cid].prevssrcount =
 					me->channel[cid].ssrcount;
 	}
