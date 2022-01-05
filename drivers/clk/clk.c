@@ -2699,10 +2699,6 @@ static struct hlist_head *all_lists[] = {
 	NULL,
 };
 
-static struct hlist_head *orphan_list[] = {
-	&clk_orphan_list,
-	NULL,
-};
 
 static void clk_state_subtree(struct clk_core *c)
 {
