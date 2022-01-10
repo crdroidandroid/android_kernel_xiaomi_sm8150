@@ -672,7 +672,7 @@ int pm_suspend(suspend_state_t state)
 
 	pm_in_action = true;
 	pm_suspend_marker("entry");
-	pr_info("suspend entry (%s)\n", mem_sleep_labels[state]);
+	pr_debug("suspend entry (%s)\n", mem_sleep_labels[state]);
 	error = enter_state(state);
 	if (error) {
 		suspend_stats.fail++;
@@ -681,7 +681,7 @@ int pm_suspend(suspend_state_t state)
 		suspend_stats.success++;
 	}
 	pm_suspend_marker("exit");
-	pr_info("suspend exit\n");
+	pr_debug("suspend exit\n");
 	pm_in_action = false;
 	measure_wake_up_time();
 	return error;
