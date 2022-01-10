@@ -357,7 +357,7 @@ static int suspend_test(int level)
 {
 #ifdef CONFIG_PM_DEBUG
 	if (pm_test_level == level) {
-		pr_info("suspend debug: Waiting for %d second(s).\n",
+		pr_debug("suspend debug: Waiting for %d second(s).\n",
 				pm_test_delay);
 		mdelay(pm_test_delay * 1000);
 		return 1;
@@ -536,7 +536,7 @@ int suspend_devices_and_enter(suspend_state_t state)
 	suspend_test_start();
 	error = dpm_suspend_start(PMSG_SUSPEND);
 	if (error) {
-		pr_err("Some devices failed to suspend, or early wake event detected\n");
+		pr_debug("Some devices failed to suspend, or early wake event detected\n");
 		log_suspend_abort_reason(
 				"Some devices failed to suspend, or early wake event detected");
 		goto Recover_platform;
