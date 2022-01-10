@@ -512,7 +512,9 @@ struct dentry *msm_vidc_debugfs_init_inst(struct msm_vidc_inst *inst,
 	dir = debugfs_create_dir(debugfs_name, parent);
 	if (IS_ERR_OR_NULL(dir)) {
 		dir = NULL;
+		#ifdef CONFIG_DEBUG_FS
 		dprintk(VIDC_ERR, "Failed to create debugfs for msm_vidc\n");
+		#endif
 		goto failed_create_dir;
 	}
 
