@@ -454,6 +454,11 @@ static int rmnet_map_egress_handler(struct sk_buff *skb,
 			return -ENOMEM;
 	}
 
+#ifdef CONFIG_QCOM_QMI_HELPERS
+	if (port->data_format & RMNET_INGRESS_FORMAT_PS)
+		qmi_rmnet_work_maybe_restart(port);
+#endif
+
 	if (csum_type)
 		rmnet_map_checksum_uplink_packet(skb, port, orig_dev,
 						 csum_type);
