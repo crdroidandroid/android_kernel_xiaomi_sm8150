@@ -35,7 +35,7 @@ void wsa881x_regmap_defaults(struct regmap *regmap, u8 version);
 #else
 extern int wsa881x_set_channel_map(struct snd_soc_codec *codec, u8 *port,
 				   u8 num_port, unsigned int *ch_mask,
-				   unsigned int *ch_rate, u8 *port_type);
+				   unsigned int *ch_rate, u8 *port_type)
 {
 	return 0;
 }
