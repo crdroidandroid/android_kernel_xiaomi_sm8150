@@ -742,8 +742,8 @@ ifdef CONFIG_LTO_CLANG
 KBUILD_CFLAG	+= -fwhole-program-vtables
 endif
 ifdef CONFIG_INLINE_OPTIMIZATION
-KBUILD_CFLAGS	+= -mllvm -inline-threshold=1000
-KBUILD_CFLAGS	+= -mllvm -inlinehint-threshold=750
+KBUILD_CFLAGS	+= -mllvm -inline-threshold=1250
+KBUILD_CFLAGS	+= -mllvm -inlinehint-threshold=1000
 endif
 endif
 endif
