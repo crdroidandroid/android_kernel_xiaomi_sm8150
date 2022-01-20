@@ -1657,7 +1657,7 @@ static int tas256x_dac_mute_ctrl_put(struct snd_kcontrol *pKcontrol,
 
 static const struct snd_kcontrol_new tas256x_snd_controls[] = {
 	SOC_SINGLE_TLV("Amp Output Level", TAS256X_PLAYBACKCONFIGURATIONREG0, 1,
-		       0x16, 0, tas256x_digital_tlv),
+		       0x1c, 0, tas256x_digital_tlv),
 	SOC_SINGLE_EXT("SmartPA System Mute", SND_SOC_NOPM, 0, 0x0001, 0,
 		       tas256x_system_mute_ctrl_get,
 		       tas256x_system_mute_ctrl_put),
