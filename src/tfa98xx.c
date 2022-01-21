@@ -2807,6 +2807,11 @@ static int tfa98xx_hw_params(struct snd_pcm_substream *substream,
 
 	if (no_start != 0)
 		return 0;
+	/* set TDM bit width */
+	pr_debug("%s: Requested width: %d\n", __func__,
+			params_width(params));
+	if ((tfa98xx->tfa->dynamicTDMmode == 3) && tfa_dev_set_tdm_bitwidth(tfa98xx->tfa,tfa98xx->tfa->bitwidth))
+		return -EINVAL;
 	/* check if samplerate is supported for this mixer profile */
 	prof_idx = get_profile_id_for_sr(tfa98xx_mixer_profile, rate);
 	if (prof_idx < 0) {
