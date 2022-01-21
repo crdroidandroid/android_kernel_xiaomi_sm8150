@@ -739,7 +739,7 @@ static enum Tfa98xx_Error tfa9873_faim_protect(struct tfa_device *tfa, int statu
 	ret = tfa_set_bf_volatile(tfa, TFA9873_BF_OPENMTP, (uint16_t)(status));
 	return ret;
 }
-static enum Tfa98xx_Error tfa9873_specific(struct tfa_device *tfa)
+static enum Tfa98xx_Error tfa9873_specific(struct tfa_device* tfa)
 {
 	enum Tfa98xx_Error error = Tfa98xx_Error_Ok;
 	unsigned short value, xor;
@@ -785,7 +785,7 @@ static enum Tfa98xx_Error tfa9873_specific(struct tfa_device *tfa)
 		reg_write(tfa, 0x02, 0x0628); //POR=0x0008
 		reg_write(tfa, 0x61, 0x0183); //POR=0x0182
 		reg_write(tfa, 0x63, 0x005a); //POR=0x055a
-		reg_write(tfa, 0x6f, 0x0082); //POR=0x00a5
+		reg_write(tfa, 0x6f, 0x0083); //POR=0x00a5
 		reg_write(tfa, 0x70, 0xa3eb); //POR=0x23fb
 		reg_write(tfa, 0x73, 0x0187); //POR=0x0107
 		reg_write(tfa, 0x83, 0x071c); //POR=0x0799
