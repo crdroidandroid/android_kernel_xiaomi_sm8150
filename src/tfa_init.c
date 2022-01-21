@@ -1201,7 +1201,7 @@ void tfa9875_ops(struct tfa_device_ops *ops)
 	ops->set_mute = tfa_set_mute_nodsp;
 	ops->tfa_set_bitfield = tfa9875_set_bitfield;
 	ops->tfa_status = tfa9875_tfa_status;
-	ps->phase_shift = tfa9875_phase_shift;
+	ops->phase_shift = tfa9875_phase_shift;
 }
 
 /***********************************************************************************/

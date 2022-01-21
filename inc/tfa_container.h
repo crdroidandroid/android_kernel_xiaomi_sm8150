@@ -344,9 +344,6 @@ enum Tfa98xx_Error tfa98xx_factory_trimmer(struct tfa_device *tfa);
  * @param tfa the device struct pointer
  */
  enum Tfa98xx_Error tfa98xx_set_phase_shift(struct tfa_device *tfa);
- 
-
-/**
 
 /**
  * Search for filters settings and if found then write them to the device
