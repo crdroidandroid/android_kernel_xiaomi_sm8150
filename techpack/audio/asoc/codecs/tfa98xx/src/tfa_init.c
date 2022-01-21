@@ -196,6 +196,7 @@ void tfa_set_ops_defaults(struct tfa_device_ops *ops)
 	ops->dsp_system_stable = tfa_dsp_system_stable;
 	ops->auto_copy_mtp_to_iic = no_overload_function_available2;
 	ops->factory_trimmer = no_overload_function_available2;
+	ops->phase_shift = no_overload_function_available2;
 	ops->set_swprof = tfa_set_swprofile;
 	ops->get_swprof = tfa_get_swprofile;
 	ops->set_swvstep = tfa_set_swvstep;
@@ -1044,22 +1045,22 @@ static enum Tfa98xx_Error tfa9875_specific(struct tfa_device *tfa)
 		break;
 	case 0x1a75: /* Initial revision ID */
 		/* ----- generated code start ----- */
-		/* -----  version 10 ----- */
+		/* -----  version 25 ----- */
 		tfa_reg_write(tfa, 0x02, 0x0628); //POR=0x0008
 		tfa_reg_write(tfa, 0x51, 0x0020); //POR=0x0000
-		tfa_reg_write(tfa, 0x53, 0x0237); //POR=0x0337
+		tfa_reg_write(tfa, 0x53, 0x0336); //POR=0x0337
 		tfa_reg_write(tfa, 0x58, 0x0210); //POR=0x0200
 		tfa_reg_write(tfa, 0x5f, 0x0080); //POR=0x00c0
 		tfa_reg_write(tfa, 0x61, 0x0183); //POR=0x0182
 		tfa_reg_write(tfa, 0x63, 0x056a); //POR=0x055a
 		tfa_reg_write(tfa, 0x64, 0x4040); //POR=0x0040
-		tfa_reg_write(tfa, 0x6f, 0x00a3); //POR=0x00a5
-		tfa_reg_write(tfa, 0x70, 0xdedf); //POR=0xdefb
-		tfa_reg_write(tfa, 0x71, 0x206e); //POR=0x306e
+		tfa_reg_write(tfa, 0x6f, 0x0385); //POR=0x00a5
+		tfa_reg_write(tfa, 0x70, 0xde5f); //POR=0xdefb
 		tfa_reg_write(tfa, 0x73, 0x0183); //POR=0x0187
 		tfa_reg_write(tfa, 0x74, 0xd118); //POR=0x50f8
-		tfa_reg_write(tfa, 0x75, 0xd57a); //POR=0xd278
-		tfa_reg_write(tfa, 0x83, 0x06dc); //POR=0x0799
+		tfa_reg_write(tfa, 0x75, 0xd77a); //POR=0xd278
+		tfa_reg_write(tfa, 0x83, 0x06de); //POR=0x0799
+		tfa_reg_write(tfa, 0x85, 0x0380); //POR=0x0382
 		tfa_reg_write(tfa, 0xd5, 0x004d); //POR=0x014d
 		/* ----- generated code end   ----- */
 		break;
@@ -1120,6 +1121,15 @@ enum Tfa98xx_Error tfa9875_tfa_status(struct tfa_device* tfa)
 
 	return Tfa98xx_Error_Ok;
 }
+
+static enum Tfa98xx_Error tfa9875_phase_shift(struct tfa_device *tfa)
+{
+	enum Tfa98xx_Error ret = Tfa98xx_Error_Ok;
+	/* 1b = enable phase shift 0b = disable phase shift */
+	ret = tfa_set_bf_volatile(tfa, 0x58c0, (const uint16_t)1);
+	return ret;
+}
+
 static int tfa9875_set_swprofile(struct tfa_device *tfa, unsigned short new_value)
 {
 	int active_value = tfa_dev_get_swprof(tfa);
@@ -1191,6 +1201,7 @@ void tfa9875_ops(struct tfa_device_ops *ops)
 	ops->set_mute = tfa_set_mute_nodsp;
 	ops->tfa_set_bitfield = tfa9875_set_bitfield;
 	ops->tfa_status = tfa9875_tfa_status;
+	ps->phase_shift = tfa9875_phase_shift;
 }
 
 /***********************************************************************************/

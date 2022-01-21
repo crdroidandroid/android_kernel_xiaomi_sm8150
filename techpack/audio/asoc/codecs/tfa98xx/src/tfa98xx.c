@@ -2755,6 +2755,7 @@ static int tfa98xx_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	/* Supported mode: regular I2S, slave, or PDM */
 	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
 	case SND_SOC_DAIFMT_I2S:
+	case SND_SOC_DAIFMT_DSP_A:
 		if ((fmt & SND_SOC_DAIFMT_MASTER_MASK) != SND_SOC_DAIFMT_CBS_CFS) {
 			dev_err(codec->dev, "Invalid Codec master mode\n");
 			return -EINVAL;
@@ -2825,7 +2826,7 @@ static int tfa98xx_hw_params(struct snd_pcm_substream *substream,
 	tfa98xx->profile = prof_idx;
 
 	/* update to new rate */
-	tfa98xx->rate = rate;
+	tfa98xx->rate = tfa98xx->tfa->rate = rate;
 
 	/*[nxp34663] CR: support 16bit/24bit/32bit audio data. begin*/
 	tfa98xx->pcm_format = snd_pcm_format_width(params_format(params));
