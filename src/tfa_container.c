@@ -2245,6 +2245,11 @@ enum Tfa98xx_Error tfa98xx_factory_trimmer(struct tfa_device *tfa)
 	return (tfa->dev_ops.factory_trimmer)(tfa);
 }
 
+enum Tfa98xx_Error tfa98xx_set_phase_shift(struct tfa_device *tfa)
+{
+	return (tfa->dev_ops.phase_shift)(tfa);
+}
+
 enum Tfa98xx_Error tfa_set_filters(struct tfa_device *tfa, int prof_idx)
 {
 	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
