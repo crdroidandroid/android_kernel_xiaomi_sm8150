@@ -4,4 +4,4 @@
 ![Downloads-NewUpdate](https://img.shields.io/github/downloads/LuanHalaiko/kernel_xiaomi_raphael/1.0.0/total)
 
 ## Technical Information
-![banner](https://github.com/LuanHalaiko/Artworks/raw/Kernel-Arts/Infinity-banner.png "what a beautiful thingy")
+![banner](https://github.com/LuanHalaiko/Artworks/raw/Kernel-Arts/infinity-banner.png "what a beautiful thingy")
