@@ -1,5 +1,5 @@
 /* 
- * Copyright 2020 GOODIX 
+ * Copyright 2021 GOODIX 
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -11,7 +11,7 @@
 #define _TFA9875_TFAFIELDNAMES_A1_H
 
 
-#define TFA9875N1A1_I2CVERSION    25
+#define TFA9875N1A1_I2CVERSION    26
 #ifndef TFA9875_I2CVERSION
 typedef enum Tfa9875A1BfEnumList {
     TFA9875_BF_PWDN  = 0x0000,    /*!< Powerdown selection                                */
