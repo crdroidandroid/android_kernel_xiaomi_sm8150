@@ -2738,14 +2738,15 @@ enum Tfa98xx_Error tfaGetFwApiVersion(struct tfa_device *tfa, unsigned char *pFi
 		
 	}
 
-	if (1 == tfa->cnt->ndev) {
-		/* Mono configuration */
-		/* Workaround for FW 8.9.0 (FW API x.31.y.z) & above. 
-		   Firmware cannot return the 4th field (mono/stereo) of ITF version correctly, as it requires 
-		   certain set of messages to be sent before it can detect itself as a mono/stereo configuration.
-		   Hence, HostSDK need to handle this at system level */
-		if ((pFirmwareVersion[0] != 2) && (pFirmwareVersion[1] >= 31))
-			pFirmwareVersion[3] = 1;
+		if (1 == tfa->cnt->ndev) {
+			/* Mono configuration */
+			/* Workaround for FW 8.9.0 (FW API x.31.y.z) & above. 
+		 	  Firmware cannot return the 4th field (mono/stereo) of ITF version correctly, as it requires 
+		 	  certain set of messages to be sent before it can detect itself as a mono/stereo configuration.
+		 	  Hence, HostSDK need to handle this at system level */
+			if ((pFirmwareVersion[0] == 8) && (pFirmwareVersion[1] >= 31)) {
+				pFirmwareVersion[3] = 1;
+		}
 	}
 
 
@@ -3256,16 +3257,16 @@ enum tfa_error tfa_dev_start(struct tfa_device *tfa, int next_profile, int vstep
 		if (err != Tfa98xx_Error_Ok)
 			goto error_exit;
 
-		/* Make sure internal oscillator is running for DSP devices (non-dsp and max1 this is no-op) */
-		tfa98xx_set_osc_powerdown(tfa, 0);
+		if (strstr(tfaContProfileName(tfa->cnt, tfa->dev_idx, next_profile), ".standby") != NULL) {
+			pr_info("Skip powering on device, in standby profile!\n");
+		} else {
+			/* Make sure internal oscillator is running for DSP devices (non-dsp and max1 this is no-op) */
+			tfa98xx_set_osc_powerdown(tfa, 0);
 
-#if 0
-		tfa_dev_set_state(tfa, TFA_STATE_OPERATING | TFA_STATE_MUTE, 0);
-#else
-		tfa_dev_set_state(tfa, TFA_STATE_OPERATING, 0);
-#endif
-		pr_debug("[NXP] %s after implemented tfa_dev_set_state()\n", __func__);
-	}
+			/* Go to the Operating state */
+			tfa_dev_set_state(tfa, TFA_STATE_OPERATING | TFA_STATE_MUTE, 0);
+		}
+ 	}
 	active_profile = tfa_dev_get_swprof(tfa);
 
 	/* Profile switching */
@@ -3282,7 +3283,10 @@ enum tfa_error tfa_dev_start(struct tfa_device *tfa, int next_profile, int vstep
 	 */
 	if (strstr(tfaContProfileName(tfa->cnt, tfa->dev_idx, next_profile), ".standby") != NULL) {
 		tfa_dev_set_swprof(tfa, (unsigned short)next_profile);
-		tfa_dev_set_swvstep(tfa, (unsigned short)tfa->vstep);
+		tfa_dev_set_swvstep(tfa, (unsigned short)vstep);
+
+		pr_info("Power down device, by force, in standby profile!\n");
+		err = (enum tfa_error)tfa_dev_stop(tfa);
 		goto error_exit;
 	}
 
@@ -3318,13 +3322,9 @@ enum tfa_error tfa_dev_start(struct tfa_device *tfa, int next_profile, int vstep
 	}
 
 error_exit:
-	pr_debug("[NXP] %s end...\n", __func__);
 	tfa_show_current_state(tfa);
-	if (err != Tfa98xx_Error_Ok) {
-		pr_err("TFA98xx Error code is %d\n", err);
-		return tfa_error_max;
-	}
-	return tfa_error_ok;
+
+	return err;
 }
 
 enum tfa_error tfa_dev_stop(struct tfa_device *tfa)

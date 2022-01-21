@@ -1045,7 +1045,7 @@ static enum Tfa98xx_Error tfa9875_specific(struct tfa_device *tfa)
 		break;
 	case 0x1a75: /* Initial revision ID */
 		/* ----- generated code start ----- */
-		/* -----  version 25 ----- */
+		/* -----  version 26 ----- */
 		tfa_reg_write(tfa, 0x02, 0x0628); //POR=0x0008
 		tfa_reg_write(tfa, 0x51, 0x0020); //POR=0x0000
 		tfa_reg_write(tfa, 0x53, 0x0336); //POR=0x0337
@@ -1061,7 +1061,7 @@ static enum Tfa98xx_Error tfa9875_specific(struct tfa_device *tfa)
 		tfa_reg_write(tfa, 0x75, 0xd77a); //POR=0xd278
 		tfa_reg_write(tfa, 0x83, 0x06de); //POR=0x0799
 		tfa_reg_write(tfa, 0x85, 0x0380); //POR=0x0382
-		tfa_reg_write(tfa, 0xd5, 0x004d); //POR=0x014d
+		tfa_reg_write(tfa, 0x87, 0x040a); //POR=0x060a
 		/* ----- generated code end   ----- */
 		break;
 	default:

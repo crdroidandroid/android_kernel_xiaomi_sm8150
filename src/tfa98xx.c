@@ -1288,7 +1288,7 @@ static int tfa98xx_set_profile(struct snd_kcontrol *kcontrol,
 #endif
 	int change = 0;
 	int new_profile;
-	int prof_idx;
+	int prof_idx, cur_prof_idx;
 	int profile_count = tfa98xx_mixer_profiles;
 	int profile = tfa98xx_mixer_profile;
 
@@ -1306,11 +1306,16 @@ static int tfa98xx_set_profile(struct snd_kcontrol *kcontrol,
 
 	/* get the container profile for the requested sample rate */
 	prof_idx = get_profile_id_for_sr(new_profile, tfa98xx->rate);
-	if (prof_idx < 0) {
-		pr_err("tfa98xx: sample rate [%d] not supported for this mixer profile [%d].\n", tfa98xx->rate, new_profile);
+	cur_prof_idx = get_profile_id_for_sr(profile, tfa98xx->rate);
+	if (prof_idx < 0 || cur_prof_idx < 0) {
+		pr_err("tfa98xx: sample rate [%d] not supported for this mixer profile [%d -> %d].\n",
+			tfa98xx->rate, profile, new_profile);
 		return 0;
 	}
-	pr_debug("selected container profile [%d]\n", prof_idx);
+	pr_debug("selected container profile [%d -> %d]\n", cur_prof_idx, prof_idx);
+	pr_debug("switch profile [%s -> %s]\n",
+		tfa_cont_profile_name(tfa98xx, cur_prof_idx),
+		tfa_cont_profile_name(tfa98xx, prof_idx));
 
 	/* update mixer profile */
 	tfa98xx_mixer_profile = new_profile;
@@ -1330,6 +1335,11 @@ static int tfa98xx_set_profile(struct snd_kcontrol *kcontrol,
 			/* Don't call tfa_dev_start() if there is no clock. */
 			mutex_lock(&tfa98xx->dsp_lock);
 			tfa98xx_dsp_system_stable(tfa98xx->tfa, &ready);
+			if (strstr(tfa_cont_profile_name(tfa98xx, cur_prof_idx), ".standby") != NULL) {
+				pr_info("Force to start at exiting from standby: [%d -> %d]\n",
+					cur_prof_idx, prof_idx);
+				ready = 1;
+			}
 			if (ready && (tfa_dev_get_state(tfa98xx->tfa) == TFA_STATE_OPERATING)) {
 				/* Also re-enables the interrupts */
 				err = tfa98xx_tfa_start(tfa98xx, prof_idx, tfa98xx->vstep);
