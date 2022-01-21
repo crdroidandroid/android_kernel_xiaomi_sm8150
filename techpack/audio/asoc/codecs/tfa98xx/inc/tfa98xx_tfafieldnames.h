@@ -34,6 +34,8 @@ typedef struct TfaIrqName {
 #include "tfa9878_tfafieldnames.h"
 #include "tfa9894_tfafieldnames.h"
 #include "tfa9894_tfafieldnames_N2.h"
+#include "tfa9875_tfafieldnames.h"
+#include "tfa9875_tfafieldnames_A1.h"
 
 /* missing 'common' defs break the build but unused in TFA1 context */
 #define TFA1_BF_AMPINSEL -1

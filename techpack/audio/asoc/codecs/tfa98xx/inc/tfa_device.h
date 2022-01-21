@@ -51,12 +51,12 @@ enum Tfa98xx_DAI {
  * device ops function structure
  */
 struct tfa_device_ops {
-	enum Tfa98xx_Error (*dsp_msg)(struct tfa_device *tfa, int length, const char *buf);
-	enum Tfa98xx_Error (*dsp_msg_read)(struct tfa_device *tfa, int length, unsigned char *bytes);
-	enum Tfa98xx_Error (*reg_read)(struct tfa_device *tfa, unsigned char subaddress, unsigned short *value);
-	enum Tfa98xx_Error (*reg_write)(struct tfa_device *tfa, unsigned char subaddress, unsigned short value);
-	enum Tfa98xx_Error (*mem_read)(struct tfa_device *tfa, unsigned int start_offset, int num_words, int *pValues);
-	enum Tfa98xx_Error (*mem_write)(struct tfa_device *tfa, unsigned short address, int value, int memtype);
+	enum Tfa98xx_Error(*tfa_dsp_msg)(struct tfa_device *tfa, int length, const char *buf);
+	enum Tfa98xx_Error(*tfa_dsp_msg_read)(struct tfa_device *tfa, int length, unsigned char *bytes);
+	enum Tfa98xx_Error(*tfa_reg_read)(struct tfa_device *tfa, unsigned char subaddress, unsigned short *value);
+	enum Tfa98xx_Error(*tfa_reg_write)(struct tfa_device *tfa, unsigned char subaddress, unsigned short value);
+	enum Tfa98xx_Error(*tfa_mem_read)(struct tfa_device *tfa, unsigned int start_offset, int num_words, int *pValues);
+	enum Tfa98xx_Error(*tfa_mem_write)(struct tfa_device *tfa, unsigned short address, int value, int memtype);
 
 	enum Tfa98xx_Error (*tfa_init)(struct tfa_device *tfa); /**< init typically for loading optimal settings */
 	enum Tfa98xx_Error (*dsp_reset)(struct tfa_device *tfa, int state); /**< reset the coolflux dsp */
@@ -73,6 +73,8 @@ struct tfa_device_ops {
 	enum Tfa98xx_Error (*faim_protect)(struct tfa_device *tfa, int state); /**< Protect FAIM from being corrupted  */
 	enum Tfa98xx_Error (*set_osc_powerdown)(struct tfa_device *tfa, int state); /**< Allow to change internal osc. gating settings */
 	enum Tfa98xx_Error (*update_lpm)(struct tfa_device *tfa, int state); /**< Allow to change lowpowermode settings */
+    int (*tfa_set_bitfield)(struct tfa_device* tfa, uint16_t bitfield, uint16_t value);
+    enum Tfa98xx_Error (*tfa_status)(struct tfa_device *tfa);	
 };
 
 /**
@@ -249,8 +251,15 @@ enum tfa_state tfa_dev_get_state(struct tfa_device *tfa);
  *  - others if width received is not correct 
  */
 int tfa_dev_set_tdm_bitwidth(struct tfa_device *tfa, int width);
-/*****************************************************************************/
-/*****************************************************************************/
+/**
+ * Fill TDM setting addresses for current device needed with dynamic TDM switch 
+ *  @param tfa struct = pointer to context of this device instance
+ *  @param tdme = pointer to be filled with TDME address
+ *  @param tnbck = pointer to be filled with TDMNBCK address
+ *  @param tslln = pointer to be filled with TDMSLLN address
+ *  @param tsize = pointer to be filled with TDMSSIZE address
+ */
+void tfa_dev_get_tdm_add(struct tfa_device* tfa,uint16_t *tdme,uint16_t * tnbck,uint16_t *tslln,uint16_t *tsize);
 /**
  *  MTP support functions
  */
