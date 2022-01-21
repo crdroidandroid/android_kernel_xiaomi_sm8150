@@ -323,14 +323,14 @@ enum Tfa98xx_Error tfaRunReadBitfield(struct tfa_device *tfa,  TfaBitfield_t *bf
  * @param tfa the device struct pointer
  * @param hw_feature_register pointer to where hw features are stored
  */
-void get_hw_features_from_cnt(struct tfa_device *tfa, int *hw_feature_register);
+void tfa_get_hw_features_from_cnt(struct tfa_device *tfa, int *hw_feature_register);
 
 /**
  * Get sw feature bits from container file
  * @param tfa the device struct pointer
  * @param sw_feature_register pointer to where sw features are stored
  */
-void get_sw_features_from_cnt(struct tfa_device *tfa, int sw_feature_register[2]);
+void tfa_get_sw_features_from_cnt(struct tfa_device *tfa, int sw_feature_register[2]);
 
 /**
  * Factory trimming for the Boost converter
