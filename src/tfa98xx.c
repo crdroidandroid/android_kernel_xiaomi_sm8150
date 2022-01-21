@@ -3738,7 +3738,7 @@ static int tfa98xx_read_memtrack_data(struct tfa98xx *tfa98xx, int *pLivedata)
 			send_to_dsp_count = 0;
 			mdelay(5);
 	} else {
-		ret = dsp_msg(tfa98xx->tfa, item_bytes + 6, buffer);
+		ret = tfa_dsp_msg(tfa98xx->tfa, item_bytes + 6, buffer);
 	}
 
 		if (Tfa98xx_Error_Ok == ret) {

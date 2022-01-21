@@ -695,7 +695,7 @@ enum Tfa98xx_Error tfaContWriteFile(struct tfa_device *tfa, TfaFileDsc_t *file, 
 							hdr->customer[4],
 							hdr->customer[5],
 							hdr->customer[6],
-							hdr->customer[7])
+							hdr->customer[7]);
 						return Tfa98xx_Error_Bad_Parameter;
 					}
 				}
@@ -719,7 +719,7 @@ enum Tfa98xx_Error tfaContWriteFile(struct tfa_device *tfa, TfaFileDsc_t *file, 
 			/* Remove header and xml_id */
 			size = hdr->size - sizeof(struct TfaSpkHeader) - sizeof(struct TfaFWVer);
 
-			err = tfa_dsp_msg(tfa, size
+			err = tfa_dsp_msg(tfa, size,
 				(const char *)(((TfaSpeakerFile_t *)hdr)->data + (sizeof(struct TfaFWVer))));
 		} else {
 			size = hdr->size - sizeof(TfaSpeakerFile_t);

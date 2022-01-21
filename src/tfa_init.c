@@ -479,7 +479,7 @@ static uint16_t tfa9912_vboost_fixup(struct tfa_device *tfa, uint16_t dcdc_cnt6)
 }
 
 /* PLMA5322, PLMA5528 - Limit values of DCVOS and DCVOF to range specified in datasheet. */
-enum Tfa98xx_Error tfa9912_tfa_reg_write(struct tfa_device *tfa, unsigned char subaddress, unsigned short value)
+enum Tfa98xx_Error tfa9912_reg_write(struct tfa_device *tfa, unsigned char subaddress, unsigned short value)
 {
 	if (subaddress == TFA9912_DCDCCNT6_REG) {
 		/* Correct V boost (first and secondary) to ensure 12V is not exceeded. */

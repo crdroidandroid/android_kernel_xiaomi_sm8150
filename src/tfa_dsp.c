@@ -103,11 +103,13 @@ int tfa_irq_clear(struct tfa_device *tfa, enum tfa9912_irq bit)
 	if (bit == tfa9912_irq_all) {
 		/* operate on all bits */
 		for (reg = TFA98XX_INTERRUPT_IN_REG1; reg < TFA98XX_INTERRUPT_IN_REG1 + 3; reg++)
-			tfa_reg_write((tfa, reg, 0xffff); /* all bits */
-	} else if (bit < tfa9912_irq_max) {
+			tfa_reg_write(tfa, reg, 0xffff); /* all bits */
+	}
+	else if (bit < tfa9912_irq_max) {
 		reg = (unsigned char)(TFA98XX_INTERRUPT_IN_REG1 + (bit >> 4));
-			tfa_reg_write((tfa, reg, 1 << (bit & 0x0f)); /* only this bit */
-	} else
+		tfa_reg_write(tfa, reg, 1 << (bit & 0x0f)); /* only this bit */
+	}
+	else
 		return -1;
 
 	return 0;
@@ -142,7 +144,7 @@ int tfa_irq_ena(struct tfa_device *tfa, enum tfa9912_irq bit, int state)
 	if (bit == tfa9912_irq_all) {
 		/* operate on all bits */
 		for (reg = TFA98XX_INTERRUPT_ENABLE_REG1; reg <= TFA98XX_INTERRUPT_ENABLE_REG1 + tfa9912_irq_max / 16; reg++) {
-			tfa_reg_write((tfa, (unsigned char)reg, state ? 0xffff : 0); /* all bits */
+			tfa_reg_write(tfa, (unsigned char)reg, state ? 0xffff : 0); /* all bits */
 			tfa->interrupt_enable[reg - TFA98XX_INTERRUPT_ENABLE_REG1] = state ? 0xffff : 0; /* all bits */
 		}
 	} else if (bit < tfa9912_irq_max) {
@@ -155,7 +157,7 @@ int tfa_irq_ena(struct tfa_device *tfa, enum tfa9912_irq bit, int state)
 		else		// clear
 			new_value = value & ~mask;
 		if (new_value != value) {
-			tfa_reg_write((tfa, (unsigned char)reg, new_value); /* only this bit */
+			tfa_reg_write(tfa, (unsigned char)reg, new_value); /* only this bit */
 			tfa->interrupt_enable[reg - TFA98XX_INTERRUPT_ENABLE_REG1] = new_value;
 		}
 	} else
@@ -173,7 +175,7 @@ int tfa_irq_mask(struct tfa_device *tfa)
 
 	/* operate on all bits */
 	for (reg = TFA98XX_INTERRUPT_ENABLE_REG1; reg <= TFA98XX_INTERRUPT_ENABLE_REG1 + tfa9912_irq_max / 16; reg++)
-		tfa_reg_write((tfa, (unsigned char)reg, 0);
+		tfa_reg_write(tfa, (unsigned char)reg, 0);
 
 	return 0;
 }
@@ -187,7 +189,7 @@ int tfa_irq_unmask(struct tfa_device *tfa)
 
 	/* operate on all bits */
 	for (reg = TFA98XX_INTERRUPT_ENABLE_REG1; reg <= TFA98XX_INTERRUPT_ENABLE_REG1 + tfa9912_irq_max / 16; reg++)
-		tfa_reg_write((tfa, (unsigned char)reg, tfa->interrupt_enable[reg - TFA98XX_INTERRUPT_ENABLE_REG1]);
+		tfa_reg_write(tfa, (unsigned char)reg, tfa->interrupt_enable[reg - TFA98XX_INTERRUPT_ENABLE_REG1]);
 
 	return 0;
 }
@@ -204,7 +206,7 @@ int tfa_irq_set_pol(struct tfa_device *tfa, enum tfa9912_irq bit, int state)
 	if (bit == tfa9912_irq_all) {
 		/* operate on all bits */
 		for (reg = TFA98XX_STATUS_POLARITY_REG1; reg <= TFA98XX_STATUS_POLARITY_REG1 + tfa9912_irq_max / 16; reg++) {
-			tfa_reg_write((tfa, (unsigned char)reg, state ? 0xffff : 0); /* all bits */
+			tfa_reg_write(tfa, (unsigned char)reg, state ? 0xffff : 0); /* all bits */
 		}
 	} else if (bit < tfa9912_irq_max) {
 		/* only this bit */
@@ -216,7 +218,7 @@ int tfa_irq_set_pol(struct tfa_device *tfa, enum tfa9912_irq bit, int state)
 		else       /* Active Low */
 			new_value = value & ~mask;
 		if (new_value != value) {
-			tfa_reg_write((tfa, (unsigned char)reg, new_value); /* only this bit */
+			tfa_reg_write(tfa, (unsigned char)reg, new_value); /* only this bit */
 		}
 	} else
 		return -1;
@@ -807,12 +809,12 @@ enum Tfa98xx_Error tfa98xx_get_mtp(struct tfa_device *tfa, uint16_t *value)
 void tfa98xx_key2(struct tfa_device *tfa, int lock)
 {
 	/* unhide lock registers */
-		tfa_reg_write((tfa, (tfa->tfa_family == 1) ? 0x40 : 0x0F, 0x5A6B);
+		tfa_reg_write(tfa, (tfa->tfa_family == 1) ? 0x40 : 0x0F, 0x5A6B);
 	/* lock/unlock key2 MTPK */
 	TFA_WRITE_REG(tfa, MTPKEY2, lock ? 0 : 0x5A);
 	/* unhide lock registers */
 	if (!tfa->advance_keys_handling) /*artf65038*/
-		tfa_reg_write((tfa, (tfa->tfa_family == 1) ? 0x40 : 0x0F, 0);
+		tfa_reg_write(tfa, (tfa->tfa_family == 1) ? 0x40 : 0x0F, 0);
 }
 void tfa2_manual_mtp_cpy(struct tfa_device *tfa, uint16_t reg_row_to_keep, uint16_t reg_row_to_set, uint8_t row)///MCH_TO_TEST
 {
@@ -830,14 +832,14 @@ void tfa2_manual_mtp_cpy(struct tfa_device *tfa, uint16_t reg_row_to_keep, uint1
 	tfa_reg_read(tfa, (unsigned char)reg_row_to_keep, &value);
 	if (!row)
 	{
-		tfa_reg_write((tfa, 0xA7, value);
-		tfa_reg_write((tfa, 0xA8, reg_row_to_set);
+		tfa_reg_write(tfa, 0xA7, value);
+		tfa_reg_write(tfa, 0xA8, reg_row_to_set);
 	} else
 	{
-		tfa_reg_write((tfa, 0xA7, reg_row_to_set);
-		tfa_reg_write((tfa, 0xA8, value);
+		tfa_reg_write(tfa, 0xA7, reg_row_to_set);
+		tfa_reg_write(tfa, 0xA8, value);
 	}
-		tfa_reg_write((tfa, 0xA3, 0x10 | row);
+		tfa_reg_write(tfa, 0xA3, 0x10 | row);
 	if (tfa->is_probus_device)
 	{
 		/* Assure FAIM is enabled (enable it when neccesery) */
@@ -1573,7 +1575,7 @@ enum Tfa98xx_Error tfa_dsp_msg(struct tfa_device *tfa, int length24, const char 
 				/* Send tot the target selected */
 				error = (tfa->dev_ops.tfa_dsp_msg)(tfa, length, (const char*)blob);
 			} else { /* via msg hal */
-				error = tfa98xx_write_dsp(tfa, len, (const char *)blob);
+				error = tfa98xx_write_dsp(tfa, length, (const char *)blob);
 			}
 			kfree(blob);
 
@@ -1598,7 +1600,7 @@ enum Tfa98xx_Error tfa_dsp_msg(struct tfa_device *tfa, int length24, const char 
 
 			if (tfa->has_msg == 0) /* via i2c */ {
 				/* Send tot the target selected */
-				error = (tfa->dev_ops.tfa_dsp_msg)(tfa, len, (const char*)blob);
+				error = (tfa->dev_ops.tfa_dsp_msg)(tfa, length, (const char*)blob);
 			} else { /* via msg hal */
 				error = tfa98xx_write_dsp(tfa, length, (const char *)blob);
 			}
@@ -1692,7 +1694,7 @@ enum Tfa98xx_Error tfa_reg_write(struct tfa_device *tfa, unsigned char subaddres
 {
 	enum Tfa98xx_Error error;
 
-	error = (tfa->dev_ops.reg_write)(tfa, subaddress, value);
+	error = (tfa->dev_ops.tfa_reg_write)(tfa, subaddress, value);
 	if (error != Tfa98xx_Error_Ok)
 		error = (enum Tfa98xx_Error) (error + Tfa98xx_Error_RpcBase); /* Get actual error code from softDSP */
 
@@ -1710,7 +1712,7 @@ enum Tfa98xx_Error tfa_mem_read(struct tfa_device *tfa, unsigned int start_offse
 	return error;
 }
 
-enum Tfa98xx_Error mem_write(struct tfa_device *tfa, unsigned short address, int value, int memtype)
+enum Tfa98xx_Error tfa_mem_write(struct tfa_device *tfa, unsigned short address, int value, int memtype)
 {
 	enum Tfa98xx_Error error;
 
@@ -2695,8 +2697,10 @@ enum Tfa98xx_Error tfaGetFwApiVersion(struct tfa_device *tfa, unsigned char *pFi
 		pFirmwareVersion[1] = (buffer >> 8) & 0xff;
 		pFirmwareVersion[2] = (buffer >> 6) & 0x03;
 		pFirmwareVersion[3] = (buffer)      & 0x3f;
-	} else
+	}
+	else
 	{
+		unsigned char buffer[4 * 3] = { 0 };
 		cmd_len = 0x03;
 
 		/* GetAPI: Command is 0x00 0x80 0xFE */
@@ -2729,7 +2733,7 @@ enum Tfa98xx_Error tfaGetFwApiVersion(struct tfa_device *tfa, unsigned char *pFi
 		   Firmware cannot return the 4th field (mono/stereo) of ITF version correctly, as it requires 
 		   certain set of messages to be sent before it can detect itself as a mono/stereo configuration.
 		   Hence, HostSDK need to handle this at system level */
-		if ((pFirmwareVersion[0] != 2) && (pFirmwareVersion[1] >= 31)) {
+		if ((pFirmwareVersion[0] != 2) && (pFirmwareVersion[1] >= 31))
 			pFirmwareVersion[3] = 1;
 	}
 
@@ -3298,7 +3302,7 @@ enum tfa_error tfa_dev_start(struct tfa_device *tfa, int next_profile, int vstep
 
 error_exit:
 	pr_debug("[NXP] %s end...\n", __func__);
-	show_current_state(tfa);
+	tfa_show_current_state(tfa);
 	if (err != Tfa98xx_Error_Ok) {
 		pr_err("TFA98xx Error code is %d\n", err);
 		return tfa_error_max;
