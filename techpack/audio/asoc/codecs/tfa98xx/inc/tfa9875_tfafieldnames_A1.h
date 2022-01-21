@@ -11,7 +11,7 @@
 #define _TFA9875_TFAFIELDNAMES_A1_H
 
 
-#define TFA9875N1A1_I2CVERSION    10
+#define TFA9875N1A1_I2CVERSION    25
 #ifndef TFA9875_I2CVERSION
 typedef enum Tfa9875A1BfEnumList {
     TFA9875_BF_PWDN  = 0x0000,    /*!< Powerdown selection                                */
@@ -166,6 +166,7 @@ typedef enum Tfa9875A1BfEnumList {
     TFA9875_BF_IPM   = 0x60e1,    /*!< Idle power mode control                            */
     TFA9875_BF_LNMODE= 0x62e1,    /*!< Ctrl select mode                                   */
     TFA9875_BF_LPM1MODE= 0x64e1,    /*!< Low power mode control                             */
+    TFA9875_BF_PFMFREQLIM= 0x66d2,    /*!< Lowest PFM frequency limit                         */
     TFA9875_BF_TDMSRCMAP= 0x6802,    /*!< TDM source mapping                                 */
     TFA9875_BF_TDMSRCAS= 0x6831,    /*!< Sensed value A                                     */
     TFA9875_BF_TDMSRCBS= 0x6851,    /*!< Sensed value B                                     */
@@ -388,6 +389,7 @@ typedef enum Tfa9875A1BfEnumList {
    { 0x60e1, "IPM"},    /* Idle power mode control                           , */\
    { 0x62e1, "LNMODE"},    /* Ctrl select mode                                  , */\
    { 0x64e1, "LPM1MODE"},    /* Low power mode control                            , */\
+   { 0x66d2, "PFMFREQLIM"},    /* Lowest PFM frequency limit                        , */\
    { 0x6802, "TDMSRCMAP"},    /* TDM source mapping                                , */\
    { 0x6831, "TDMSRCAS"},    /* Sensed value A                                    , */\
    { 0x6851, "TDMSRCBS"},    /* Sensed value B                                    , */\
