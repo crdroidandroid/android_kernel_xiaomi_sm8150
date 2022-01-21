@@ -252,7 +252,8 @@ void tfa_set_query_info(struct tfa_device *tfa)
 	tfa->partial_enable = 0;
 	tfa->convert_dsp32 = 0;
 	tfa->sync_iv_delay = 0;
-    tfa->dynamicTDMmode = -1; /**tracking dynamic TDM setting from alsa input stream*/
+	tfa->dynamicTDMmode = -1; /**tracking dynamic TDM setting from alsa input stream*/
+	tfa->rate = 0;
 	tfa->bitwidth = -1;/**bitwdith from alsa input stream*/
 
 	/* TODO use the getfeatures() for retrieving the features [artf103523]
@@ -2695,8 +2696,13 @@ enum Tfa98xx_Error tfaGetFwApiVersion(struct tfa_device *tfa, unsigned char *pFi
 		}
 		pFirmwareVersion[0] = (buffer >> 16) & 0xff;
 		pFirmwareVersion[1] = (buffer >> 8) & 0xff;
-		pFirmwareVersion[2] = (buffer >> 6) & 0x03;
-		pFirmwareVersion[3] = (buffer)      & 0x3f;
+		if ((pFirmwareVersion[0] != 2) && (pFirmwareVersion[1] >= 33)) {
+			pFirmwareVersion[2] = (buffer >> 3) & 0x1F;
+			pFirmwareVersion[3] = (buffer) & 0x07;
+		} else {
+			pFirmwareVersion[2] = (buffer >> 6) & 0x03;
+			pFirmwareVersion[3] = (buffer) & 0x3f;
+		}
 	}
 	else
 	{
@@ -2722,8 +2728,13 @@ enum Tfa98xx_Error tfaGetFwApiVersion(struct tfa_device *tfa, unsigned char *pFi
 		/* Split 3rd byte into two seperate ITF version fields (3rd field and 4th field) */
 		pFirmwareVersion[0] = (buffer[0]);
 		pFirmwareVersion[1] = (buffer[1]);
-		pFirmwareVersion[3] = (buffer[2])      & 0x3f;
-		pFirmwareVersion[2] = (buffer[2] >> 6) & 0x03;
+		if ((pFirmwareVersion[0] != 2) && (pFirmwareVersion[1] >= 33)) {
+			pFirmwareVersion[3] = (buffer[2]) & 0x07;
+			pFirmwareVersion[2] = (buffer[2] >> 3) & 0x1F;
+		} else {
+			pFirmwareVersion[3] = (buffer[2]) & 0x3f;
+			pFirmwareVersion[2] = (buffer[2] >> 6) & 0x03;
+		}
 		
 	}
 
@@ -2981,7 +2992,13 @@ enum Tfa98xx_Error tfaRunStartup(struct tfa_device *tfa, int profile)
 
 	/* Factory trimming for the Boost converter */
 	tfa98xx_factory_trimmer(tfa);
-
+#ifdef __KERNEL__
+#if 0
+	/* Control for PWM phase shift */
+	if (tfa->bitwidth == 24 && tfa->rate == 16)/*TFA9875-240*/
+		tfa98xx_set_phase_shift(tfa);
+#endif
+#endif
 	/* Go to the initCF state */
 	tfa_dev_set_state(tfa, TFA_STATE_INIT_CF, strstr(tfaContProfileName(tfa->cnt, tfa->dev_idx, profile), ".cal") != NULL);
 
