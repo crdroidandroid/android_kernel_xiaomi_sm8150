@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2014-2020 NXP Semiconductors, All Rights Reserved.
- * Copyright 2020 GOODIX
+ * Copyright 2021 GOODIX
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -343,7 +343,7 @@ enum Tfa98xx_Error tfa98xx_factory_trimmer(struct tfa_device *tfa);
  * Control for PWM phase shift 
  * @param tfa the device struct pointer
  */
-enum Tfa98xx_Error tfa98xx_set_phase_shift(struct tfa_device *tfa);
+ enum Tfa98xx_Error tfa98xx_set_phase_shift(struct tfa_device *tfa);
 
 /**
  * Search for filters settings and if found then write them to the device
