@@ -59,10 +59,10 @@
 		qcom,mdss-dsi-panel-blackness-level = <3230>;
 
 		qcom,dispparam-enabled;
-		qcom,mdss-panel-on-dimming-delay = <120>;
+		qcom,mdss-panel-on-dimming-delay = <90>;
+		qcom,mdss-dsi-panel-dc-threshold = <610>;
 		/* IRQF_ONESHOT | IRQF_TRIGGER_FALLING */
 		/* trig-flags: falling-0x0002 rasing-0x0001 */
-		qcom,esd-err-irq-gpio = <&tlmm 5 0x2002>;
 
 		qcom,disp-doze-lpm-backlight = <20>;
 		qcom,disp-doze-hbm-backlight = <266>;
@@ -103,13 +103,13 @@
 			timing@0{
 				qcom,mdss-dsi-panel-width = <1080>;
 				qcom,mdss-dsi-panel-height = <2340>;
-				qcom,mdss-dsi-h-front-porch = <64>;
-				qcom,mdss-dsi-h-back-porch = <64>;
-				qcom,mdss-dsi-h-pulse-width = <20>;
+				qcom,mdss-dsi-h-front-porch = <42>;
+				qcom,mdss-dsi-h-back-porch = <42>;
+				qcom,mdss-dsi-h-pulse-width = <12>;
 				qcom,mdss-dsi-h-sync-skew = <0>;
-				qcom,mdss-dsi-v-back-porch = <64>;
-				qcom,mdss-dsi-v-front-porch = <64>;
-				qcom,mdss-dsi-v-pulse-width = <27>;
+				qcom,mdss-dsi-v-back-porch = <42>;
+				qcom,mdss-dsi-v-front-porch = <42>;
+				qcom,mdss-dsi-v-pulse-width = <12>;
 				qcom,mdss-dsi-h-left-border = <0>;
 				qcom,mdss-dsi-h-right-border = <0>;
 				qcom,mdss-dsi-v-top-border = <0>;
