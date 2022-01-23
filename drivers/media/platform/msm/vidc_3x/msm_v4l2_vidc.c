@@ -643,9 +643,10 @@ static int msm_vidc_probe_vidc_device(struct platform_device *pdev)
 	list_add_tail(&core->list, &vidc_driver->cores);
 	mutex_unlock(&vidc_driver->lock);
 
+#ifdef CONFIG_DEBUG_FS
 	core->debugfs_root = msm_vidc_debugfs_init_core(
 		core, vidc_driver->debugfs_root);
-
+#endif
 	vidc_driver->platform_version =
 		msm_vidc_read_efuse_version(pdev,
 			core->resources.pf_ver_tbl, "efuse");
