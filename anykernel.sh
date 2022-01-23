@@ -15,7 +15,7 @@ device.name2=Cepheus
 device.name3=cepheus-user
 device.name4=Mi 9
 device.name5=Mi9
-supported.versions=12
+supported.versions=11
 supported.patchlevels=
 '; } # end properties
 
