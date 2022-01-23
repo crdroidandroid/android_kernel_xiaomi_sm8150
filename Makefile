@@ -696,8 +696,8 @@ LLVM_NM		:= llvm-nm
 export LLVM_AR LLVM_NM
 
 # Set O3 optimization level for LTO
+LDFLAGS		+= -O3
 LDFLAGS		+= --plugin-opt=O3
-LDFLAGS		+= --plugin-opt=-import-instr-limit=40
 endif
 
 # The arch Makefile can set ARCH_{CPP,A,C}FLAGS to override the default
@@ -918,7 +918,7 @@ endif
 lto-clang-flags += -fvisibility=default $(call cc-option, -fsplit-lto-unit)
 
 # Limit inlining across translation units to reduce binary size
-LD_FLAGS_LTO_CLANG := -mllvm -import-instr-limit=5
+LD_FLAGS_LTO_CLANG := -mllvm -import-instr-limit=60
 
 KBUILD_LDFLAGS += $(LD_FLAGS_LTO_CLANG)
 KBUILD_LDFLAGS_MODULE += $(LD_FLAGS_LTO_CLANG)
