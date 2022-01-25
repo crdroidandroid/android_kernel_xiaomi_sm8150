@@ -7,11 +7,9 @@ ARCH := x86
 endif
 
 # always use the host compiler
-# Define variables on build script
-#HOSTAR	?= ar
-#HOSTCC	?= gcc
-#HOSTLD	?= ld
-
+HOSTAR	?= ar
+HOSTCC	?= gcc
+HOSTLD	?= ld
 AR	 = $(HOSTAR)
 CC	 = $(HOSTCC)
 LD	 = $(HOSTLD)
