@@ -207,13 +207,8 @@ static enum tfa_error tfa98xx_tfa_start(struct tfa98xx *tfa98xx, int next_profil
 
 	start_time = ktime_get_boottime();
 
-	/*[nxp34663] CR: support 16bit/24bit/32bit audio data. begin*/
-#ifdef __KERNEL__
-	err = tfa_dev_start(tfa98xx->tfa, next_profile, vstep, tfa98xx->pcm_format);
-#else
+
 	err = tfa_dev_start(tfa98xx->tfa, next_profile, vstep);
-#endif
-	/*[nxp34663] CR: support 16bit/24bit/32bit audio data. end*/
 
 	if (trace_level & 8) {
 		stop_time = ktime_get_boottime();
@@ -2645,9 +2640,6 @@ static void tfa98xx_interrupt(struct work_struct *work)
 		int start_triggered;
 
 		mutex_lock(&tfa98xx->dsp_lock);
-		/*[nxp34663] CR: support 16bit/24bit/32bit audio data. begin*/
-		start_triggered = tfa_plop_noise_interrupt(tfa98xx->tfa, tfa98xx->profile, tfa98xx->vstep, tfa98xx->pcm_format);
-		/*[nxp34663] CR: support 16bit/24bit/32bit audio data. end*/
 		/* Only enable when the return value is 1, otherwise the interrupt is triggered twice */
 		if (start_triggered)
 			tfa98xx_interrupt_enable(tfa98xx, true);
@@ -2837,10 +2829,6 @@ static int tfa98xx_hw_params(struct snd_pcm_substream *substream,
 
 	/* update to new rate */
 	tfa98xx->rate = tfa98xx->tfa->rate = rate;
-
-	/*[nxp34663] CR: support 16bit/24bit/32bit audio data. begin*/
-	tfa98xx->pcm_format = snd_pcm_format_width(params_format(params));
-	/*[nxp34663] CR: support 16bit/24bit/32bit audio data. end*/
 
 	return 0;
 }

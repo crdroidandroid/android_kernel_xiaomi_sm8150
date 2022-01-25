@@ -188,13 +188,8 @@ int tfa_dev_probe(int slave, struct tfa_device *tfa);
  *  @param vstep the selected vstep to use
  *  @return tfa_error enum
  */
-/*[nxp34663] CR: support 16bit/24bit/32bit audio data. begin*/
-#ifdef __KERNEL__
-enum tfa_error tfa_dev_start(struct tfa_device *tfa, int next_profile, int vstep, u8 pcm_format);
-#else
+
 enum tfa_error tfa_dev_start(struct tfa_device *tfa, int next_profile, int vstep);
-#endif
-/*[nxp34663] CR: support 16bit/24bit/32bit audio data. end*/
 
 /**
  * Stop audio for this instance as gracefully as possible.
