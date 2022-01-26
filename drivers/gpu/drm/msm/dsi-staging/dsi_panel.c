@@ -689,13 +689,7 @@ error:
 static u32 dsi_panel_get_backlight(struct dsi_panel *panel)
 {
 	u32 bl_level;
-
-	if (panel->doze_enabled) {
-		bl_level = panel->doze_mode ? panel->bl_config.bl_doze_hbm : panel->bl_config.bl_doze_lpm;
-	} else {
 		bl_level = panel->bl_config.bl_level;
-	}
-
 	return bl_level;
 }
 
@@ -730,9 +724,6 @@ u32 dsi_panel_get_fod_dim_alpha(struct dsi_panel *panel)
 int dsi_panel_set_fod_hbm(struct dsi_panel *panel, bool status)
 {
 	int rc = 0;
-
-	if (panel->doze_enabled)
-		rc = dsi_panel_update_doze(panel);
 
 	rc = dsi_panel_tx_cmd_set(panel, status ? DSI_CMD_SET_DISP_HBM_FOD_ON : DSI_CMD_SET_DISP_HBM_FOD_OFF);
 
