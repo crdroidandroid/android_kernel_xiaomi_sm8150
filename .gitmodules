@@ -1,3 +1,0 @@
-[submodule "techpack/audio/asoc/codecs/tfa98xx"]
-	path = techpack/audio/asoc/codecs/tfa98xx
-	url = https://github.com/LuanHalaiko/drivers_techpack_tfa98xx.git
