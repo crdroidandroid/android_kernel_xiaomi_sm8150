@@ -1399,7 +1399,7 @@
 			qcom,silver-khz = <1708800>;
 			qcom,gold-khz = <825600>;
 			qcom,prime-khz = <1804800>;
-			qcom,trip-deg = <85000>;
+			qcom,trip-deg = <84000>;
 		};
 
 		zone@12 {
@@ -1407,7 +1407,7 @@
 			qcom,silver-khz = <1708800>;
 			qcom,gold-khz = <825600>;
 			qcom,prime-khz = <1804800>;
-			qcom,trip-deg = <90000>;
+			qcom,trip-deg = <86000>;
 		};
 	};
 };
