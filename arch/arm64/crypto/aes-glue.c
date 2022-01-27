@@ -28,7 +28,6 @@
 #define MODE			"ce"
 #define PRIO			300
 #define aes_setkey		ce_aes_setkey
-#define STRIDE			5
 #define aes_expandkey		ce_aes_expandkey
 #define aes_ecb_encrypt		ce_aes_ecb_encrypt
 #define aes_ecb_decrypt		ce_aes_ecb_decrypt
@@ -48,7 +47,6 @@ MODULE_DESCRIPTION("AES-ECB/CBC/CTR/XTS using ARMv8 Crypto Extensions");
 #define PRIO			200
 #define aes_setkey		crypto_aes_set_key
 #define aes_expandkey		crypto_aes_expand_key
-#define STRIDE			4
 #define aes_ecb_encrypt		neon_aes_ecb_encrypt
 #define aes_ecb_decrypt		neon_aes_ecb_decrypt
 #define aes_cbc_encrypt		neon_aes_cbc_encrypt
@@ -95,7 +93,7 @@ asmlinkage void aes_cbc_cts_decrypt(u8 out[], u8 const in[], u32 const rk[],
 				int rounds, int bytes, u8 const iv[]);
 
 asmlinkage void aes_ctr_encrypt(u8 out[], u8 const in[], u32 const rk[],
-				int rounds, int bytes, u8 ctr[], u8 finalbuf[]);
+				int rounds, int bytes, u8 ctr[]);
 
 asmlinkage void aes_xts_encrypt(u8 out[], u8 const in[], u32 const rk1[],
 				int rounds, int blocks, u32 const rk2[], u8 iv[],
@@ -475,26 +473,21 @@ static int ctr_encrypt(struct skcipher_request *req)
 		unsigned int nbytes = walk.nbytes;
 		u8 *dst = walk.dst.virt.addr;
 		u8 buf[AES_BLOCK_SIZE];
-		unsigned int tail;
 
 		if (unlikely(nbytes < AES_BLOCK_SIZE))
-			src = memcpy(buf, src, nbytes);
+			src = dst = memcpy(buf + sizeof(buf) - nbytes,
+					   src, nbytes);
 		else if (nbytes < walk.total)
 			nbytes &= ~(AES_BLOCK_SIZE - 1);
 
 		kernel_neon_begin();
 		aes_ctr_encrypt(dst, src, ctx->key_enc, rounds, nbytes,
-				walk.iv, buf);
+				walk.iv);
 		kernel_neon_end();
 
-		tail = nbytes % (STRIDE * AES_BLOCK_SIZE);
-		if (tail > 0 && tail < AES_BLOCK_SIZE)
-			/*
-			 * The final partial block could not be returned using
-			 * an overlapping store, so it was passed via buf[]
-			 * instead.
-			 */
-			memcpy(dst + nbytes - tail, buf, tail);
+		if (unlikely(nbytes < AES_BLOCK_SIZE))
+			memcpy(walk.dst.virt.addr,
+			       buf + sizeof(buf) - nbytes, nbytes);
 
 		err = skcipher_walk_done(&walk, walk.nbytes - nbytes);
 	}
