@@ -70,6 +70,9 @@
 #define N_SPI_MINORS		32	/* ... up to 256 */
 static int SPIDEV_MAJOR;
 
+/* Unused key value to avoid interfering with active keys */
+#define KEY_FINGERPRINT 0x2ee
+
 static DECLARE_BITMAP(minors, N_SPI_MINORS);
 static LIST_HEAD(device_list);
 static DEFINE_MUTEX(device_list_lock);
