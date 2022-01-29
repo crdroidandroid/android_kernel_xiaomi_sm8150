@@ -470,8 +470,9 @@ static irqreturn_t gf_irq(int irq, void *handle)
 	char msg = GF_NET_EVENT_IRQ;
 	uint32_t key_input = 0;
 
-	pr_debug("%s enter\n", __func__);
-	__pm_wakeup_event(&fp_wakelock, WAKELOCK_HOLD_TIME);
+	if (gf_dev->fb_black) {
+		__pm_wakeup_event(&fp_wakelock, WAKELOCK_HOLD_TIME);
+	}
 	sendnlmsg(&msg);
 
 	if ((gf_dev->wait_finger_down == true) && (gf_dev->device_available == 1) &&
