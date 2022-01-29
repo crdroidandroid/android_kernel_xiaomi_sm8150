@@ -3194,13 +3194,7 @@ enum Tfa98xx_Error tfaRunWaitCalibration(struct tfa_device *tfa, int *calibrateD
  * tfa_dev_start will only do the basics: Going from powerdown to operating or a profile switch.
  * for calibrating or akoustic shock handling use the tfa98xxCalibration function.
  */
-/*[nxp34663] CR: support 16bit/24bit/32bit audio data. begin*/
-#ifdef __KERNEL__
-enum tfa_error tfa_dev_start(struct tfa_device *tfa, int next_profile, int vstep, u8 pcm_format)
-#else
 enum tfa_error tfa_dev_start(struct tfa_device *tfa, int next_profile, int vstep)
-#endif
-/*[nxp34663] CR: support 16bit/24bit/32bit audio data. end*/
 {
 	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
 	int active_profile = -1;
@@ -3223,27 +3217,6 @@ enum tfa_error tfa_dev_start(struct tfa_device *tfa, int next_profile, int vstep
 		err = tfa98xx_aec_output(tfa, 1);
 		if (err != Tfa98xx_Error_Ok)
 			goto error_exit;
-	/*[nxp34663] CR: support 16bit/24bit/32bit audio data. begin*/
-#ifdef __KERNEL__
-	if ((tfa->tfa_family == 2) && (tfa->daimap & Tfa98xx_DAI_TDM)) {
-		//TFA_SET_BF(tfa, TDMSRCMAP, 2);	/*the TDMSRCMAP should be set in cnt file.*/
-		/* we should remove below settings from cnt file, otherwise will be overwrite by cnt file later.*/
-		if (pcm_format == 16) {
-			TFA_SET_BF(tfa, TDMNBCK, 0);
-			TFA_SET_BF(tfa, TDMSLLN, 15);
-			TFA_SET_BF(tfa, TDMSSIZE, 15);
-		} else if ((24 == pcm_format) || (pcm_format == 32)) {
-			TFA_SET_BF(tfa, TDMNBCK, 2);
-			TFA_SET_BF(tfa, TDMSLLN, 31);
-			TFA_SET_BF(tfa, TDMSSIZE, 31);
-		} else {
-			err = Tfa98xx_Error_Bad_Parameter;
-			goto error_exit;
-		}
-	}
-#endif
-	/*[nxp34663] CR: support 16bit/24bit/32bit audio data. end*/
-
 	}
 
 	if (tfa->bus != 0) { /* non i2c  */
@@ -3333,7 +3306,6 @@ error_exit:
 enum tfa_error tfa_dev_stop(struct tfa_device *tfa)
 {
 	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
-	int manstate = 0, retry = 0;
 
 	/* mute */
 	tfaRunMute(tfa);
@@ -3349,16 +3321,6 @@ enum tfa_error tfa_dev_stop(struct tfa_device *tfa)
 	/* disable I2S output on TFA1 devices without TDM */
 	err = tfa98xx_aec_output(tfa, 0);
 
-	/* added by nxp34663 beging. */
-	/* we should ensure the state machine in powerdown mode here. */
-	manstate = TFA_GET_BF(tfa, MANSTATE);
-	while ((manstate >= 4) && (retry < 100)) {
-		pr_debug("%s  waitting state machine goto powerdown.  MANSTATE=%d\n", __func__, manstate);
-		msleep_interruptible(10);
-		manstate = TFA_GET_BF(tfa, MANSTATE);
-		retry++;
-	}
-	/* added by nxp34663 end. */
 error_exit:
 	if (err != Tfa98xx_Error_Ok) {
 		pr_err("TFA98xx Error code is %d\n", err);
@@ -4355,11 +4317,7 @@ void tfa_adapt_noisemode(struct tfa_device *tfa)
 
 }
 
-#ifdef __KERNEL__
-int tfa_plop_noise_interrupt(struct tfa_device *tfa, int profile, int vstep, u8 pcm_format)
-#else
 int tfa_plop_noise_interrupt(struct tfa_device *tfa, int profile, int vstep)
-#endif
 {
 	enum tfa_error err;
 	int no_clk = 0;
@@ -4375,11 +4333,7 @@ int tfa_plop_noise_interrupt(struct tfa_device *tfa, int profile, int vstep)
 		if (no_clk == 1) {
 			/* Clock is lost. Set I2CR to remove POP noise */
 			pr_info("No clock detected. Resetting the I2CR to avoid pop on 72!\n");
-#ifdef __KERNEL__
-			err = tfa_dev_start(tfa, profile, vstep, pcm_format);
-#else
 			err = tfa_dev_start(tfa, profile, vstep);
-#endif
 			if (err != tfa_error_ok) {
 				pr_err("Error loading i2c registers (tfa_dev_start), err=%d\n", err);
 			} else {
