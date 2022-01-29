@@ -75,12 +75,14 @@ static LIST_HEAD(device_list);
 static DEFINE_MUTEX(device_list_lock);
 static struct wakeup_source fp_wakelock;
 static struct gf_dev gf;
+static struct task_struct *process;
 
 struct gf_key_map maps[] = {
 	{ EV_KEY, GF_KEY_INPUT_HOME },
 	{ EV_KEY, GF_KEY_INPUT_MENU },
 	{ EV_KEY, GF_KEY_INPUT_BACK },
 	{ EV_KEY, GF_KEY_INPUT_POWER },
+	{ EV_KEY, KEY_FINGERPRINT },
 #if defined(SUPPORT_NAV_EVENT)
 	{ EV_KEY, GF_NAV_INPUT_UP },
 	{ EV_KEY, GF_NAV_INPUT_DOWN },
@@ -504,6 +506,7 @@ static int gf_open(struct inode *inode, struct file *filp)
 	int err = 0;
 
 	mutex_lock(&device_list_lock);
+	process = current;
 
 	list_for_each_entry(gf_dev, &device_list, device_entry) {
 		if (gf_dev->devt == inode->i_rdev) {
@@ -607,6 +610,7 @@ static int gf_release(struct inode *inode, struct file *filp)
 	int status = 0;
 
 	pr_debug("%s\n", __func__);
+	process = NULL;
 	mutex_lock(&device_list_lock);
 	gf_dev = filp->private_data;
 	filp->private_data = NULL;
@@ -657,6 +661,13 @@ static const struct file_operations gf_fops = {
 #endif
 };
 
+static void set_fingerprintd_nice(int nice)
+{
+	if(process)	{
+		set_user_nice(process, nice);
+	}
+}
+
 
 static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 		unsigned long val, void *data)
@@ -677,6 +688,7 @@ static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 		blank = *(int *)(evdata->data);
 		switch (blank) {
 		case MSM_DRM_BLANK_POWERDOWN:
+			set_fingerprintd_nice(MIN_NICE);
 			if (gf_dev->device_available == 1) {
 				gf_dev->fb_black = 1;
 				gf_dev->wait_finger_down = true;
@@ -690,6 +702,7 @@ static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 			}
 			break;
 		case MSM_DRM_BLANK_UNBLANK:
+			set_fingerprintd_nice(0);
 			if (gf_dev->device_available == 1) {
 				gf_dev->fb_black = 0;
 #if defined(GF_NETLINK_ENABLE)
