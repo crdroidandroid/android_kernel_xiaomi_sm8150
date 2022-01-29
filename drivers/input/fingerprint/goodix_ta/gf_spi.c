@@ -175,12 +175,12 @@ static int gfspi_ioctl_clk_init(struct gf_dev *data)
 	data->clk_enabled = 0;
 	data->core_clk = clk_get(&data->spi->dev, "core_clk");
 	if (IS_ERR_OR_NULL(data->core_clk)) {
-		pr_err("%s: fail to get core_clk\n", __func__);
+		pr_debug("%s: fail to get core_clk\n", __func__);
 		return -EPERM;
 	}
 	data->iface_clk = clk_get(&data->spi->dev, "iface_clk");
 	if (IS_ERR_OR_NULL(data->iface_clk)) {
-		pr_err("%s: fail to get iface_clk\n", __func__);
+		pr_debug("%s: fail to get iface_clk\n", __func__);
 		clk_put(data->core_clk);
 		data->core_clk = NULL;
 		return -ENOENT;
@@ -199,13 +199,13 @@ static int gfspi_ioctl_clk_enable(struct gf_dev *data)
 
 	err = clk_prepare_enable(data->core_clk);
 	if (err) {
-		pr_err("%s: fail to enable core_clk\n", __func__);
+		pr_debug("%s: fail to enable core_clk\n", __func__);
 		return -EPERM;
 	}
 
 	err = clk_prepare_enable(data->iface_clk);
 	if (err) {
-		pr_err("%s: fail to enable iface_clk\n", __func__);
+		pr_debug("%s: fail to enable iface_clk\n", __func__);
 		clk_disable_unprepare(data->core_clk);
 		return -ENOENT;
 	}
@@ -770,7 +770,7 @@ static int gf_probe(struct platform_device *pdev)
 		/*input device subsystem */
 		gf_dev->input = input_allocate_device();
 		if (gf_dev->input == NULL) {
-			pr_err("%s, failed to allocate input device\n",
+			pr_debug("%s, failed to allocate input device\n",
 							__func__);
 			status = -ENOMEM;
 			goto error_dev;
@@ -782,7 +782,7 @@ static int gf_probe(struct platform_device *pdev)
 		gf_dev->input->name = GF_INPUT_NAME;
 		status = input_register_device(gf_dev->input);
 		if (status) {
-			pr_err("failed to register input device\n");
+			pr_debug("failed to register input device\n");
 			goto error_input;
 		}
 	}
