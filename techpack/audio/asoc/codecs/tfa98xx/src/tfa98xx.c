@@ -3944,7 +3944,6 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c,
 	int irq_flags;
 	unsigned int reg;
 	int ret;
-	int spk_name;
 
 	pr_debug("addr=0x%x\n", i2c->addr);
 
@@ -4003,9 +4002,6 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c,
 		if (ret)
 			return ret;
 	}
-
-	//Print spk_name and fw_name for debugging
-	pr_info("spk is %d, fw_name =%s\n", spk_name, fw_name);
 
 	/* Power up! */
 	tfa98xx_ext_reset(tfa98xx);
