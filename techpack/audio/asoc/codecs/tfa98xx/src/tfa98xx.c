@@ -35,8 +35,6 @@
  /* required for enum tfa9912_irq */
 #include "tfa98xx_tfafieldnames.h"
 
-#include "spk-id.h"
-
 #define TFA98XX_VERSION	TFA98XX_API_REV_STR
 
 #define I2C_RETRIES 50
@@ -55,9 +53,6 @@
 #define TFA98XX_FORMATS	(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
 
 #define TF98XX_MAX_DSP_START_TRY_COUNT	10
-
-#define TFA98XX_AAC_FW_NAME		"tfa98xx_aac.cnt"
-#define TFA98XX_GOER_FW_NAME		"tfa98xx_goer.cnt"
 
 /* data accessible by all instances */
 static struct kmem_cache *tfa98xx_cache;  /* Memory pool used for DSP messages */
@@ -120,57 +115,6 @@ static const struct tfa98xx_rate rate_to_fssel[] = {
 	{ 32000, 6 },
 	{ 44100, 7 },
 	{ 48000, 8 },
-};
-
-int nxp_spk_id_get(struct device_node *np)
-{
-	int id = VENDOR_ID_UNKNOWN;
-	int state = 3;
-
-	/*state = spk_id_get_pin_3state(np);
-	if (state < 0) {
-		pr_err("%s: Can not get id pin state, %d\n", __func__, state);
-		return VENDOR_ID_NONE;
-	}*/
-
-	switch (state) {
-	case PIN_PULL_DOWN:
-		id = VENDOR_ID_GOER;
-		break;
-	case PIN_PULL_UP:
-		id = VENDOR_ID_UNKNOWN;
-		break;
-	case PIN_FLOAT:
-		id = VENDOR_ID_AAC;
-		break;
-	default:
-		id = VENDOR_ID_NONE;
-		break;
-	}
-	return id;
-}
-
-static int nxp_vendor_id_get(struct snd_kcontrol *kcontrol,
-					struct snd_ctl_elem_value *ucontrol)
-{
-		struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-		struct tfa98xx *tfa98xx = snd_soc_codec_get_drvdata(codec);
-
-		ucontrol->value.integer.value[0] = VENDOR_ID_NONE;
-
-		if (tfa98xx->spk_id_gpio_p)
-			ucontrol->value.integer.value[0] = nxp_spk_id_get(tfa98xx->spk_id_gpio_p);
-		return 0;
-}
-
-static const char *const nxp_vendor_id_text[] = {"None", "AAC", "SSI", "GOER", "Unknown"};
-
-static const struct soc_enum nxp_vendor_id[] = {
-	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(nxp_vendor_id_text), nxp_vendor_id_text),
-};
-
-const struct snd_kcontrol_new nxp_spk_id_controls[] = {
-	SOC_ENUM_EXT("SPK ID", nxp_vendor_id, nxp_vendor_id_get, NULL),
 };
 
 static inline char *tfa_cont_profile_name(struct tfa98xx *tfa98xx, int prof_idx)
@@ -1771,12 +1715,7 @@ static int tfa98xx_create_controls(struct tfa98xx *tfa98xx)
 	ret = snd_soc_add_codec_controls(tfa98xx->codec, tfa987x_algo_controls, ARRAY_SIZE(tfa987x_algo_controls));
 	pr_info("create tfa987x_algo_controls  ret=%d", ret);
 #endif
-	if (!ret) {
-		ret = snd_soc_add_codec_controls(tfa98xx->codec,
-				nxp_spk_id_controls, ARRAY_SIZE(nxp_spk_id_controls));
-	}
 
-	return ret;
 }
 
 static void *tfa98xx_devm_kstrdup(struct device *dev, char *buf)
@@ -4065,24 +4004,8 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c,
 			return ret;
 	}
 
-	tfa98xx->spk_id_gpio_p = of_parse_phandle(np,
-				"nxp,spk-id-pin", 0);
-
-	if (!tfa98xx->spk_id_gpio_p) {
-		dev_err(&i2c->dev, "property %s not detected in node %s",
-				"nxp,spk-id-pin", np->full_name);
-	} else {
-		spk_name = nxp_spk_id_get(tfa98xx->spk_id_gpio_p);
-		if (spk_name == VENDOR_ID_AAC) {
-			fw_name = TFA98XX_AAC_FW_NAME;
-		}
-
-		if (spk_name == VENDOR_ID_GOER) {
-			fw_name = TFA98XX_GOER_FW_NAME;
-		}
-
-		dev_err(&i2c->dev, "spk is %d, fw_name =%s\n", spk_name, fw_name);
-	}
+	//Print spk_name and fw_name for debugging
+	pr_info("spk is %d, fw_name =%s\n", spk_name, fw_name);
 
 	/* Power up! */
 	tfa98xx_ext_reset(tfa98xx);
