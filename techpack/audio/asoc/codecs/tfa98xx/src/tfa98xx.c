@@ -1551,7 +1551,7 @@ const struct snd_kcontrol_new tfa987x_algo_controls[] = {
 static int tfa98xx_create_controls(struct tfa98xx *tfa98xx)
 {
 	int prof, nprof, mix_index = 0;
-	int  nr_controls = 0, id = 0;
+	int  nr_controls = 0, id = 0, ret = 0;
 	char *name;
 	struct tfa98xx_baseprofile *bprofile;
 
