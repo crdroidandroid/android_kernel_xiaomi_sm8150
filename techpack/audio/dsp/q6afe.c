@@ -663,7 +663,7 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 		uint32_t *payload;
 		uint16_t port_id = 0;
 
-		payload = data->payload;
+		//Disable payload data gathering
 		if (data->opcode == APR_BASIC_RSP_RESULT) {
 			pr_debug("%s:opcode = 0x%x cmd = 0x%x status = 0x%x token=%d\n",
 				__func__, data->opcode,
