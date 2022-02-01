@@ -1479,75 +1479,6 @@ static int tfa98xx_get_cal_ctl(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-#ifdef TFA_NON_DSP_SOLUTION
-static atomic_t g_bypass;
-static atomic_t g_Tx_enable;
-extern int send_tfa_cal_set_bypass(void *buf, int cmd_size);
-extern int send_tfa_cal_set_tx_enable(void *buf, int cmd_size);
-
-/*************bypass control***************/
-static int tfa987x_algo_get_status(struct snd_kcontrol *kcontrol,
-					   struct snd_ctl_elem_value *ucontrol)
-{
-	int32_t ret = 0;
-
-	ucontrol->value.integer.value[0] = atomic_read(&g_bypass);
-	return ret;
-}
-
-static int tfa987x_algo_set_status(struct snd_kcontrol *kcontrol,
-					   struct snd_ctl_elem_value *ucontrol)
-{
-	int32_t ret = 0;
-	u8 buff[56] = {0}, *ptr = buff;
-	((int32_t *)buff)[0] = ucontrol->value.integer.value[0];
-	atomic_set(&g_bypass, ((int32_t *)buff)[0]);
-	ret = send_tfa_cal_set_bypass(ptr, 4);
-	return ret;
-}
-
-static int tfa987x_algo_set_tx_enable(struct snd_kcontrol *kcontrol,
-					   struct snd_ctl_elem_value *ucontrol)
-{
-	int32_t ret = 0;
-	u8 buff[56] = {0}, *ptr = buff;
-	((int32_t *)buff)[0] = ucontrol->value.integer.value[0];
-	atomic_set(&g_Tx_enable, ((int32_t *)buff)[0]);
-	ret = send_tfa_cal_set_tx_enable(ptr, 4);
-	return ret;
-}
-
-static int tfa987x_algo_get_tx_status(struct snd_kcontrol *kcontrol,
-					   struct snd_ctl_elem_value *ucontrol)
-{
-	int32_t ret = 0;
-
-	ucontrol->value.integer.value[0] = atomic_read(&g_Tx_enable);
-	return ret;
-}
-
-static const char *tfa987x_algo_text[] = {
-	"DISABLE", "ENABLE"
-};
-
-static const char *tfa987x_tx_text[] = {
-	"DISABLE", "ENABLE"
-};
-
-static const struct soc_enum tfa987x_algo_enum[] = {
-	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(tfa987x_algo_text), tfa987x_algo_text)
-};
-
-static const struct soc_enum tfa987x_tx_enum[] = {
-	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(tfa987x_tx_text), tfa987x_tx_text)
-};
-
-const struct snd_kcontrol_new tfa987x_algo_controls[] = {
-	SOC_ENUM_EXT("TFA987X_ALGO_STATUS", tfa987x_algo_enum[0], tfa987x_algo_get_status, tfa987x_algo_set_status),
-	SOC_ENUM_EXT("TFA987X_TX_ENABLE", tfa987x_tx_enum[0], tfa987x_algo_get_tx_status, tfa987x_algo_set_tx_enable)
-};
-#endif
-
 static int tfa98xx_create_controls(struct tfa98xx *tfa98xx)
 {
 	int prof, nprof, mix_index = 0;
@@ -1690,11 +1621,6 @@ static int tfa98xx_create_controls(struct tfa98xx *tfa98xx)
 #else
 	return snd_soc_add_codec_controls(tfa98xx->codec,
 		tfa98xx_controls, mix_index);
-#endif
-
-#ifdef TFA_NON_DSP_SOLUTION
-	ret = snd_soc_add_codec_controls(tfa98xx->codec, tfa987x_algo_controls, ARRAY_SIZE(tfa987x_algo_controls));
-	pr_info("create tfa987x_algo_controls  ret=%d", ret);
 #endif
 
 }
@@ -2753,71 +2679,6 @@ static int tfa98xx_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-#ifdef TFA_NON_DSP_SOLUTION
-extern int send_tfa_cal_in_band(void *buf, int cmd_size);
-static uint8_t bytes[3*3+1] = {0};
-
-enum Tfa98xx_Error tfa98xx_adsp_send_calib_values(void)
-{
-	struct tfa98xx *tfa98xx;
-	int ret = 0;
-	int value = 0, nr, dsp_cal_value = 0;
-
-	/* if the calibration value was sent to host DSP, we clear flag only (stereo case). */
-	if ((tfa98xx_device_count > 1) && (tfa98xx_device_count == bytes[0])) {
-		bytes[0] = 0;
-		return Tfa98xx_Error_Ok;
-	}
-
-	nr = 4;
-	/* read calibrated impendance from all devices. */
-	list_for_each_entry(tfa98xx, &tfa98xx_device_list, list) {
-		struct tfa_device *tfa = tfa98xx->tfa;
-
-		if (TFA_GET_BF(tfa, MTPEX) == 1) {
-			value = tfa_dev_mtp_get(tfa, TFA_MTP_RE25);
-			dsp_cal_value = (value * 65536) / 1000;
-
-			bytes[nr++] = (uint8_t)((dsp_cal_value >> 16) & 0xff);
-			bytes[nr++] = (uint8_t)((dsp_cal_value >> 8) & 0xff);
-			bytes[nr++] = (uint8_t)(dsp_cal_value & 0xff);
-			bytes[0] += 1;
-		}
-	}
-
-	/*for mono case, we will copy primary channel data to secondary channel. */
-	if (tfa98xx_device_count == 1) {
-		memcpy(&bytes[7], &bytes[4], sizeof(char)*3);
-	}
-
-	/* we will send it to host DSP algorithm once calibraion value loaded from all device. */
-	if (tfa98xx_device_count == bytes[0]) {
-		bytes[1] = 0x00;
-		bytes[2] = 0x81;
-		bytes[3] = 0x05;
-
-		ret = send_tfa_cal_in_band(&bytes[1], sizeof(bytes) - 1);
-		msleep(10);
-
-		/* for mono case, we should clear flag here. */
-		if (tfa98xx_device_count == 1)
-			bytes[0] = 0;
-
-	} else {
-		ret = Tfa98xx_Error_Bad_Parameter;
-	}
-
-	return ret;
-}
-
-static int tfa98xx_send_mute_cmd(void)
-{
-	uint8_t cmd[9] = {0x04, 0x81, 0x04,  0x00, 0x00, 0xff, 0x00, 0x00, 0xff};
-
-	return send_tfa_cal_in_band(&cmd[0], sizeof(cmd));
-}
-#endif
-
 static int tfa98xx_mute(struct snd_soc_dai *dai, int mute, int stream)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
@@ -2856,10 +2717,6 @@ static int tfa98xx_mute(struct snd_soc_dai *dai, int mute, int stream)
 		if (tfa98xx->dsp_fw_state != TFA98XX_DSP_FW_OK)
 			return 0;
 		mutex_lock(&tfa98xx->dsp_lock);
-#ifdef TFA_NON_DSP_SOLUTION
-		tfa98xx_send_mute_cmd();
-		msleep(60);
-#endif
 		tfa_dev_stop(tfa98xx->tfa);
 		tfa98xx->dsp_init = TFA98XX_DSP_INIT_STOPPED;
 		mutex_unlock(&tfa98xx->dsp_lock);
@@ -2868,11 +2725,6 @@ static int tfa98xx_mute(struct snd_soc_dai *dai, int mute, int stream)
 	} else {
 		if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			tfa98xx->pstream = 1;
-#ifdef TFA_NON_DSP_SOLUTION
-			if (tfa98xx->tfa->is_probus_device) {
-				tfa98xx_adsp_send_calib_values();
-			}
-#endif
 		} else {
 			tfa98xx->cstream = 1;
 		}
