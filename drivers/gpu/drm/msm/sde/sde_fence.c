@@ -277,8 +277,6 @@ struct sde_fence_context *sde_fence_init(const char *name, uint32_t drm_id)
 		return ERR_PTR(-ENOMEM);
 	}
 
-	kmem_fence_pool = KMEM_CACHE(sde_fence, SLAB_HWCACHE_ALIGN | SLAB_PANIC);
-
 #ifdef CONFIG_FENCE_DEBUG
 	strlcpy(ctx->name, name, ARRAY_SIZE(ctx->name));
 #endif
