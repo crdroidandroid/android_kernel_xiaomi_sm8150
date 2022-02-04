@@ -696,7 +696,6 @@ LLVM_NM		:= llvm-nm
 export LLVM_AR LLVM_NM
 
 # Set O3 optimization level for LTO
-LDFLAGS		+= -O3
 LDFLAGS		+= --plugin-opt=O3
 endif
 
