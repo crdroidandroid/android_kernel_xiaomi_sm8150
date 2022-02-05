@@ -709,7 +709,10 @@ static ssize_t tfa98xx_dbgfs_rpc_read(struct file *file,
 	}
 
 	mutex_lock(&tfa98xx->dsp_lock);
-	error = tfa_dsp_msg_read(tfa98xx->tfa, count, buffer);
+	if (tfa98xx->tfa->is_probus_device) {
+		error = tfa_dsp_msg_read(tfa98xx->tfa, count, buffer);
+	}
+
 	mutex_unlock(&tfa98xx->dsp_lock);
 	if (error != Tfa98xx_Error_Ok) {
 		pr_debug("[0x%x] tfa_dsp_msg_read error: %d\n", tfa98xx->i2c->addr, error);
@@ -755,7 +758,18 @@ static ssize_t tfa98xx_dbgfs_rpc_send(struct file *file,
 	if (copy_from_user(msg_file->data, user_buf, count))
 		return -EFAULT;
 
+	if (tfa98xx->tfa->is_probus_device) {
 		mutex_lock(&tfa98xx->dsp_lock);
+		if (error != Tfa98xx_Error_Ok) {
+			pr_debug("[0x%x] dsp_msg error: %d\n", tfa98xx->i2c->addr, error);
+			err = -EIO;
+		}
+		mutex_unlock(&tfa98xx->dsp_lock);
+		mdelay(2);
+
+	} else {
+		mutex_lock(&tfa98xx->dsp_lock);
+
 		if ((msg_file->data[0] == 'M') && (msg_file->data[1] == 'G')) {
 			error = tfaContWriteFile(tfa98xx->tfa, msg_file, 0, 0); /* int vstep_idx, int vstep_msg_idx both 0 */
 			if (error != Tfa98xx_Error_Ok) {
@@ -3288,6 +3302,7 @@ static int tfa98xx_misc_device_rpc_open(struct inode *inode, struct file *file)
 	}
 }
 
+
 static ssize_t tfa98xx_misc_device_rpc_read(struct file *file, char __user *user_buf,
 											size_t count, loff_t *ppos)
 {
@@ -3301,9 +3316,6 @@ static ssize_t tfa98xx_misc_device_rpc_read(struct file *file, char __user *user
 		return -ENOMEM;
 	}
 
-	mutex_lock(&tfa98xx->dsp_lock);
-
-	mutex_unlock(&tfa98xx->dsp_lock);
 	if (ret) {
 		pr_err("[0x%x] dsp_msg_read error: %d\n", tfa98xx->i2c->addr, ret);
 		kfree(buffer);
@@ -3338,12 +3350,6 @@ static ssize_t tfa98xx_misc_device_rpc_write(struct file *file, const char __use
 	if (copy_from_user(buffer, user_buf, count))
 		return -EFAULT;
 
-	mutex_lock(&tfa98xx->dsp_lock);
-
-	mdelay(2);
-
-	mutex_unlock(&tfa98xx->dsp_lock);
-
 	kfree(buffer);
 
 	if (err)
@@ -3374,6 +3380,7 @@ enum Tfa98xx_Error tfa98xx_read_data_from_hostdsp(struct tfa_device *tfa,
 	}
 	buffer[nr++] = module_id + 128;
 	buffer[nr++] = param_id;
+
 	return Tfa98xx_Error_Ok;
 }
 
@@ -3484,7 +3491,9 @@ static int tfa98xx_read_memtrack_data(struct tfa98xx *tfa98xx, int *pLivedata)
 
 		pr_info("send command to dsp to build memtrack structure.\n");
 		/* send command to host dsp. */
-		ret = tfa_dsp_msg(tfa98xx->tfa, item_bytes + 6, buffer);
+		if (tfa98xx->tfa->is_probus_device) {
+			ret = tfa_dsp_msg(tfa98xx->tfa, item_bytes + 6, buffer);
+		}
 
 		if (Tfa98xx_Error_Ok == ret) {
 			/* step 2: read livedata from dsp. */
