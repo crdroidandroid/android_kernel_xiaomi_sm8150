@@ -9,7 +9,7 @@ restore='\033[0m'
 clear
 
 # Resources
-export CLANG_PATH=/datadrive/sov/prebuilts/clang/host/linux-x86/clang-dora/bin
+export CLANG_PATH=/datadrive/sov/prebuilts/clang/host/linux-x86/clang-azure/bin
 export PATH=${CLANG_PATH}:${PATH}
 export CROSS_COMPILE=${CLANG_PATH}/aarch64-linux-gnu-
 export CROSS_COMPILE_ARM32=${CLANG_PATH}/arm-linux-gnueabi-
