@@ -1,4 +1,5 @@
-ccflags-y := -D'pr_fmt(fmt)=KBUILD_MODNAME ": " fmt'
+ccflags-y := -Ofast
+ccflags-y += -D'pr_fmt(fmt)=KBUILD_MODNAME ": " fmt'
 ccflags-$(CONFIG_WIREGUARD_DEBUG) += -DDEBUG
 wireguard-y := main.o
 wireguard-y += noise.o
