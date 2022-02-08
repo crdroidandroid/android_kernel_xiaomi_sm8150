@@ -281,6 +281,10 @@ struct ftrace_likely_data {
 #define __nocfi
 #endif
 
+#ifndef __pass_object_size
+#define __pass_object_size(type)
+#endif
+
 /*
  * Assume alignment of return value.
  */
