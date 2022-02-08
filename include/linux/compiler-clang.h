@@ -73,3 +73,7 @@
 #if __has_attribute(__overloadable__)
 # define __overloadable __attribute__((__overloadable__))
 #endif
+
+#if __has_attribute(__diagnose_as_builtin__)
+# define __diagnose_as(builtin...) __attribute__((__diagnose_as_builtin__(builtin)))
+#endif
