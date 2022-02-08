@@ -32,7 +32,9 @@
  */
 struct kgsl_sync_timeline {
 	struct kref kref;
+#ifdef CONFIG_FENCE_DEBUG
 	char name[KGSL_TIMELINE_NAME_LEN];
+#endif
 
 	u64 fence_context;
 
@@ -92,7 +94,8 @@ void kgsl_sync_timeline_destroy(struct kgsl_context *context);
 void kgsl_sync_timeline_put(struct kgsl_sync_timeline *ktimeline);
 
 struct kgsl_sync_fence_cb *kgsl_sync_fence_async_wait(int fd,
-					bool (*func)(void *priv), void *priv);
+					bool (*func)(void *priv), void *priv,
+					struct event_fence_info *info_ptr);
 
 void kgsl_sync_fence_async_cancel(struct kgsl_sync_fence_cb *kcb);
 
@@ -134,7 +137,8 @@ static inline void kgsl_sync_timeline_put(struct kgsl_sync_timeline *ktimeline)
 
 
 static inline struct kgsl_sync_fence_cb *kgsl_sync_fence_async_wait(int fd,
-					bool (*func)(void *priv), void *priv)
+					bool (*func)(void *priv), void *priv,
+					struct event_fence_info *info_ptr)
 {
 	return NULL;
 }

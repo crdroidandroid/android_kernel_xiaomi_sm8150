@@ -35,8 +35,6 @@
  /* required for enum tfa9912_irq */
 #include "tfa98xx_tfafieldnames.h"
 
-#include "spk-id.h"
-
 #define TFA98XX_VERSION	TFA98XX_API_REV_STR
 
 #define I2C_RETRIES 50
@@ -55,9 +53,6 @@
 #define TFA98XX_FORMATS	(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
 
 #define TF98XX_MAX_DSP_START_TRY_COUNT	10
-
-#define TFA98XX_AAC_FW_NAME		"tfa98xx_aac.cnt"
-#define TFA98XX_GOER_FW_NAME		"tfa98xx_goer.cnt"
 
 /* data accessible by all instances */
 static struct kmem_cache *tfa98xx_cache;  /* Memory pool used for DSP messages */
@@ -120,57 +115,6 @@ static const struct tfa98xx_rate rate_to_fssel[] = {
 	{ 32000, 6 },
 	{ 44100, 7 },
 	{ 48000, 8 },
-};
-
-int nxp_spk_id_get(struct device_node *np)
-{
-	int id = VENDOR_ID_UNKNOWN;
-	int state = 3;
-
-	/*state = spk_id_get_pin_3state(np);
-	if (state < 0) {
-		pr_err("%s: Can not get id pin state, %d\n", __func__, state);
-		return VENDOR_ID_NONE;
-	}*/
-
-	switch (state) {
-	case PIN_PULL_DOWN:
-		id = VENDOR_ID_GOER;
-		break;
-	case PIN_PULL_UP:
-		id = VENDOR_ID_UNKNOWN;
-		break;
-	case PIN_FLOAT:
-		id = VENDOR_ID_AAC;
-		break;
-	default:
-		id = VENDOR_ID_NONE;
-		break;
-	}
-	return id;
-}
-
-static int nxp_vendor_id_get(struct snd_kcontrol *kcontrol,
-					struct snd_ctl_elem_value *ucontrol)
-{
-		struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-		struct tfa98xx *tfa98xx = snd_soc_codec_get_drvdata(codec);
-
-		ucontrol->value.integer.value[0] = VENDOR_ID_NONE;
-
-		if (tfa98xx->spk_id_gpio_p)
-			ucontrol->value.integer.value[0] = nxp_spk_id_get(tfa98xx->spk_id_gpio_p);
-		return 0;
-}
-
-static const char *const nxp_vendor_id_text[] = {"None", "AAC", "SSI", "GOER", "Unknown"};
-
-static const struct soc_enum nxp_vendor_id[] = {
-	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(nxp_vendor_id_text), nxp_vendor_id_text),
-};
-
-const struct snd_kcontrol_new nxp_spk_id_controls[] = {
-	SOC_ENUM_EXT("SPK ID", nxp_vendor_id, nxp_vendor_id_get, NULL),
 };
 
 static inline char *tfa_cont_profile_name(struct tfa98xx *tfa98xx, int prof_idx)
@@ -739,7 +683,6 @@ static ssize_t tfa98xx_dbgfs_fw_state_get(struct file *file,
 	return simple_read_from_buffer(user_buf, count, ppos, str, strlen(str));
 }
 
-extern int send_tfa_cal_apr(void *buf, int cmd_size, bool bRead);
 
 static ssize_t tfa98xx_dbgfs_rpc_read(struct file *file,
 	char __user *user_buf, size_t count,
@@ -766,12 +709,10 @@ static ssize_t tfa98xx_dbgfs_rpc_read(struct file *file,
 	}
 
 	mutex_lock(&tfa98xx->dsp_lock);
-
 	if (tfa98xx->tfa->is_probus_device) {
-		error = send_tfa_cal_apr(buffer, count, true);
-	} else {
 		error = tfa_dsp_msg_read(tfa98xx->tfa, count, buffer);
 	}
+
 	mutex_unlock(&tfa98xx->dsp_lock);
 	if (error != Tfa98xx_Error_Ok) {
 		pr_debug("[0x%x] tfa_dsp_msg_read error: %d\n", tfa98xx->i2c->addr, error);
@@ -819,14 +760,13 @@ static ssize_t tfa98xx_dbgfs_rpc_send(struct file *file,
 
 	if (tfa98xx->tfa->is_probus_device) {
 		mutex_lock(&tfa98xx->dsp_lock);
-		error = send_tfa_cal_apr(msg_file->data, msg_file->size, false);
 		if (error != Tfa98xx_Error_Ok) {
 			pr_debug("[0x%x] dsp_msg error: %d\n", tfa98xx->i2c->addr, error);
 			err = -EIO;
 		}
 		mutex_unlock(&tfa98xx->dsp_lock);
-
 		mdelay(2);
+
 	} else {
 		mutex_lock(&tfa98xx->dsp_lock);
 
@@ -1553,82 +1493,12 @@ static int tfa98xx_get_cal_ctl(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-#ifdef TFA_NON_DSP_SOLUTION
-static atomic_t g_bypass;
-static atomic_t g_Tx_enable;
-extern int send_tfa_cal_set_bypass(void *buf, int cmd_size);
-extern int send_tfa_cal_set_tx_enable(void *buf, int cmd_size);
-
-/*************bypass control***************/
-static int tfa987x_algo_get_status(struct snd_kcontrol *kcontrol,
-					   struct snd_ctl_elem_value *ucontrol)
-{
-	int32_t ret = 0;
-
-	ucontrol->value.integer.value[0] = atomic_read(&g_bypass);
-	return ret;
-}
-
-static int tfa987x_algo_set_status(struct snd_kcontrol *kcontrol,
-					   struct snd_ctl_elem_value *ucontrol)
-{
-	int32_t ret = 0;
-	u8 buff[56] = {0}, *ptr = buff;
-	((int32_t *)buff)[0] = ucontrol->value.integer.value[0];
-	atomic_set(&g_bypass, ((int32_t *)buff)[0]);
-	ret = send_tfa_cal_set_bypass(ptr, 4);
-	return ret;
-}
-
-static int tfa987x_algo_set_tx_enable(struct snd_kcontrol *kcontrol,
-					   struct snd_ctl_elem_value *ucontrol)
-{
-	int32_t ret = 0;
-	u8 buff[56] = {0}, *ptr = buff;
-	((int32_t *)buff)[0] = ucontrol->value.integer.value[0];
-	atomic_set(&g_Tx_enable, ((int32_t *)buff)[0]);
-	ret = send_tfa_cal_set_tx_enable(ptr, 4);
-	return ret;
-}
-
-static int tfa987x_algo_get_tx_status(struct snd_kcontrol *kcontrol,
-					   struct snd_ctl_elem_value *ucontrol)
-{
-	int32_t ret = 0;
-
-	ucontrol->value.integer.value[0] = atomic_read(&g_Tx_enable);
-	return ret;
-}
-
-static const char *tfa987x_algo_text[] = {
-	"DISABLE", "ENABLE"
-};
-
-static const char *tfa987x_tx_text[] = {
-	"DISABLE", "ENABLE"
-};
-
-static const struct soc_enum tfa987x_algo_enum[] = {
-	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(tfa987x_algo_text), tfa987x_algo_text)
-};
-
-static const struct soc_enum tfa987x_tx_enum[] = {
-	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(tfa987x_tx_text), tfa987x_tx_text)
-};
-
-const struct snd_kcontrol_new tfa987x_algo_controls[] = {
-	SOC_ENUM_EXT("TFA987X_ALGO_STATUS", tfa987x_algo_enum[0], tfa987x_algo_get_status, tfa987x_algo_set_status),
-	SOC_ENUM_EXT("TFA987X_TX_ENABLE", tfa987x_tx_enum[0], tfa987x_algo_get_tx_status, tfa987x_algo_set_tx_enable)
-};
-#endif
-
 static int tfa98xx_create_controls(struct tfa98xx *tfa98xx)
 {
 	int prof, nprof, mix_index = 0;
 	int  nr_controls = 0, id = 0;
 	char *name;
 	struct tfa98xx_baseprofile *bprofile;
-	int ret = 0;
 
 	/* Create the following controls:
 	 *  - enum control to select the active profile
@@ -1767,16 +1637,6 @@ static int tfa98xx_create_controls(struct tfa98xx *tfa98xx)
 		tfa98xx_controls, mix_index);
 #endif
 
-#ifdef TFA_NON_DSP_SOLUTION
-	ret = snd_soc_add_codec_controls(tfa98xx->codec, tfa987x_algo_controls, ARRAY_SIZE(tfa987x_algo_controls));
-	pr_info("create tfa987x_algo_controls  ret=%d", ret);
-#endif
-	if (!ret) {
-		ret = snd_soc_add_codec_controls(tfa98xx->codec,
-				nxp_spk_id_controls, ARRAY_SIZE(nxp_spk_id_controls));
-	}
-
-	return ret;
 }
 
 static void *tfa98xx_devm_kstrdup(struct device *dev, char *buf)
@@ -2833,71 +2693,6 @@ static int tfa98xx_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-#ifdef TFA_NON_DSP_SOLUTION
-extern int send_tfa_cal_in_band(void *buf, int cmd_size);
-static uint8_t bytes[3*3+1] = {0};
-
-enum Tfa98xx_Error tfa98xx_adsp_send_calib_values(void)
-{
-	struct tfa98xx *tfa98xx;
-	int ret = 0;
-	int value = 0, nr, dsp_cal_value = 0;
-
-	/* if the calibration value was sent to host DSP, we clear flag only (stereo case). */
-	if ((tfa98xx_device_count > 1) && (tfa98xx_device_count == bytes[0])) {
-		bytes[0] = 0;
-		return Tfa98xx_Error_Ok;
-	}
-
-	nr = 4;
-	/* read calibrated impendance from all devices. */
-	list_for_each_entry(tfa98xx, &tfa98xx_device_list, list) {
-		struct tfa_device *tfa = tfa98xx->tfa;
-
-		if (TFA_GET_BF(tfa, MTPEX) == 1) {
-			value = tfa_dev_mtp_get(tfa, TFA_MTP_RE25);
-			dsp_cal_value = (value * 65536) / 1000;
-
-			bytes[nr++] = (uint8_t)((dsp_cal_value >> 16) & 0xff);
-			bytes[nr++] = (uint8_t)((dsp_cal_value >> 8) & 0xff);
-			bytes[nr++] = (uint8_t)(dsp_cal_value & 0xff);
-			bytes[0] += 1;
-		}
-	}
-
-	/*for mono case, we will copy primary channel data to secondary channel. */
-	if (tfa98xx_device_count == 1) {
-		memcpy(&bytes[7], &bytes[4], sizeof(char)*3);
-	}
-
-	/* we will send it to host DSP algorithm once calibraion value loaded from all device. */
-	if (tfa98xx_device_count == bytes[0]) {
-		bytes[1] = 0x00;
-		bytes[2] = 0x81;
-		bytes[3] = 0x05;
-
-		ret = send_tfa_cal_in_band(&bytes[1], sizeof(bytes) - 1);
-		msleep(10);
-
-		/* for mono case, we should clear flag here. */
-		if (tfa98xx_device_count == 1)
-			bytes[0] = 0;
-
-	} else {
-		ret = Tfa98xx_Error_Bad_Parameter;
-	}
-
-	return ret;
-}
-
-static int tfa98xx_send_mute_cmd(void)
-{
-	uint8_t cmd[9] = {0x04, 0x81, 0x04,  0x00, 0x00, 0xff, 0x00, 0x00, 0xff};
-
-	return send_tfa_cal_in_band(&cmd[0], sizeof(cmd));
-}
-#endif
-
 static int tfa98xx_mute(struct snd_soc_dai *dai, int mute, int stream)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
@@ -2936,10 +2731,6 @@ static int tfa98xx_mute(struct snd_soc_dai *dai, int mute, int stream)
 		if (tfa98xx->dsp_fw_state != TFA98XX_DSP_FW_OK)
 			return 0;
 		mutex_lock(&tfa98xx->dsp_lock);
-#ifdef TFA_NON_DSP_SOLUTION
-		tfa98xx_send_mute_cmd();
-		msleep(60);
-#endif
 		tfa_dev_stop(tfa98xx->tfa);
 		tfa98xx->dsp_init = TFA98XX_DSP_INIT_STOPPED;
 		mutex_unlock(&tfa98xx->dsp_lock);
@@ -2948,11 +2739,6 @@ static int tfa98xx_mute(struct snd_soc_dai *dai, int mute, int stream)
 	} else {
 		if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			tfa98xx->pstream = 1;
-#ifdef TFA_NON_DSP_SOLUTION
-			if (tfa98xx->tfa->is_probus_device) {
-				tfa98xx_adsp_send_calib_values();
-			}
-#endif
 		} else {
 			tfa98xx->cstream = 1;
 		}
@@ -3516,7 +3302,6 @@ static int tfa98xx_misc_device_rpc_open(struct inode *inode, struct file *file)
 	}
 }
 
-extern int send_tfa_cal_apr(void *buf, int cmd_size, bool bRead);
 
 static ssize_t tfa98xx_misc_device_rpc_read(struct file *file, char __user *user_buf,
 											size_t count, loff_t *ppos)
@@ -3531,11 +3316,6 @@ static ssize_t tfa98xx_misc_device_rpc_read(struct file *file, char __user *user
 		return -ENOMEM;
 	}
 
-	mutex_lock(&tfa98xx->dsp_lock);
-
-	ret = send_tfa_cal_apr(buffer, count, true);
-
-	mutex_unlock(&tfa98xx->dsp_lock);
 	if (ret) {
 		pr_err("[0x%x] dsp_msg_read error: %d\n", tfa98xx->i2c->addr, ret);
 		kfree(buffer);
@@ -3570,17 +3350,6 @@ static ssize_t tfa98xx_misc_device_rpc_write(struct file *file, const char __use
 	if (copy_from_user(buffer, user_buf, count))
 		return -EFAULT;
 
-	mutex_lock(&tfa98xx->dsp_lock);
-
-	err = send_tfa_cal_apr(buffer, count, false);
-	if (err) {
-		pr_err("[0x%x] dsp_msg error: %d\n", tfa98xx->i2c->addr, err);
-	}
-
-	mdelay(2);
-
-	mutex_unlock(&tfa98xx->dsp_lock);
-
 	kfree(buffer);
 
 	if (err)
@@ -3593,7 +3362,6 @@ enum Tfa98xx_Error tfa98xx_read_data_from_hostdsp(struct tfa_device *tfa,
 						unsigned char param_id, int num_bytes,
 						unsigned char data[])
 {
-	int error;
 	unsigned char buffer[3];
 	int nr = 0;
 
@@ -3613,15 +3381,6 @@ enum Tfa98xx_Error tfa98xx_read_data_from_hostdsp(struct tfa_device *tfa,
 	buffer[nr++] = module_id + 128;
 	buffer[nr++] = param_id;
 
-	error = send_tfa_cal_apr(buffer, sizeof(buffer), false);
-	if (error)
-		return Tfa98xx_Error_Bad_Parameter;
-	mdelay(5);
-
-	/* read the data from the dsp */
-	error = send_tfa_cal_apr(data, sizeof(num_bytes), true);
-	if (error)
-		return Tfa98xx_Error_Bad_Parameter;
 	return Tfa98xx_Error_Ok;
 }
 
@@ -3732,13 +3491,9 @@ static int tfa98xx_read_memtrack_data(struct tfa98xx *tfa98xx, int *pLivedata)
 
 		pr_info("send command to dsp to build memtrack structure.\n");
 		/* send command to host dsp. */
-	if (tfa98xx->tfa->is_probus_device) {
-	    send_tfa_cal_apr(buffer, item_bytes + 6, false);
-			send_to_dsp_count = 0;
-			mdelay(5);
-	} else {
-		ret = tfa_dsp_msg(tfa98xx->tfa, item_bytes + 6, buffer);
-	}
+		if (tfa98xx->tfa->is_probus_device) {
+			ret = tfa_dsp_msg(tfa98xx->tfa, item_bytes + 6, buffer);
+		}
 
 		if (Tfa98xx_Error_Ok == ret) {
 			/* step 2: read livedata from dsp. */
@@ -4005,7 +3760,6 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c,
 	int irq_flags;
 	unsigned int reg;
 	int ret;
-	int spk_name;
 
 	pr_debug("addr=0x%x\n", i2c->addr);
 
@@ -4065,25 +3819,6 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c,
 			return ret;
 	}
 
-	tfa98xx->spk_id_gpio_p = of_parse_phandle(np,
-				"nxp,spk-id-pin", 0);
-
-	if (!tfa98xx->spk_id_gpio_p) {
-		dev_err(&i2c->dev, "property %s not detected in node %s",
-				"nxp,spk-id-pin", np->full_name);
-	} else {
-		spk_name = nxp_spk_id_get(tfa98xx->spk_id_gpio_p);
-		if (spk_name == VENDOR_ID_AAC) {
-			fw_name = TFA98XX_AAC_FW_NAME;
-		}
-
-		if (spk_name == VENDOR_ID_GOER) {
-			fw_name = TFA98XX_GOER_FW_NAME;
-		}
-
-		dev_err(&i2c->dev, "spk is %d, fw_name =%s\n", spk_name, fw_name);
-	}
-
 	/* Power up! */
 	tfa98xx_ext_reset(tfa98xx);
 
@@ -4114,7 +3849,7 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c,
 			pr_info("TFA9874 detected\n");
 			tfa98xx->flags |= TFA98XX_FLAG_MULTI_MIC_INPUTS;
 			tfa98xx->flags |= TFA98XX_FLAG_CALIBRATION_CTL;
-			tfa98xx->flags |= TFA98XX_FLAG_SKIP_INTERRUPTS;
+			/* tfa98xx->flags |= TFA98XX_FLAG_SKIP_INTERRUPTS; */
 			tfa98xx->flags |= TFA98XX_FLAG_TDM_DEVICE;
 			break;
 		case 0x75: /* tfa9875*/

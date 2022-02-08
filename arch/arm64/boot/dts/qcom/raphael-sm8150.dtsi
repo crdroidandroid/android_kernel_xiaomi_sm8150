@@ -120,7 +120,7 @@ And public attribution of xiaomi platforms(like F1 and so and)
 &qupv3_se1_i2c {
 	status = "ok";
 	tfa98xx@34 {
-		compatible = "nxp,tfa98xx";
+		compatible = "tfa,tfa98xx";
 		reset-gpio = <&tlmm 59 0>;
 		irq-gpio = <&tlmm 141 0>;
 		interrupt-parent = <&tlmm>;

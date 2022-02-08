@@ -67,7 +67,7 @@ static unsigned int counter_delta(struct kgsl_device *device,
 
 static struct devfreq_msm_adreno_tz_data adreno_tz_data = {
 	.bus = {
-		.max = 350,
+		.max = 1200,
 	},
 	.device_id = KGSL_DEVICE_3D0,
 };
@@ -1011,8 +1011,13 @@ static int adreno_of_get_power(struct adreno_device *adreno_dev,
 		&device->pwrctrl.pm_qos_wakeup_latency))
 		device->pwrctrl.pm_qos_wakeup_latency = 101;
 
+	/* override these */
+	device->pwrctrl.pm_qos_active_latency = 1000;
+	device->pwrctrl.pm_qos_cpu_mask_latency = 1000;
+	device->pwrctrl.pm_qos_wakeup_latency = 100;
+
 	if (of_property_read_u32(node, "qcom,idle-timeout", &timeout))
-		timeout = 80;
+		timeout = 58;
 
 	device->pwrctrl.interval_timeout = msecs_to_jiffies(timeout);
 
@@ -1752,9 +1757,6 @@ static int _adreno_start(struct adreno_device *adreno_dev)
 
 	regulator_left_on = regulators_left_on(device);
 
-	/* Clear any GPU faults that might have been left over */
-	adreno_clear_gpu_fault(adreno_dev);
-
 	/*
 	 * Keep high bus vote to reduce AHB latency
 	 * during FW loading and wakeup.
@@ -1789,6 +1791,14 @@ static int _adreno_start(struct adreno_device *adreno_dev)
 	 * halted GPU transactions.
 	 */
 	adreno_deassert_gbif_halt(adreno_dev);
+
+	/*
+	 * Observed race between timeout fault (long IB detection) and
+	 * MISC hang (hard fault). MISC hang can be set while in recovery from
+	 * timeout fault. If fault flag is set in start path CP init fails.
+	 * Clear gpu fault to avoid such race.
+	 */
+	adreno_clear_gpu_fault(adreno_dev);
 
 	if (adreno_is_a640v1(adreno_dev)) {
 		ret = adreno_program_smmu_aperture(device);
@@ -4074,6 +4084,7 @@ static struct platform_driver adreno_platform_driver = {
 		.name = DEVICE_3D_NAME,
 		.pm = &kgsl_pm_ops,
 		.of_match_table = adreno_match_table,
+		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 	}
 };
 
@@ -4124,17 +4135,12 @@ static int __kgsl_3d_init(void *arg)
 
 static int __init kgsl_3d_init(void)
 {
-#ifdef CONFIG_PLATFORM_AUTO
 	struct task_struct *kgsl_3d_init_task =
 		kthread_run(__kgsl_3d_init, NULL, "kgsl_3d_init");
 	if (IS_ERR(kgsl_3d_init_task))
 		return PTR_ERR(kgsl_3d_init_task);
 	else
 		return 0;
-#else
-	__kgsl_3d_init(NULL);
-	return 0;
-#endif
 }
 
 static void __exit kgsl_3d_exit(void)

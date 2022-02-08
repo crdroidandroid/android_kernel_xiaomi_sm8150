@@ -2125,8 +2125,8 @@ int icnss_unregister_driver(struct icnss_driver_ops *ops)
 
 	icnss_pr_dbg("Unregistering driver, state: 0x%lx\n", penv->state);
 
-	if (!penv->ops) {
-		icnss_pr_err("Driver not registered\n");
+	if (!penv->ops || (!test_bit(ICNSS_DRIVER_PROBED, &penv->state))) {
+		icnss_pr_err("Driver not registered/probed\n");
 		ret = -ENOENT;
 		goto out;
 	}
@@ -3526,7 +3526,7 @@ static const struct file_operations icnss_regread_fops = {
 	.llseek         = seq_lseek,
 };
 
-#if defined(CONFIG_ICNSS_DEBUG) && defined(CONFIG_DEBUG_FS)
+#ifdef CONFIG_DEBUG_FS
 static int icnss_debugfs_create(struct icnss_priv *priv)
 {
 	int ret = 0;
@@ -3817,6 +3817,8 @@ static int icnss_probe(struct platform_device *pdev)
 			goto out_unregister_ext_modem;
 	}
 
+	device_enable_async_suspend(dev);
+
 	spin_lock_init(&priv->event_lock);
 	spin_lock_init(&priv->on_off_lock);
 	mutex_init(&priv->dev_lock);
@@ -3839,7 +3841,7 @@ static int icnss_probe(struct platform_device *pdev)
 
 	icnss_enable_recovery(priv);
 
-#if defined(CONFIG_ICNSS_DEBUG) && defined(CONFIG_DEBUG_FS)
+#ifdef CONFIG_DEBUG_FS
 	icnss_debugfs_create(priv);
 #endif
 
@@ -4048,6 +4050,7 @@ static struct platform_driver icnss_driver = {
 		.pm = &icnss_pm_ops,
 		.owner = THIS_MODULE,
 		.of_match_table = icnss_dt_match,
+		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 	},
 };
 

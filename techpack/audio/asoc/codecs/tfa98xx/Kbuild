@@ -83,8 +83,7 @@ CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-DPTT_SOCK_SVC_ENABLE \
 		-Wall\
 		-Werror\
-		-D__linux__ \
-		-DTFA_NON_DSP_SOLUTION
+		-D__linux__
 
 KBUILD_CPPFLAGS += $(CDEFINES)
 

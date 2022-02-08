@@ -70,17 +70,22 @@
 #define N_SPI_MINORS		32	/* ... up to 256 */
 static int SPIDEV_MAJOR;
 
+/* Unused key value to avoid interfering with active keys */
+#define KEY_FINGERPRINT 0x2ee
+
 static DECLARE_BITMAP(minors, N_SPI_MINORS);
 static LIST_HEAD(device_list);
 static DEFINE_MUTEX(device_list_lock);
 static struct wakeup_source fp_wakelock;
 static struct gf_dev gf;
+static struct task_struct *process;
 
 struct gf_key_map maps[] = {
 	{ EV_KEY, GF_KEY_INPUT_HOME },
 	{ EV_KEY, GF_KEY_INPUT_MENU },
 	{ EV_KEY, GF_KEY_INPUT_BACK },
 	{ EV_KEY, GF_KEY_INPUT_POWER },
+	{ EV_KEY, KEY_FINGERPRINT },
 #if defined(SUPPORT_NAV_EVENT)
 	{ EV_KEY, GF_NAV_INPUT_UP },
 	{ EV_KEY, GF_NAV_INPUT_DOWN },
@@ -175,12 +180,12 @@ static int gfspi_ioctl_clk_init(struct gf_dev *data)
 	data->clk_enabled = 0;
 	data->core_clk = clk_get(&data->spi->dev, "core_clk");
 	if (IS_ERR_OR_NULL(data->core_clk)) {
-		pr_err("%s: fail to get core_clk\n", __func__);
+		pr_debug("%s: fail to get core_clk\n", __func__);
 		return -EPERM;
 	}
 	data->iface_clk = clk_get(&data->spi->dev, "iface_clk");
 	if (IS_ERR_OR_NULL(data->iface_clk)) {
-		pr_err("%s: fail to get iface_clk\n", __func__);
+		pr_debug("%s: fail to get iface_clk\n", __func__);
 		clk_put(data->core_clk);
 		data->core_clk = NULL;
 		return -ENOENT;
@@ -199,13 +204,13 @@ static int gfspi_ioctl_clk_enable(struct gf_dev *data)
 
 	err = clk_prepare_enable(data->core_clk);
 	if (err) {
-		pr_err("%s: fail to enable core_clk\n", __func__);
+		pr_debug("%s: fail to enable core_clk\n", __func__);
 		return -EPERM;
 	}
 
 	err = clk_prepare_enable(data->iface_clk);
 	if (err) {
-		pr_err("%s: fail to enable iface_clk\n", __func__);
+		pr_debug("%s: fail to enable iface_clk\n", __func__);
 		clk_disable_unprepare(data->core_clk);
 		return -ENOENT;
 	}
@@ -250,6 +255,7 @@ static int gfspi_ioctl_clk_uninit(struct gf_dev *data)
 }
 #endif
 
+#if defined(SUPPORT_NAV_EVENT)
 static void nav_event_input(struct gf_dev *gf_dev, gf_nav_event_t nav_event)
 {
 	uint32_t nav_input = 0;
@@ -316,6 +322,7 @@ static void nav_event_input(struct gf_dev *gf_dev, gf_nav_event_t nav_event)
 		input_sync(gf_dev->input);
 	}
 }
+#endif
 
 static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
@@ -468,8 +475,9 @@ static irqreturn_t gf_irq(int irq, void *handle)
 	char msg = GF_NET_EVENT_IRQ;
 	uint32_t key_input = 0;
 
-	pr_debug("%s enter\n", __func__);
-	__pm_wakeup_event(&fp_wakelock, WAKELOCK_HOLD_TIME);
+	if (gf_dev->fb_black) {
+		__pm_wakeup_event(&fp_wakelock, WAKELOCK_HOLD_TIME);
+	}
 	sendnlmsg(&msg);
 
 	if ((gf_dev->wait_finger_down == true) && (gf_dev->device_available == 1) &&
@@ -501,6 +509,7 @@ static int gf_open(struct inode *inode, struct file *filp)
 	int err = 0;
 
 	mutex_lock(&device_list_lock);
+	process = current;
 
 	list_for_each_entry(gf_dev, &device_list, device_entry) {
 		if (gf_dev->devt == inode->i_rdev) {
@@ -604,6 +613,7 @@ static int gf_release(struct inode *inode, struct file *filp)
 	int status = 0;
 
 	pr_debug("%s\n", __func__);
+	process = NULL;
 	mutex_lock(&device_list_lock);
 	gf_dev = filp->private_data;
 	filp->private_data = NULL;
@@ -654,6 +664,13 @@ static const struct file_operations gf_fops = {
 #endif
 };
 
+static void set_fingerprintd_nice(int nice)
+{
+	if(process)	{
+		set_user_nice(process, nice);
+	}
+}
+
 
 static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 		unsigned long val, void *data)
@@ -674,6 +691,7 @@ static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 		blank = *(int *)(evdata->data);
 		switch (blank) {
 		case MSM_DRM_BLANK_POWERDOWN:
+			set_fingerprintd_nice(MIN_NICE);
 			if (gf_dev->device_available == 1) {
 				gf_dev->fb_black = 1;
 				gf_dev->wait_finger_down = true;
@@ -687,6 +705,7 @@ static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 			}
 			break;
 		case MSM_DRM_BLANK_UNBLANK:
+			set_fingerprintd_nice(0);
 			if (gf_dev->device_available == 1) {
 				gf_dev->fb_black = 0;
 #if defined(GF_NETLINK_ENABLE)
@@ -770,7 +789,7 @@ static int gf_probe(struct platform_device *pdev)
 		/*input device subsystem */
 		gf_dev->input = input_allocate_device();
 		if (gf_dev->input == NULL) {
-			pr_err("%s, failed to allocate input device\n",
+			pr_debug("%s, failed to allocate input device\n",
 							__func__);
 			status = -ENOMEM;
 			goto error_dev;
@@ -782,7 +801,7 @@ static int gf_probe(struct platform_device *pdev)
 		gf_dev->input->name = GF_INPUT_NAME;
 		status = input_register_device(gf_dev->input);
 		if (status) {
-			pr_err("failed to register input device\n");
+			pr_debug("failed to register input device\n");
 			goto error_input;
 		}
 	}
