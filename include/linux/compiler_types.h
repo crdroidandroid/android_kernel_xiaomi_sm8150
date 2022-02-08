@@ -285,6 +285,10 @@ struct ftrace_likely_data {
 #define __pass_object_size(type)
 #endif
 
+#ifndef __overloadable
+#define __overloadable
+#endif
+
 /*
  * Assume alignment of return value.
  */
