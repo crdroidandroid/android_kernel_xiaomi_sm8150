@@ -289,6 +289,10 @@ struct ftrace_likely_data {
 #define __overloadable
 #endif
 
+#ifndef __diagnose_as 
+#define __diagnose_as(builtin...)
+#endif
+
 /*
  * Assume alignment of return value.
  */
