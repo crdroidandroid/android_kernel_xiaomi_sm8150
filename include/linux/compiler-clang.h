@@ -72,3 +72,8 @@
  * clang: https://clang.llvm.org/docs/AttributeReference.html#pass-object-size-pass-dynamic-object-size
  */
 #define __pass_object_size(type)	__attribute__((__pass_object_size__(type)))
+
+/*
+ * clang: https://clang.llvm.org/docs/AttributeReference.html#overloadable
+ */
+#define __overloadable			__attribute__((__overloadable__))
