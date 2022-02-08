@@ -69,3 +69,7 @@
 #if __has_attribute(__pass_object_size__)
 # define __pass_object_size(type) __attribute__((__pass_object_size__(type)))
 #endif
+
+#if __has_attribute(__overloadable__)
+# define __overloadable __attribute__((__overloadable__))
+#endif
