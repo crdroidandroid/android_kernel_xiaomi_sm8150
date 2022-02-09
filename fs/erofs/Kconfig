@@ -70,7 +70,7 @@ config EROFS_FS_ZIP
 	bool "EROFS Data Compression Support"
 	depends on EROFS_FS
 	select LZ4_DECOMPRESS
-	default y
+	default n
 	help
 	  Enable fixed-sized output compression for EROFS.
 
