@@ -6522,7 +6522,9 @@ static int ipa3_post_init(const struct ipa3_plat_drv_res *resource_p,
 
 	ipa3_register_panic_hdlr();
 
+#ifdef CONFIG_DEBUGFS
 	ipa3_debugfs_post_init();
+#endif
 
 	mutex_lock(&ipa3_ctx->lock);
 	ipa3_ctx->ipa_initialization_complete = true;
@@ -7425,7 +7427,9 @@ static int ipa3_pre_init(const struct ipa3_plat_drv_res *resource_p,
 		goto fail_device_create;
 	}
 
+#ifdef CONFIG_DEBUGFS
 	ipa3_debugfs_pre_init();
+#endif
 
 	/* Create a wakeup source. */
 	wakeup_source_init(&ipa3_ctx->w_lock, "IPA_WS");
