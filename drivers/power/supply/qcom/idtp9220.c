@@ -700,7 +700,7 @@ static int idtp9220_set_present(struct idtp9220_device_info *di, int enable)
 		di->dcin_present = true;
 		di->ss = 1;
 	} else {
-		schedule_delayed_work(&di->fast_operate_work, msecs_to_jiffies(200));
+		queue_delayed_work(system_power_efficient_wq, &di->fast_operate_work, msecs_to_jiffies(200));
 		di->status = NORMAL_MODE;
 		di->count_9v = 0;
 		di->count_5v = 0;
@@ -944,7 +944,7 @@ static void idtp9220_monitor_work(struct work_struct *work)
 
 	idtp9220_set_charging_param(di);
 
-	schedule_delayed_work(&di->chg_monitor_work,
+	queue_delayed_work(system_power_efficient_wq, &di->chg_monitor_work,
 						CHARGING_PERIOD_S * HZ);
 }
 
@@ -972,7 +972,7 @@ static void idtp9220_dc_check_work(struct work_struct *work)
 	} else {
 		di->ss = 0;
 		dev_info(di->dev, "dcin no present, continue dc check work\n");
-		schedule_delayed_work(&di->dc_check_work, msecs_to_jiffies(2500));
+		queue_delayed_work(system_power_efficient_wq, &di->dc_check_work, msecs_to_jiffies(2500));
 	}
 	power_supply_changed(di->idtp_psy);
 }
@@ -1058,7 +1058,7 @@ static void idtp9220_chg_detect_work(struct work_struct *work)
 			if (!di->power_off_mode)
 				idtp9220_set_reset(di);
 			else
-				schedule_delayed_work(&di->irq_work,
+				queue_delayed_work(system_power_efficient_wq, &di->irq_work,
 					msecs_to_jiffies(30));
 		}
 	}
@@ -1127,7 +1127,7 @@ static void idtp9220_cmd_check_work(struct work_struct *work)
 	dev_info(di->dev, "[idt] %s: \n", __func__);
 	idtp922x_get_tx_vin(di);
 	if (di->power_off_mode) {
-		schedule_delayed_work(&di->vout_regulator_work,
+		queue_delayed_work(system_power_efficient_wq, &di->vout_regulator_work,
 							msecs_to_jiffies(10));
 	}
 
@@ -1394,7 +1394,7 @@ static void idtp9220_qc3_epp_work(struct work_struct *work)
 			dc_icl, di->last_qc3_icl);
 		di->last_qc3_icl = dc_icl;
 		if (dc_icl == DC_MI_STEP1_CURRENT) {
-			schedule_delayed_work(&di->vout_regulator_work,
+			queue_delayed_work(system_power_efficient_wq, &di->vout_regulator_work,
 					msecs_to_jiffies(0));
 		}
 		idtp922x_set_pmi_icl(di, dc_icl);
@@ -1551,7 +1551,7 @@ static void idtp9220_set_charging_param(struct idtp9220_device_info *di)
 		&& di->dcin_present
 		&& di->power_good_flag) {
 			dev_info(di->dev, "discharge when dc and pwr present, reset chip\n");
-			schedule_delayed_work(&di->fast_operate_work, msecs_to_jiffies(0));
+			queue_delayed_work(system_power_efficient_wq, &di->fast_operate_work, msecs_to_jiffies(0));
 			return;
 	}
 	dev_info(di->dev, "[idtp] soc:%d,vol_now:%d,cur_now:%d,health:%d, bat_status:%d\n",
@@ -1561,7 +1561,7 @@ static void idtp9220_set_charging_param(struct idtp9220_device_info *di)
 	 * vout/vbuck/psns is setted in delayed work
 	 */
 	if(adapter_vol == ADAPTER_BPP_QC_VOL && di->is_compatible_hwid) {
-		schedule_delayed_work(&di->bpp_e5_tx_work, msecs_to_jiffies(0));
+		queue_delayed_work(system_power_efficient_wq, &di->bpp_e5_tx_work, msecs_to_jiffies(0));
 		goto out;
 	}
 
@@ -1569,7 +1569,7 @@ static void idtp9220_set_charging_param(struct idtp9220_device_info *di)
 	 * vout/vbuck/psns is setted in delayed work
 	 */
 	if (di->tx_charger_type == ADAPTER_QC2 && di->is_f1_tx) {
-		schedule_delayed_work(&di->qc2_f1_tx_work, msecs_to_jiffies(0));
+		queue_delayed_work(system_power_efficient_wq, &di->qc2_f1_tx_work, msecs_to_jiffies(0));
 		goto out;
 	}
 
@@ -1577,7 +1577,7 @@ static void idtp9220_set_charging_param(struct idtp9220_device_info *di)
 	 * vout/vbuck/psns is setted in delayed work
 	 */
 	if (di->is_epp_qc3) {
-		schedule_delayed_work(&di->qc3_epp_work, msecs_to_jiffies(0));
+		queue_delayed_work(system_power_efficient_wq, &di->qc3_epp_work, msecs_to_jiffies(0));
 		goto out;
 	}
 
@@ -1590,7 +1590,7 @@ static void idtp9220_set_charging_param(struct idtp9220_device_info *di)
 			idtp922x_set_pmi_icl(di, icl_curr);
 			di->last_icl = icl_curr;
 			if (di->is_vin_limit)
-				schedule_delayed_work(&di->vout_regulator_work,
+				queue_delayed_work(system_power_efficient_wq, &di->vout_regulator_work,
 										msecs_to_jiffies(0));
 		}
 	} else {
@@ -1617,7 +1617,7 @@ static void idtp9220_set_charging_param(struct idtp9220_device_info *di)
 		adapter_vol == ADAPTER_BPP_QC_VOL ||
 			adapter_vol == VBUCK_FULL_VOL) {
 		if (vin_inc && (!di->is_vin_limit && !di->is_epp_qc3))
-			schedule_delayed_work(&di->cmd_check_work,
+			queue_delayed_work(system_power_efficient_wq, &di->cmd_check_work,
 						msecs_to_jiffies(8000));
 	}
 
@@ -1643,9 +1643,9 @@ static void idtp9220_wpc_det_work(struct work_struct *work)
 		ret = gpio_get_value(di->dt_props.wpc_det_gpio);
 		if (ret) {
 			/* check if mophie tx after 100ms */
-			schedule_delayed_work(&di->mophie_tx_work, msecs_to_jiffies(100));
+			queue_delayed_work(system_power_efficient_wq, &di->mophie_tx_work, msecs_to_jiffies(100));
 			/* check dc present to judge device skewing */
-			schedule_delayed_work(&di->dc_check_work, msecs_to_jiffies(2500));
+			queue_delayed_work(system_power_efficient_wq, &di->dc_check_work, msecs_to_jiffies(2500));
 			di->power_good_flag = 1;
 			val.intval = 1;
 			idtp9220_int_enable(di);
@@ -1709,7 +1709,7 @@ static void idtp9220_irq_work(struct work_struct *work)
 	}
 	if ((int_val & INT_OV_CURR) || (int_val & INT_OV_TEMP)) {
 		dev_info(di->dev, "[idt] ocp or otp found \n");
-		schedule_delayed_work(&di->chg_monitor_work,
+		queue_delayed_work(system_power_efficient_wq, &di->chg_monitor_work,
 						msecs_to_jiffies(0));
 		goto out;
 	}
@@ -1718,10 +1718,10 @@ static void idtp9220_irq_work(struct work_struct *work)
 		di->epp = idtp9220_get_power_profile(di);
 		if(di->epp) {
 			di->power_max = idtp9220_get_power_max(di);
-			schedule_delayed_work(&di->epp_connect_load_work,
+			queue_delayed_work(system_power_efficient_wq, &di->epp_connect_load_work,
 							msecs_to_jiffies(0));
 		} else
-			schedule_delayed_work(&di->bpp_connect_load_work,
+			queue_delayed_work(system_power_efficient_wq, &di->bpp_connect_load_work,
 							msecs_to_jiffies(0));
 		if (int_val & INT_IDAUTH_SUCESS)
 			idtp9220_send_device_auth(di);
@@ -1729,7 +1729,7 @@ static void idtp9220_irq_work(struct work_struct *work)
 	}
 
 	if (int_val & INT_VSWITCH_SUCESS) {
-		schedule_delayed_work(&di->vout_regulator_work,
+		queue_delayed_work(system_power_efficient_wq, &di->vout_regulator_work,
 							msecs_to_jiffies(50));
 		cancel_delayed_work(&di->cmd_check_work);
 		goto out;
@@ -1749,7 +1749,7 @@ static void idtp9220_irq_work(struct work_struct *work)
 /*
 	idtp9220_get_signal_strength(di);
 	di->tx_charger_type = ADAPTER_QC3;
-	schedule_delayed_work(&di->chg_monitor_work,
+	queue_delayed_work(system_power_efficient_wq, &di->chg_monitor_work,
 						msecs_to_jiffies(0));
 	goto out;
 */
@@ -1771,9 +1771,9 @@ static void idtp9220_irq_work(struct work_struct *work)
 		}
 		di->tx_charger_type = ADAPTER_AUTH_FAILED;
 
-		schedule_delayed_work(&di->rx_vout_work,
+		queue_delayed_work(system_power_efficient_wq, &di->rx_vout_work,
 							msecs_to_jiffies(0));
-		schedule_delayed_work(&di->chg_monitor_work,
+		queue_delayed_work(system_power_efficient_wq, &di->chg_monitor_work,
 							msecs_to_jiffies(0));
 		goto out;
 	} else
@@ -1794,9 +1794,9 @@ static void idtp9220_irq_work(struct work_struct *work)
 		} else {
 			dev_err(di->dev, "%s: retry failed\n", __func__);
 			di->tx_charger_type = ADAPTER_AUTH_FAILED;
-			schedule_delayed_work(&di->rx_vout_work,
+			queue_delayed_work(system_power_efficient_wq, &di->rx_vout_work,
 							msecs_to_jiffies(0));
-			schedule_delayed_work(&di->chg_monitor_work,
+			queue_delayed_work(system_power_efficient_wq, &di->chg_monitor_work,
 							msecs_to_jiffies(0));
 			retry_count = 0;
 			goto out;
@@ -1839,9 +1839,9 @@ static void idtp9220_irq_work(struct work_struct *work)
 						di->tx_charger_type == ADAPTER_QC2)) {
 				idtp922x_set_adap_vol(di, ADAPTER_BPP_VOL);
 			}
-			schedule_delayed_work(&di->rx_vout_work,
+			queue_delayed_work(system_power_efficient_wq, &di->rx_vout_work,
 								msecs_to_jiffies(100));
-			schedule_delayed_work(&di->chg_monitor_work,
+			queue_delayed_work(system_power_efficient_wq, &di->chg_monitor_work,
 								msecs_to_jiffies(1000));
 			if (di->wireless_psy)
 				power_supply_changed(di->wireless_psy);
@@ -1872,7 +1872,7 @@ static irqreturn_t idtp9220_wpc_det_irq_handler(int irq, void *dev_id)
 {
 	struct idtp9220_device_info *di = dev_id;
 
-	schedule_delayed_work(&di->wpc_det_work, msecs_to_jiffies(0));
+	queue_delayed_work(system_power_efficient_wq, &di->wpc_det_work, msecs_to_jiffies(0));
 
 	return IRQ_HANDLED;
 }
@@ -1882,7 +1882,7 @@ static irqreturn_t idtp9220_irq_handler(int irq, void *dev_id)
 
 	struct idtp9220_device_info *di = dev_id;
 
-	schedule_delayed_work(&di->irq_work, msecs_to_jiffies(30));
+	queue_delayed_work(system_power_efficient_wq, &di->irq_work, msecs_to_jiffies(30));
 
 	return IRQ_HANDLED;
 }
@@ -2139,7 +2139,7 @@ static int idtp9220_probe(struct i2c_client *client,
 
 
 	dev_info(di->dev, "[idt] success probe idtp922x driver\n");
-	schedule_delayed_work(&di->chg_detect_work, 3 * HZ);
+	queue_delayed_work(system_power_efficient_wq, &di->chg_detect_work, 3 * HZ);
 
 	return 0;
 
