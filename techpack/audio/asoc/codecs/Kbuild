@@ -93,12 +93,13 @@ ifdef CONFIG_WCD9XXX_CODEC_CORE
 	CORE_OBJS += wcd9xxx-irq.o
 	CORE_OBJS += wcd9xxx-slimslave.o
 	CORE_OBJS += wcd9xxx-utils.o
-	CORE_OBJS += wcd9335-regmap.o
-	CORE_OBJS += wcd9335-tables.o
 	CORE_OBJS += msm-cdc-pinctrl.o
 	CORE_OBJS += msm-cdc-supply.o
 	CORE_OBJS += wcd934x/wcd934x-regmap.o
 	CORE_OBJS += wcd934x/wcd934x-tables.o
+endif
+
+ifdef CONFIG_SND_SOC_WCD9360
 	CORE_OBJS += wcd9360/wcd9360-regmap.o
 endif
 
@@ -114,6 +115,8 @@ ifdef CONFIG_SND_SOC_WCD9XXX_V2
 endif
 
 ifdef CONFIG_SND_SOC_WCD9335
+	CORE_OBJS += wcd9335-regmap.o
+	CORE_OBJS += wcd9335-tables.o
 	WCD9335_OBJS += wcd9335.o
 endif
 
@@ -202,15 +205,36 @@ KBUILD_EXTRA_SYMBOLS +=$(OUT)/obj/vendor/qcom/opensource/audio-kernel/dsp/Module
 KBUILD_EXTRA_SYMBOLS +=$(OUT)/obj/vendor/qcom/opensource/audio-kernel/soc/Module.symvers
 endif
 
-ifeq ($(KERNEL_BUILD), 1)
-	obj-y	+= wcd934x/
+ifdef CONFIG_SND_SOC_SDM660_CDC
 	obj-y	+= sdm660_cdc/
+endif
+
+ifdef CONFIG_SND_SOC_MSM_SDW
 	obj-y	+= msm_sdw/
-	obj-y	+= wcd9360/
-	obj-y	+= wcd937x/
+endif
+
+ifdef CONFIG_SND_SOC_CS35l41
 	obj-y	+= cs35l41/
-	obj-y	+= tas2557/
+endif
+
+ifdef CONFIG_SND_SOC_WCD937X
+	obj-y	+= wcd937x/
+endif
+
+ifdef CONFIG_SND_SOC_TFA9874
 	obj-y	+= tfa98xx/
+endif
+
+ifdef CONFIG_SND_SOC_WCD9360
+	obj-y	+= wcd9360/
+endif
+
+ifdef CONFIG_SND_SOC_WCD934X
+	obj-y	+= wcd934x/
+endif
+
+ifdef CONFIG_SND_SOC_TAS2557
+	obj-y	+= tas2557/
 endif
 
 ifeq ($(CONFIG_SND_SOC_GCOV), y)
