@@ -4070,8 +4070,34 @@ error:
 	return ERR_PTR(rc);
 }
 
+static struct attribute *panel_attrs[] = {
+	NULL,
+};
+
+static struct attribute_group panel_attrs_group = {
+	.attrs = panel_attrs,
+};
+
+static int dsi_panel_sysfs_init(struct dsi_panel *panel)
+{
+	int rc = 0;
+
+	rc = sysfs_create_group(&panel->parent->kobj, &panel_attrs_group);
+	if (rc)
+		pr_err("failed to create panel sysfs attributes\n");
+
+	return rc;
+}
+
+static void dsi_panel_sysfs_deinit(struct dsi_panel *panel)
+{
+	sysfs_remove_group(&panel->parent->kobj, &panel_attrs_group);
+}
+
 void dsi_panel_put(struct dsi_panel *panel)
 {
+	dsi_panel_sysfs_deinit(panel);
+
 	/* free resources allocated for ESD check */
 	dsi_panel_esd_config_deinit(&panel->esd_config);
 
@@ -4130,6 +4156,17 @@ int dsi_panel_drv_init(struct dsi_panel *panel,
 			       panel->name, rc);
 		goto error_gpio_release;
 	}
+
+	rc = dsi_panel_sysfs_init(panel);
+	if (rc)
+		goto exit;
+
+#ifdef CONFIG_EXPOSURE_ADJUSTMENT
+	rc = sysfs_create_group(&(panel->parent->kobj), &mdss_fb_attr_group);
+	if (rc)
+		pr_err("sysfs group creation failed, rc=%d\n", rc);
+	set_panel = panel;
+#endif
 
 	goto exit;
 
