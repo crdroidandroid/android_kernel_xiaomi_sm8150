@@ -223,7 +223,8 @@ msm_drm-$(CONFIG_DRM_MSM) += \
 	msm_rd.o \
 	msm_ringbuffer.o \
 	msm_prop.o \
-	msm_fence.o \
-	msm_debugfs.o
+	msm_fence.o
+
+msm_drm-$(CONFIG_DEBUG_FS) += msm_debugfs.o
 
 obj-$(CONFIG_DRM_MSM)	+= msm_drm.o
