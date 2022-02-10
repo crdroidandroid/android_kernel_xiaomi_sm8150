@@ -5,7 +5,9 @@
 
 #include <asm/mce.h>
 
+#ifdef CONFIG_DEBUG_FS
 #include "debugfs.h"
+#endif
 
 /*
  * RAS Correctable Errors Collector
@@ -377,8 +379,9 @@ static int pfn_set(void *data, u64 val)
 
 	return 0;
 }
-
+#ifdef CONFIG_DEBUG_FS
 DEFINE_DEBUGFS_ATTRIBUTE(pfn_ops, u64_get, pfn_set, "0x%llx\n");
+#endif
 
 static int decay_interval_set(void *data, u64 val)
 {
@@ -395,7 +398,9 @@ static int decay_interval_set(void *data, u64 val)
 	cec_mod_timer(&cec_timer, timer_interval);
 	return 0;
 }
+#ifdef CONFIG_DEBUG_FS
 DEFINE_DEBUGFS_ATTRIBUTE(decay_interval_ops, u64_get, decay_interval_set, "%lld\n");
+#endif
 
 static int count_threshold_set(void *data, u64 val)
 {
@@ -408,7 +413,9 @@ static int count_threshold_set(void *data, u64 val)
 
 	return 0;
 }
+#ifdef CONFIG_DEBUG_FS
 DEFINE_DEBUGFS_ATTRIBUTE(count_threshold_ops, u64_get, count_threshold_set, "%lld\n");
+#endif
 
 static int array_dump(struct seq_file *m, void *v)
 {
@@ -459,6 +466,7 @@ static const struct file_operations array_ops = {
 	.release = single_release,
 };
 
+#ifdef CONFIG_DEBUG_FS
 static int __init create_debugfs_nodes(void)
 {
 	struct dentry *d, *pfn, *decay, *count, *array;
@@ -503,6 +511,7 @@ err:
 
 	return 1;
 }
+#endif
 
 void __init cec_init(void)
 {
