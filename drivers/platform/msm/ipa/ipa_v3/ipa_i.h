@@ -2914,11 +2914,13 @@ int ipa3_generate_hw_rule(enum ipa_ip_type ip,
 int ipa3_init_hw(void);
 struct ipa3_rt_tbl *__ipa3_find_rt_tbl(enum ipa_ip_type ip, const char *name);
 int ipa3_set_single_ndp_per_mbim(bool enable);
+#ifdef CONFIG_DEBUGFS
 void ipa3_debugfs_pre_init(void);
 void ipa3_debugfs_post_init(void);
 void ipa3_debugfs_remove(void);
 void ipa3_eth_debugfs_init(void);
 void ipa3_eth_debugfs_add_node(struct ipa_eth_client *client);
+#endif
 
 void ipa3_dump_buff_internal(void *base, dma_addr_t phy_base, u32 size);
 
@@ -2961,8 +2963,10 @@ int __ipa3_del_rt_rule(u32 rule_hdl);
 int __ipa3_del_hdr(u32 hdr_hdl, bool by_user);
 int __ipa3_release_hdr(u32 hdr_hdl);
 int __ipa3_release_hdr_proc_ctx(u32 proc_ctx_hdl);
+#ifdef CONFIG_DEBUG_FS
 int _ipa_read_ep_reg_v3_0(char *buf, int max_len, int pipe);
 int _ipa_read_ep_reg_v4_0(char *buf, int max_len, int pipe);
+#endif
 int _ipa_read_ipahal_regs(void);
 void _ipa_enable_clks_v3_0(void);
 void _ipa_disable_clks_v3_0(void);
@@ -3107,7 +3111,9 @@ int ipa_hw_stats_init(void);
 
 int ipa_init_flt_rt_stats(void);
 
+#ifdef CONFIG_DEBUGFS
 int ipa_debugfs_init_stats(struct dentry *parent);
+#endif
 
 int ipa_init_quota_stats(u32 pipe_bitmask);
 
@@ -3199,7 +3205,9 @@ int ipa3_smmu_map_ctg(u64 iova, u32 size, bool map, phys_addr_t pa,
 void ipa3_reset_freeze_vote(void);
 int ipa3_ntn_init(void);
 int ipa3_get_ntn_stats(struct Ipa3HwStatsNTNInfoData_t *stats);
+#ifdef CONFIG_DEBUGFS
 struct dentry *ipa_debugfs_get_root(void);
+#endif
 bool ipa3_is_msm_device(void);
 void ipa3_read_mailbox_17(enum uc_state state);
 

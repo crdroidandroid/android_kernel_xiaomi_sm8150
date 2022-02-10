@@ -127,7 +127,9 @@ static int ipa_eth_init_internal(void)
 	spin_lock_init(&ipa_eth_ctx->idr_lock);
 	INIT_LIST_HEAD(&ipa_eth_ctx->head_intf_list);
 	ipa_eth_ctx->client_priv = NULL;
+#ifdef CONFIG_DEBUG_FS
 	ipa3_eth_debugfs_init();
+#endif
 	return 0;
 
 wq_err:
@@ -669,7 +671,9 @@ int ipa_eth_client_conn_pipes(struct ipa_eth_client *client)
 		}
 	}
 	if (!ipa_eth_ctx->client[client_type][inst_id].existed) {
+#ifdef CONFIG_DEBUG_FS
 		ipa3_eth_debugfs_add_node(client);
+#endif
 		ipa_eth_ctx->client[client_type][inst_id].existed = true;
 	}
 	mutex_unlock(&ipa_eth_ctx->lock);
