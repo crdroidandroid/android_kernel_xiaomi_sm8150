@@ -594,7 +594,7 @@ static void fuel_gauge_status_monitor(struct work_struct *work)
 
 	fuel_gauge_get_status(info);
 	power_supply_changed(info->bat);
-	schedule_delayed_work(&info->status_monitor, STATUS_MON_DELAY_JIFFIES);
+	queue_delayed_work(system_power_efficient_wq, &info->status_monitor, STATUS_MON_DELAY_JIFFIES);
 }
 
 static irqreturn_t fuel_gauge_thread_handler(int irq, void *dev)
@@ -756,7 +756,7 @@ static int axp288_fuel_gauge_probe(struct platform_device *pdev)
 
 	fuel_gauge_create_debugfs(info);
 	fuel_gauge_init_irq(info);
-	schedule_delayed_work(&info->status_monitor, STATUS_MON_DELAY_JIFFIES);
+	queue_delayed_work(system_power_efficient_wq, &info->status_monitor, STATUS_MON_DELAY_JIFFIES);
 
 	return 0;
 }
