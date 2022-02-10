@@ -1,3 +1,4 @@
+#ifdef CONFIG_DEBUG_FS
 #include <linux/debugfs.h>
 
 struct dentry *ras_debugfs_dir;
@@ -54,3 +55,4 @@ void __init ras_debugfs_init(void)
 {
 	ras_debugfs_dir = debugfs_create_dir("ras", NULL);
 }
+#endif
