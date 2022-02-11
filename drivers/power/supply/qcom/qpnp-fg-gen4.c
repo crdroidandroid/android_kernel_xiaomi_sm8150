@@ -6140,7 +6140,9 @@ static void fg_gen4_cleanup(struct fg_gen4_chip *chip)
 	cancel_work_sync(&chip->pl_current_en_work);
 
 	power_supply_unreg_notifier(&fg->nb);
+#ifdef CONFIG_DEBUG_FS
 	debugfs_remove_recursive(fg->dfs_root);
+#endif
 
 	if (fg->awake_votable)
 		destroy_votable(fg->awake_votable);
@@ -6403,7 +6405,9 @@ static int fg_gen4_probe(struct platform_device *pdev)
 	/* Keep MEM_ATTN_IRQ disabled until we require it */
 	vote(chip->mem_attn_irq_en_votable, MEM_ATTN_IRQ_VOTER, false, 0);
 
+#ifdef CONFIG_DEBUG_fS
 	fg_debugfs_create(fg);
+#endif
 
 	rc = fg_get_battery_voltage(fg, &volt_uv);
 	if (!rc)
