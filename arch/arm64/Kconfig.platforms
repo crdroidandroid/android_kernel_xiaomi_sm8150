@@ -410,24 +410,6 @@ config MACH_XIAOMI_SM8150
 
 menu "XiaoMi board seletion"
 
-config MACH_XIAOMI_ANDROMEDA
-	bool "Andromeda Platform"
-	select MACH_XIAOMI_SM8150
-	help
-	  This enables support for XiaoMi Mi Mix 3 (5G).
-
-config MACH_XIAOMI_CEPHEUS
-	bool "Cepheus Platform"
-	select MACH_XIAOMI_SM8150
-	help
-	  This enables support for XiaoMi Mi9.
-
-config MACH_XIAOMI_CRUX
-	bool "Crux Platform"
-	select MACH_XIAOMI_SM8150
-	help
-	  This enables support for XiaoMi Mi9 (5G).
-
 config MACH_XIAOMI_RAPHAEL
 	bool "Raphael Platform"
 	select MACH_XIAOMI_SM8150
