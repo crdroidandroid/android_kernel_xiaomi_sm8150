@@ -1,4 +1,4 @@
-ccflags-y += -Ofast
+ccflags-y += -O3
 
 ccflags-y += -I$(src)			# needed for trace events
 

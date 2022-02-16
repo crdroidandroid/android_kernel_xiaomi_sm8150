@@ -11,7 +11,7 @@ CFLAGS_REMOVE_ftrace.o = -pg
 CFLAGS_REMOVE_insn.o = -pg
 CFLAGS_REMOVE_return_address.o = -pg
 
-ccflags-y += -Ofast
+ccflags-y += -O3
 
 CFLAGS_setup.o = -DUTS_MACHINE='"$(UTS_MACHINE)"'
 
