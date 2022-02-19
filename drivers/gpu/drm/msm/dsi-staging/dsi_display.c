@@ -7485,7 +7485,7 @@ static int dsi_display_qsync(struct dsi_display *display, bool enable)
 	int rc = 0;
 
 	if (!display->panel->qsync_caps.qsync_min_fps) {
-		pr_err("%s:ERROR: qsync set, but no fps\n", __func__);
+		pr_debug("%s:ERROR: qsync set, but no fps\n", __func__);
 		return 0;
 	}
 
