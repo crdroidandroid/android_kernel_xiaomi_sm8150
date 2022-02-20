@@ -970,6 +970,7 @@ static int refcount_overflow_handler(struct pt_regs *regs, unsigned int esr)
 
 static struct break_hook refcount_break_hook = {
 	.fn	= refcount_overflow_handler,
+	.imm	= REFCOUNT_BRK_IMM,
 };
 
 /* This registration must happen early, before debug_traps_init(). */
