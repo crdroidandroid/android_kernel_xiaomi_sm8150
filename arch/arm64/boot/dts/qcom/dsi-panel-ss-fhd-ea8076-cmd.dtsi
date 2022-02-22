@@ -31,6 +31,7 @@
 		qcom,mdss-dsi-bllp-eof-power-mode;
 		qcom,mdss-dsi-bllp-power-mode;
 		qcom,ulps-enabled;
+		qcom,suspend-ulps-enabled;
 		qcom,mdss-dsi-lp11-init;
 		qcom,mdss-dsi-init-delay-us = <5000>;
 		qcom,mdss-dsi-lane-0-state;
