@@ -79,7 +79,22 @@ static void thermal_throttle_worker(struct work_struct *work)
 	/* Checking GPU temperature */
 	thermal_zone_get_temp(thermal_zone_get_zone_by_name("gpuss-0-usr"), &temp_gpu);
 
-	if (temp_gpu >= 65000)
+	/* (Number of CPUs * 8) + current temp of the GPU,
+	   this will add an overlay on top of the current cpu
+	   temperature and make the thermal_simple driver set 
+	   a zone above the one it should, decreasing temps in
+	   games or GPU heavy tasks while maintaining good CPU
+	   performance in CPU only tasks */
+
+	if (temp_gpu >= 63000)
+		/* GPU started to get hot, using base values
+		   so throttling is not so agressive at this point. */
+		temp_avg = (temp_total + 35000) / NR_CPUS;
+	else if (temp_gpu >= 65000)
+		temp_avg = (temp_total + 55000) / NR_CPUS;
+	else if (temp_gpu >= 68000)
+		temp_avg = (temp_total + 65000) / NR_CPUS;
+	else if (temp_gpu >= 70000)
 		temp_avg = (temp_total + temp_gpu) / NR_CPUS;
 		
 	old_zone = t->curr_zone;
