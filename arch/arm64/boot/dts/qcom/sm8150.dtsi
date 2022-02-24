@@ -567,7 +567,7 @@
 				vendor {
 					compatible = "android,vendor";
 					dev = "/dev/block/platform/soc/8804000.ufshc/by-name/vendor";
-					type = "ext4";
+					type = "erofs";
 					mnt_flags = "ro,barrier=1,discard";
 					fsmgr_flags = "wait";
 					status = "ok";
