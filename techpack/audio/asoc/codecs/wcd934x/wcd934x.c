@@ -8856,7 +8856,7 @@ static int tavil_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	return 0;
 }
 
-static struct snd_soc_dai_ops tavil_dai_ops = {
+static const struct snd_soc_dai_ops tavil_dai_ops = {
 	.startup = tavil_startup,
 	.shutdown = tavil_shutdown,
 	.hw_params = tavil_hw_params,
