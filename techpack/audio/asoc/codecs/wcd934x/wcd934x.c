@@ -4329,11 +4329,6 @@ static u16 tavil_codec_get_amic_pwlvl_reg(struct snd_soc_codec *codec, int amic)
 	return pwr_level_reg;
 }
 
-#define  TX_HPF_CUT_OFF_FREQ_MASK 0x60
-#define  CF_MIN_3DB_4HZ     0x0
-#define  CF_MIN_3DB_75HZ    0x1
-#define  CF_MIN_3DB_150HZ   0x2
-
 static void tavil_tx_hpf_corner_freq_callback(struct work_struct *work)
 {
 	struct delayed_work *hpf_delayed_work;
