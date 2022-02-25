@@ -4434,7 +4434,7 @@ static int tavil_codec_enable_dec(struct snd_soc_dapm_widget *w,
 
 	dev_dbg(codec->dev, "%s %d\n", __func__, event);
 
-	widget_name = kstrndup(w->name, 15, GFP_KERNEL);
+	widget_name = kmemdup_nul(w->name, 15, GFP_KERNEL);
 	if (!widget_name)
 		return -ENOMEM;
 
