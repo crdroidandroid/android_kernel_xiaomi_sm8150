@@ -292,7 +292,7 @@
 		qcom,cdc-vddpx-1-current = <10000>;
 
 		cdc-vdd-3v3-supply = <&pm8150l_bob>;
-		qcom,cdc-vdd-3v3-voltage = <3300000 3300000>;
+		qcom,cdc-vdd-3v3-voltage = <3300000 3600000>;
 		qcom,cdc-vdd-3v3-current = <16800>;
 
 		qcom,cdc-static-supplies = "cdc-vdd-buck",
