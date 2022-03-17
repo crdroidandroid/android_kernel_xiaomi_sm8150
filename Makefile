@@ -758,8 +758,8 @@ endif
 endif
 
 ifdef CONFIG_INLINE_OPTIMIZATION
-KBUILD_CFLAGS	+= -mllvm -inline-threshold=3100
-KBUILD_CFLAGS	+= -mllvm -inlinehint-threshold=2400
+KBUILD_CFLAGS	+= -mllvm -inline-threshold=4000
+KBUILD_CFLAGS	+= -mllvm -inlinehint-threshold=3000
 endif
 endif
 endif
