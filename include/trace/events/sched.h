@@ -731,6 +731,8 @@ TRACE_EVENT(sched_pi_setprio,
 #define trace_sched_blocked_reason(...) {}
 #define trace_sched_stat_runtime(...) {}
 #define trace_sched_stat_runtime_enabled(...) false
+#define trace_sched_set_preferred_cluster_enabled(...) false
+#define trace_core_ctl_notif_data(...) {}
 #define trace_sched_pi_setprio(...) {}
 #endif /* CONFIG_MINIMAL_TRACING_FOR_IORAP */
 
