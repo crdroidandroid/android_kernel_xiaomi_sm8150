@@ -39,6 +39,8 @@ CFLAGS_sys_ni.o = $(DISABLE_LTO)
 CFLAGS_cfi.o = $(DISABLE_CFI_CLANG)
 
 ccflags-y += -Ofast
+ccflags-y += -mllvm -inline-threshold=15000
+ccflags-y += -mllvm -inlinehint-threshold=10000
 
 obj-y += sched/
 obj-y += locking/
