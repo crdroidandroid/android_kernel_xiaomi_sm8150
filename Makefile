@@ -756,11 +756,6 @@ ifdef CONFIG_LD_DEAD_CODE_DATA_ELIMINATION
 KBUILD_CFLAGS	+= -mllvm -polly-run-dce
 endif
 endif
-
-ifdef CONFIG_INLINE_OPTIMIZATION
-KBUILD_CFLAGS	+= -mllvm -inline-threshold=4000
-KBUILD_CFLAGS	+= -mllvm -inlinehint-threshold=3000
-endif
 endif
 endif
 
