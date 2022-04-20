@@ -309,6 +309,7 @@ static u64 notrace arm64_1188873_read_cntvct_el0(void)
 }
 #endif
 
+#ifdef CONFIG_ARM_ARCH_TIMER_OOL_WORKAROUND
 DEFINE_PER_CPU(const struct arch_timer_erratum_workaround *,
 	       timer_unstable_counter_workaround);
 EXPORT_SYMBOL_GPL(timer_unstable_counter_workaround);

@@ -542,25 +542,11 @@ config ARM64_ERRATUM_1024718
 
 	  If unsure, say Y.
 
-config ARM64_ERRATUM_1286807
-	bool "Cortex-A76: Modification of the translation table for a virtual address might lead to read-after-read ordering violation"
-	default n
-	select ARM64_WORKAROUND_REPEAT_TLBI
-	help
-	  This option adds workaround for ARM Cortex-A76 erratum 1286807
-
-	  On the affected Cortex-A76 cores (r0p0 to r3p0), if a virtual
-	  address for a cacheable mapping of a location is being
-	  accessed by a core while another core is remapping the virtual
-	  address to a new physical page using the recommended
-	  break-before-make sequence, then under very rare circumstances
-	  TLBI+DSB completes before a read using the translation being
-	  invalidated has been observed by other observers. The
-	  workaround repeats the TLBI+DSB operation.
-
 config ARM64_ERRATUM_1188873
 	bool "Cortex-A76: MRC read following MRRC read of specific Generic Timer in AArch32 might give incorrect result"
 	default y
+	depends on COMPAT
+	select ARM_ARCH_TIMER_OOL_WORKAROUND
 	help
 	  This option adds work arounds for ARM Cortex-A76 erratum 1188873
 
@@ -1075,6 +1061,16 @@ config ARM64_TAGGED_ADDR_ABI
 	  relaxed ABI via prctl() allowing tagged addresses to be passed
 	  to system calls as pointer arguments. For details, see
 	  Documentation/arm64/tagged-address-abi.rst.
+
+config MITIGATE_SPECTRE_BRANCH_HISTORY
+	bool "Mitigate Spectre style attacks against branch history" if EXPERT
+	default y
+	depends on HARDEN_BRANCH_PREDICTOR || !KVM
+	help
+	  Speculation attacks against some high-performance processors can
+	  make use of branch history to influence future speculation.
+	  When taking an exception from user-space, a sequence of branches
+	  or a firmware call overwrites the branch history.
 
 menuconfig ARMV8_DEPRECATED
 	bool "Emulate deprecated/obsolete ARMv8 instructions"
