@@ -17,6 +17,8 @@ CFLAGS_core.o := $(PROFILING) -fno-omit-frame-pointer
 endif
 
 ccflags-y += -Ofast
+ccflags-y += -mllvm -inline-threshold=15000
+ccflags-y += -mllvm -inlinehint-threshold=10000
 
 obj-y += core.o loadavg.o clock.o cputime.o
 obj-y += idle_task.o fair.o rt.o deadline.o
