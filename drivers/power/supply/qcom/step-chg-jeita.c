@@ -1187,7 +1187,7 @@ int qcom_step_chg_init(struct device *dev,
 
 	chip->step_chg_config->param.psy_prop = POWER_SUPPLY_PROP_VOLTAGE_NOW;
 	chip->step_chg_config->param.prop_name = "VBATT";
-	chip->step_chg_config->param.hysteresis = 10000;
+	chip->step_chg_config->param.hysteresis = 100000;
 
 	chip->jeita_fcc_config = devm_kzalloc(dev,
 			sizeof(struct jeita_fcc_cfg), GFP_KERNEL);
