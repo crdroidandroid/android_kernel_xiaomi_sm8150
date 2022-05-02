@@ -461,6 +461,7 @@ struct ufs_clk_gating {
 	struct device_attribute delay_perf_attr;
 	struct device_attribute enable_attr;
 	bool is_enabled;
+	bool gate_wk_in_process;
 	int active_reqs;
 	struct workqueue_struct *clk_gating_workq;
 };
@@ -493,6 +494,7 @@ enum ufshcd_hibern8_on_idle_state {
  * @delay_attr: sysfs attribute to control delay_attr
  * @enable_attr: sysfs attribute to enable/disable hibern8 on idle
  * @is_enabled: Indicates the current status of hibern8
+ * @enable_mutex: protect sys node race from multithread access
  */
 struct ufs_hibern8_on_idle {
 	struct delayed_work enter_work;
@@ -504,6 +506,7 @@ struct ufs_hibern8_on_idle {
 	struct device_attribute delay_attr;
 	struct device_attribute enable_attr;
 	bool is_enabled;
+	struct mutex enable_mutex;
 };
 
 /**
@@ -615,6 +618,7 @@ enum ufshcd_ctx {
 	H8_EXIT_WORK,
 	UIC_CMD_SEND,
 	PWRCTL_CMD_SEND,
+	PWR_CHG_NOTIFY,
 	TM_CMD_SEND,
 	XFR_REQ_COMPL,
 	CLK_SCALE_WORK,
@@ -948,6 +952,7 @@ struct ufs_hba {
 	struct work_struct eh_work;
 	struct work_struct eeh_work;
 	struct work_struct rls_work;
+	struct work_struct hibern8_on_idle_enable_work;
 
 	/* HBA Errors */
 	u32 errors;

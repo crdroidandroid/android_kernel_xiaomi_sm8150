@@ -769,7 +769,7 @@ static inline void enqueue_task(struct rq *rq, struct task_struct *p, int flags)
 
 	p->sched_class->enqueue_task(rq, p, flags);
 	walt_update_last_enqueue(p);
-	trace_sched_enq_deq_task(p, 1, cpumask_bits(&p->cpus_allowed)[0]);
+	trace_sched_enq_deq_task(p, 1, cpumask_bits(p->cpus_ptr)[0]);
 }
 
 static inline void dequeue_task(struct rq *rq, struct task_struct *p, int flags)
@@ -787,7 +787,7 @@ static inline void dequeue_task(struct rq *rq, struct task_struct *p, int flags)
 	if (p == rq->ed_task)
 		early_detection_notify(rq, sched_ktime_clock());
 #endif
-	trace_sched_enq_deq_task(p, 0, cpumask_bits(&p->cpus_allowed)[0]);
+	trace_sched_enq_deq_task(p, 0, cpumask_bits(p->cpus_ptr)[0]);
 }
 
 void activate_task(struct rq *rq, struct task_struct *p, int flags)
@@ -926,7 +926,7 @@ static inline bool is_per_cpu_kthread(struct task_struct *p)
  */
 static inline bool is_cpu_allowed(struct task_struct *p, int cpu)
 {
-	if (!cpumask_test_cpu(cpu, &p->cpus_allowed))
+	if (!cpumask_test_cpu(cpu, p->cpus_ptr))
 		return false;
 
 	if (is_per_cpu_kthread(p))
@@ -1027,7 +1027,7 @@ static int migration_cpu_stop(void *data)
 	local_irq_disable();
 	/*
 	 * We need to explicitly wake pending tasks before running
-	 * __migrate_task() such that we will not miss enforcing cpus_allowed
+	 * __migrate_task() such that we will not miss enforcing cpus_ptr
 	 * during wakeups, see set_cpus_allowed_ptr()'s TASK_WAKING test.
 	 */
 	sched_ttwu_pending();
@@ -1058,11 +1058,19 @@ static int migration_cpu_stop(void *data)
  */
 void set_cpus_allowed_common(struct task_struct *p, const struct cpumask *new_mask)
 {
-	cpumask_copy(&p->cpus_allowed, new_mask);
+	cpumask_copy(&p->cpus_mask, new_mask);
 	p->nr_cpus_allowed = cpumask_weight(new_mask);
 }
 
-void do_set_cpus_allowed(struct task_struct *p, const struct cpumask *new_mask)
+#if defined(CONFIG_PREEMPT_COUNT) && defined(CONFIG_SMP)
+int __migrate_disabled(struct task_struct *p)
+{
+	return p->migrate_disable;
+}
+#endif
+
+static void __do_set_cpus_allowed_tail(struct task_struct *p,
+				       const struct cpumask *new_mask)
 {
 	struct rq *rq = task_rq(p);
 	bool queued, running;
@@ -1089,6 +1097,20 @@ void do_set_cpus_allowed(struct task_struct *p, const struct cpumask *new_mask)
 		enqueue_task(rq, p, ENQUEUE_RESTORE | ENQUEUE_NOCLOCK);
 	if (running)
 		set_curr_task(rq, p);
+}
+
+void do_set_cpus_allowed(struct task_struct *p, const struct cpumask *new_mask)
+{
+#if defined(CONFIG_PREEMPT_COUNT) && defined(CONFIG_SMP)
+	if (__migrate_disabled(p)) {
+		lockdep_assert_held(&p->pi_lock);
+
+		cpumask_copy(&p->cpus_mask, new_mask);
+		p->migrate_disable_update = 1;
+		return;
+	}
+#endif
+	__do_set_cpus_allowed_tail(p, new_mask);
 }
 
 /*
@@ -1134,7 +1156,7 @@ static int __set_cpus_allowed_ptr(struct task_struct *p,
 		goto out;
 	}
 
-	if (cpumask_equal(&p->cpus_allowed, new_mask))
+	if (cpumask_equal(p->cpus_ptr, new_mask))
 		goto out;
 
 	cpumask_andnot(&allowed_mask, new_mask, cpu_isolated_mask);
@@ -1168,8 +1190,15 @@ static int __set_cpus_allowed_ptr(struct task_struct *p,
 	}
 
 	/* Can the task run on the task's current CPU? If so, we're done */
-	if (cpumask_test_cpu(task_cpu(p), &allowed_mask))
+	if (cpumask_test_cpu(task_cpu(p), &allowed_mask) || __migrate_disabled(p))
 		goto out;
+
+#if defined(CONFIG_PREEMPT_COUNT) && defined(CONFIG_SMP)
+	if (__migrate_disabled(p)) {
+		p->migrate_disable_update = 1;
+		goto out;
+	}
+#endif
 
 	if (task_running(rq, p) || p->state == TASK_WAKING) {
 		struct migration_arg arg = { p, dest_cpu };
@@ -1309,10 +1338,10 @@ static int migrate_swap_stop(void *data)
 	if (task_cpu(arg->src_task) != arg->src_cpu)
 		goto unlock;
 
-	if (!cpumask_test_cpu(arg->dst_cpu, &arg->src_task->cpus_allowed))
+	if (!cpumask_test_cpu(arg->dst_cpu, arg->src_task->cpus_ptr))
 		goto unlock;
 
-	if (!cpumask_test_cpu(arg->src_cpu, &arg->dst_task->cpus_allowed))
+	if (!cpumask_test_cpu(arg->src_cpu, arg->dst_task->cpus_ptr))
 		goto unlock;
 
 	__migrate_swap_task(arg->src_task, arg->dst_cpu);
@@ -1353,10 +1382,10 @@ int migrate_swap(struct task_struct *cur, struct task_struct *p)
 	if (!cpu_active(arg.src_cpu) || !cpu_active(arg.dst_cpu))
 		goto out;
 
-	if (!cpumask_test_cpu(arg.dst_cpu, &arg.src_task->cpus_allowed))
+	if (!cpumask_test_cpu(arg.dst_cpu, arg.src_task->cpus_ptr))
 		goto out;
 
-	if (!cpumask_test_cpu(arg.src_cpu, &arg.dst_task->cpus_allowed))
+	if (!cpumask_test_cpu(arg.src_cpu, arg.dst_task->cpus_ptr))
 		goto out;
 
 	trace_sched_swap_numa(cur, arg.src_cpu, p, arg.dst_cpu);
@@ -1376,7 +1405,7 @@ void sched_migrate_to_cpumask_start(struct cpumask *old_mask,
 	struct task_struct *p = current;
 
 	raw_spin_lock_irq(&p->pi_lock);
-	*cpumask_bits(old_mask) = *cpumask_bits(&p->cpus_allowed);
+	*cpumask_bits(old_mask) = *cpumask_bits(p->cpus_ptr);
 	raw_spin_unlock_irq(&p->pi_lock);
 
 	/*
@@ -1397,7 +1426,7 @@ void sched_migrate_to_cpumask_end(const struct cpumask *old_mask,
 	 * cpumask. There's no need to immediately migrate right now.
 	 */
 	raw_spin_lock_irq(&p->pi_lock);
-	if (*cpumask_bits(&p->cpus_allowed) == *cpumask_bits(dest)) {
+	if (*cpumask_bits(p->cpus_ptr) == *cpumask_bits(dest)) {
 		struct rq *rq = this_rq();
 
 		raw_spin_lock(&rq->lock);
@@ -1542,7 +1571,7 @@ void kick_process(struct task_struct *p)
 EXPORT_SYMBOL_GPL(kick_process);
 
 /*
- * ->cpus_allowed is protected by both rq->lock and p->pi_lock
+ * ->cpus_ptr is protected by both rq->lock and p->pi_lock
  *
  * A few notes on cpu_active vs cpu_online:
  *
@@ -1585,14 +1614,14 @@ static int select_fallback_rq(int cpu, struct task_struct *p, bool allow_iso)
 				continue;
 			if (cpu_isolated(dest_cpu))
 				continue;
-			if (cpumask_test_cpu(dest_cpu, &p->cpus_allowed))
+			if (cpumask_test_cpu(dest_cpu, p->cpus_ptr))
 				return dest_cpu;
 		}
 	}
 
 	for (;;) {
 		/* Any allowed, online CPU? */
-		for_each_cpu(dest_cpu, &p->cpus_allowed) {
+		for_each_cpu(dest_cpu, p->cpus_ptr) {
 			if (!is_cpu_allowed(p, dest_cpu))
 				continue;
 			if (cpu_isolated(dest_cpu)) {
@@ -1650,7 +1679,7 @@ out:
 }
 
 /*
- * The caller (fork, wakeup) owns p->pi_lock, ->cpus_allowed is stable.
+ * The caller (fork, wakeup) owns p->pi_lock, ->cpus_ptr is stable.
  */
 static inline
 int select_task_rq(struct task_struct *p, int cpu, int sd_flags, int wake_flags,
@@ -1664,11 +1693,11 @@ int select_task_rq(struct task_struct *p, int cpu, int sd_flags, int wake_flags,
 		cpu = p->sched_class->select_task_rq(p, cpu, sd_flags, wake_flags,
 						     sibling_count_hint);
 	else
-		cpu = cpumask_any(&p->cpus_allowed);
+		cpu = cpumask_any(p->cpus_ptr);
 
 	/*
 	 * In order not to call set_task_cpu() on a blocking task we need
-	 * to rely on ttwu() to place the task on a valid ->cpus_allowed
+	 * to rely on ttwu() to place the task on a valid ->cpus_ptr
 	 * CPU.
 	 *
 	 * Since this is common to all placement strategies, this lives here.
@@ -2262,33 +2291,38 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags,
 	 * current.
 	 */
 	smp_rmb();
-	if (READ_ONCE(p->on_rq) && ttwu_remote(p, wake_flags))
-		goto unlock;
+	if (READ_ONCE(p->on_rq)) {
+		if (ttwu_remote(p, wake_flags))
+			goto unlock;
+	} else {
+#ifdef CONFIG_SMP
+		/*
+		 * Ensure we load p->on_cpu _after_ p->on_rq, otherwise it would
+		 * be possible to, falsely, observe p->on_cpu == 0.
+		 *
+		 * One must be running (->on_cpu == 1) in order to remove
+		 * oneself from the runqueue.
+		 *
+		 *  [S] ->on_cpu = 1;	[L] ->on_rq
+		 *      UNLOCK rq->lock
+		 *			RMB
+		 *      LOCK   rq->lock
+		 *  [S] ->on_rq = 0;    [L] ->on_cpu
+		 *
+		 * Pairs with the full barrier implied in the UNLOCK+LOCK on
+		 * rq->lock from the consecutive calls to schedule(); the first
+		 * switching to our task, the second putting it to sleep.
+		 *
+		 * Form a control-dep-acquire with p->on_rq == 0 above, to
+		 * ensure schedule()'s deactivate_task() has 'happened' and p
+		 * will no longer care about it's own p->state. See the comment
+		 * in __schedule().
+		 */
+		smp_acquire__after_ctrl_dep();
+#endif
+	}
 
 #ifdef CONFIG_SMP
-	/*
-	 * Ensure we load p->on_cpu _after_ p->on_rq, otherwise it would be
-	 * possible to, falsely, observe p->on_cpu == 0.
-	 *
-	 * One must be running (->on_cpu == 1) in order to remove oneself
-	 * from the runqueue.
-	 *
-	 *  [S] ->on_cpu = 1;	[L] ->on_rq
-	 *      UNLOCK rq->lock
-	 *			RMB
-	 *      LOCK   rq->lock
-	 *  [S] ->on_rq = 0;    [L] ->on_cpu
-	 *
-	 * Pairs with the full barrier implied in the UNLOCK+LOCK on rq->lock
-	 * from the consecutive calls to schedule(); the first switching to our
-	 * task, the second putting it to sleep.
-	 *
-	 * Form a control-dep-acquire with p->on_rq == 0 above, to ensure
-	 * schedule()'s deactivate_task() has 'happened' and p will no longer
-	 * care about it's own p->state. See the comment in __schedule().
-	 */
-	smp_acquire__after_ctrl_dep();
-
 	/*
 	 * We're doing the wakeup (@success == 1), they did a dequeue (p->on_rq
 	 * == 0), which means we need to do an enqueue, change p->state to
@@ -2754,7 +2788,7 @@ void wake_up_new_task(struct task_struct *p)
 #ifdef CONFIG_SMP
 	/*
 	 * Fork balancing, do it here and not earlier because:
-	 *  - cpus_allowed can change in the fork path
+	 *  - cpus_ptr can change in the fork path
 	 *  - any previously selected CPU might disappear through hotplug
 	 *
 	 * Use __set_task_cpu() to avoid calling sched_class::migrate_task_rq,
@@ -4019,7 +4053,16 @@ asmlinkage __visible void __sched notrace preempt_schedule_notrace(void)
 		 * an infinite recursion.
 		 */
 		prev_ctx = exception_enter();
+		/*
+		 * The add/subtract must not be traced by the function
+		 * tracer. But we still want to account for the
+		 * preempt off latency tracer. Since the _notrace versions
+		 * of add/subtract skip the accounting for latency tracer
+		 * we must force it manually.
+		 */
+		start_critical_timings();
 		__schedule(true);
+		stop_critical_timings();
 		exception_exit(prev_ctx);
 
 		preempt_latency_stop(1);
@@ -4609,7 +4652,7 @@ change:
 			 * the entire root_domain to become SCHED_DEADLINE. We
 			 * will also fail if there's no bandwidth available.
 			 */
-			if (!cpumask_subset(span, &p->cpus_allowed) ||
+			if (!cpumask_subset(span, p->cpus_ptr) ||
 			    rq->rd->dl_bw.bw == 0) {
 				task_rq_unlock(rq, p, &rf);
 				return -EPERM;
@@ -5341,7 +5384,7 @@ long sched_getaffinity(pid_t pid, struct cpumask *mask)
 		goto out_unlock;
 
 	raw_spin_lock_irqsave(&p->pi_lock, flags);
-	cpumask_and(mask, &p->cpus_allowed, cpu_active_mask);
+	cpumask_and(mask, &p->cpus_mask, cpu_active_mask);
 
 	/* The userspace tasks are forbidden to run on
 	 * isolated CPUs. So exclude isolated CPUs from
@@ -5912,7 +5955,7 @@ int task_can_attach(struct task_struct *p,
 	 * allowed nodes is unnecessary.  Thus, cpusets are not
 	 * applicable for such threads.  This prevents checking for
 	 * success of set_cpus_allowed_ptr() on all attached tasks
-	 * before cpus_allowed may be changed.
+	 * before cpus_mask may be changed.
 	 */
 	if (p->flags & PF_NO_SETAFFINITY) {
 		ret = -EINVAL;
@@ -5939,7 +5982,7 @@ int migrate_task_to(struct task_struct *p, int target_cpu)
 	if (curr_cpu == target_cpu)
 		return 0;
 
-	if (!cpumask_test_cpu(target_cpu, &p->cpus_allowed))
+	if (!cpumask_test_cpu(target_cpu, p->cpus_ptr))
 		return -EINVAL;
 
 	/* TODO: This is not properly updating schedstats */
@@ -6115,14 +6158,14 @@ static void migrate_tasks(struct rq *dead_rq, struct rq_flags *rf,
 		put_prev_task(rq, next);
 
 		if (!migrate_pinned_tasks && next->flags & PF_KTHREAD &&
-			!cpumask_intersects(&avail_cpus, &next->cpus_allowed)) {
+			!cpumask_intersects(&avail_cpus, next->cpus_ptr)) {
 			detach_one_task(next, rq, &tasks);
 			num_pinned_kthreads += 1;
 			continue;
 		}
 
 		/*
-		 * Rules for changing task_struct::cpus_allowed are holding
+		 * Rules for changing task_struct::cpus_mask are holding
 		 * both pi_lock and rq->lock, such that holding either
 		 * stabilizes the mask.
 		 *
@@ -7815,6 +7858,103 @@ const u32 sched_prio_to_wmult[40] = {
  /*  10 */  39045157,  49367440,  61356676,  76695844,  95443717,
  /*  15 */ 119304647, 148102320, 186737708, 238609294, 286331153,
 };
+
+#if defined(CONFIG_PREEMPT_COUNT) && defined(CONFIG_SMP)
+
+void migrate_disable(void)
+{
+	struct task_struct *p = current;
+
+	if (in_atomic() || irqs_disabled()) {
+#ifdef CONFIG_SCHED_DEBUG
+		p->migrate_disable_atomic++;
+#endif
+		return;
+	}
+#ifdef CONFIG_SCHED_DEBUG
+	WARN_ON_ONCE(p->migrate_disable_atomic);
+#endif
+
+	if (p->migrate_disable) {
+		p->migrate_disable++;
+		return;
+	}
+
+	preempt_disable();
+	p->migrate_disable = 1;
+
+	p->cpus_ptr = cpumask_of(smp_processor_id());
+	p->nr_cpus_allowed = 1;
+
+	preempt_enable();
+}
+EXPORT_SYMBOL(migrate_disable);
+
+void migrate_enable(void)
+{
+	struct task_struct *p = current;
+
+	if (in_atomic() || irqs_disabled()) {
+#ifdef CONFIG_SCHED_DEBUG
+		p->migrate_disable_atomic--;
+#endif
+		return;
+	}
+
+#ifdef CONFIG_SCHED_DEBUG
+	WARN_ON_ONCE(p->migrate_disable_atomic);
+#endif
+
+	WARN_ON_ONCE(p->migrate_disable <= 0);
+	if (p->migrate_disable > 1) {
+		p->migrate_disable--;
+		return;
+	}
+
+	preempt_disable();
+
+	p->cpus_ptr = &p->cpus_mask;
+	p->nr_cpus_allowed = cpumask_weight(&p->cpus_mask);
+	p->migrate_disable = 0;
+
+	if (p->migrate_disable_update) {
+		struct rq *rq;
+		struct rq_flags rf;
+
+		rq = task_rq_lock(p, &rf);
+		update_rq_clock(rq);
+
+		__do_set_cpus_allowed_tail(p, &p->cpus_mask);
+		task_rq_unlock(rq, p, &rf);
+
+		p->migrate_disable_update = 0;
+
+		WARN_ON(smp_processor_id() != task_cpu(p));
+		if (!cpumask_test_cpu(task_cpu(p), &p->cpus_mask)) {
+			const struct cpumask *cpu_valid_mask = cpu_active_mask;
+			struct migration_arg arg;
+			unsigned int dest_cpu;
+
+			if (p->flags & PF_KTHREAD) {
+				/*
+				 * Kernel threads are allowed on online && !active CPUs
+				 */
+				cpu_valid_mask = cpu_online_mask;
+			}
+			dest_cpu = cpumask_any_and(cpu_valid_mask, &p->cpus_mask);
+			arg.task = p;
+			arg.dest_cpu = dest_cpu;
+
+			preempt_enable();
+			stop_one_cpu(task_cpu(p), migration_cpu_stop, &arg);
+			tlb_migrate_finish(p->mm);
+			return;
+		}
+	}
+	preempt_enable();
+}
+EXPORT_SYMBOL(migrate_enable);
+#endif
 
 #ifdef CONFIG_SCHED_WALT
 /*

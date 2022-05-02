@@ -80,13 +80,15 @@ int tick_is_oneshot_available(void)
 static void tick_periodic(int cpu)
 {
 	if (tick_do_timer_cpu == cpu) {
-		write_seqlock(&jiffies_lock);
+		raw_spin_lock(&jiffies_lock);
+		write_seqcount_begin(&jiffies_seq);
 
 		/* Keep track of the next tick event */
 		tick_next_period = ktime_add(tick_next_period, tick_period);
 
 		do_timer(1);
-		write_sequnlock(&jiffies_lock);
+		write_seqcount_end(&jiffies_seq);
+		raw_spin_unlock(&jiffies_lock);
 		update_wall_time();
 	}
 
@@ -158,9 +160,9 @@ void tick_setup_periodic(struct clock_event_device *dev, int broadcast)
 		ktime_t next;
 
 		do {
-			seq = read_seqbegin(&jiffies_lock);
+			seq = read_seqcount_begin(&jiffies_seq);
 			next = tick_next_period;
-		} while (read_seqretry(&jiffies_lock, seq));
+		} while (read_seqcount_retry(&jiffies_seq, seq));
 
 		clockevents_switch_state(dev, CLOCK_EVT_STATE_ONESHOT);
 
@@ -472,7 +474,7 @@ void tick_resume(void)
 
 #ifdef CONFIG_SUSPEND
 static DEFINE_RAW_SPINLOCK(tick_freeze_lock);
-static unsigned int tick_freeze_depth;
+static unsigned long tick_frozen_mask;
 
 /**
  * tick_freeze - Suspend the local tick and (possibly) timekeeping.
@@ -485,10 +487,17 @@ static unsigned int tick_freeze_depth;
  */
 void tick_freeze(void)
 {
+	int cpu = smp_processor_id();
+
 	raw_spin_lock(&tick_freeze_lock);
 
-	tick_freeze_depth++;
-	if (tick_freeze_depth == num_online_cpus()) {
+	tick_frozen_mask |= BIT(cpu);
+	if (tick_do_timer_cpu == cpu) {
+		cpu = ffz(tick_frozen_mask);
+		tick_do_timer_cpu = (cpu < nr_cpu_ids) ? cpu :
+			TICK_DO_TIMER_NONE;
+	}
+	if (tick_frozen_mask == *cpumask_bits(cpu_online_mask)) {
 		trace_suspend_resume(TPS("timekeeping_freeze"),
 				     smp_processor_id(), true);
 		sched_clock_suspend();
@@ -511,9 +520,11 @@ void tick_freeze(void)
  */
 void tick_unfreeze(void)
 {
+	int cpu = smp_processor_id();
+
 	raw_spin_lock(&tick_freeze_lock);
 
-	if (tick_freeze_depth == num_online_cpus()) {
+	if (tick_frozen_mask == *cpumask_bits(cpu_online_mask)) {
 		timekeeping_resume();
 		sched_clock_resume();
 		trace_suspend_resume(TPS("timekeeping_freeze"),
@@ -521,8 +532,10 @@ void tick_unfreeze(void)
 	} else {
 		tick_resume_local();
 	}
+	if (tick_do_timer_cpu == TICK_DO_TIMER_NONE)
+		tick_do_timer_cpu = cpu;
 
-	tick_freeze_depth--;
+	tick_frozen_mask &= ~BIT(cpu);
 
 	raw_spin_unlock(&tick_freeze_lock);
 }

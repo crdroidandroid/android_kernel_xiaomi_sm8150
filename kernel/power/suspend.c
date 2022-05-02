@@ -114,6 +114,7 @@ static void s2idle_loop(void)
 
 	for (;;) {
 		int error;
+		bool leave_s2idle = false;
 
 		dpm_noirq_begin();
 
@@ -127,10 +128,27 @@ static void s2idle_loop(void)
 		 * so prevent them from terminating the loop right away.
 		 */
 		error = dpm_noirq_suspend_devices(PMSG_SUSPEND);
-		if (!error)
+		if (!error) {
 			s2idle_enter();
-		else if (error == -EBUSY && pm_wakeup_pending())
+			/*
+			 * Once we enter s2idle_enter(), returning means that
+			 * either:
+			 * 1) an abort was detected prior to suspending, or
+			 * 2) something caused us to wake from suspended
+			 * If we got an abort or a wakeup interrupt, we need
+			 * to break out of this loop.  If we were woken by
+			 * an interrupt that technically doesn't require a
+			 * full wakeup (only a few corner cases), we're going
+			 * to wake up anyway, because the way this new
+			 * s2idle_loop() flow works, the resume of devices
+			 * below will cause an abort even if we could
+			 * otherwise have looped back into suspend.
+			 */
+			leave_s2idle = true;
+		} else if (error == -EBUSY && pm_wakeup_pending()) {
+			leave_s2idle = true;
 			error = 0;
+		}
 
 		if (!error && s2idle_ops && s2idle_ops->wake)
 			s2idle_ops->wake();
@@ -145,9 +163,15 @@ static void s2idle_loop(void)
 		if (s2idle_ops && s2idle_ops->sync)
 			s2idle_ops->sync();
 
-		if (pm_wakeup_pending())
+		if (leave_s2idle || pm_wakeup_pending())
 			break;
 
+		/*
+		 * Since we are going to loop around and attempt to go back
+		 * into suspend, ensure that all wakeup reason logging from
+		 * this partial resume gets cleared first (which will also
+		 * reenable wakeup reason logging).
+		 */
 		pm_wakeup_clear(false);
 		clear_wakeup_reasons();
 	}
@@ -263,13 +287,19 @@ static int platform_suspend_prepare_late(suspend_state_t state)
 
 static int platform_suspend_prepare_noirq(suspend_state_t state)
 {
-	return state != PM_SUSPEND_TO_IDLE && suspend_ops->prepare_late ?
-		suspend_ops->prepare_late() : 0;
+	if (state == PM_SUSPEND_TO_IDLE) {
+		if (s2idle_ops && s2idle_ops->prepare_late)
+			return s2idle_ops->prepare_late();
+	}
+	return suspend_ops->prepare_late ? suspend_ops->prepare_late() : 0;
 }
 
 static void platform_resume_noirq(suspend_state_t state)
 {
-	if (state != PM_SUSPEND_TO_IDLE && suspend_ops->wake)
+	if (state == PM_SUSPEND_TO_IDLE) {
+		if (s2idle_ops && s2idle_ops->restore_early)
+			s2idle_ops->restore_early();
+	} else if (suspend_ops->wake)
 		suspend_ops->wake();
 }
 
@@ -442,6 +472,8 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 	arch_suspend_disable_irqs();
 	BUG_ON(!irqs_disabled());
 
+	system_state = SYSTEM_SUSPEND;
+
 	error = syscore_suspend();
 	if (!error) {
 		*wakeup = pm_wakeup_pending();
@@ -457,6 +489,8 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 		}
 		syscore_resume();
 	}
+
+	system_state = SYSTEM_RUNNING;
 
 	arch_suspend_enable_irqs();
 	BUG_ON(irqs_disabled());

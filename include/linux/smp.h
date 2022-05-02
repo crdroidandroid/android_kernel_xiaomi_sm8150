@@ -97,6 +97,8 @@ extern void smp_cpus_done(unsigned int max_cpus);
 /*
  * Call a function on all other processors
  */
+int generic_exec_single(int cpu, call_single_data_t *csd, smp_call_func_t func,
+			void *info);
 int smp_call_function(smp_call_func_t func, void *info, int wait);
 void smp_call_function_many(const struct cpumask *mask,
 			    smp_call_func_t func, void *info, bool wait);
@@ -201,6 +203,9 @@ static inline int get_boot_cpu_id(void)
 
 #define get_cpu()		({ preempt_disable(); smp_processor_id(); })
 #define put_cpu()		preempt_enable()
+
+#define get_cpu_light()		({ migrate_disable(); smp_processor_id(); })
+#define put_cpu_light()		migrate_enable()
 
 /*
  * Callback to arch code if there's nosmp or maxcpus=0 on the
