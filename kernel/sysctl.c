@@ -678,6 +678,7 @@ static struct ctl_table kern_table[] = {
 		.extra1		= &one,
 	},
 #endif
+#ifndef CONFIG_SCHED_WALT
 	{
 		.procname	= "sched_lib_name",
 		.data		= sched_lib_name,
@@ -694,6 +695,7 @@ static struct ctl_table kern_table[] = {
 		.extra1		= &zero,
 		.extra2		= &two_hundred_fifty_five,
 	},
+#endif
 #ifdef CONFIG_PROVE_LOCKING
 	{
 		.procname	= "prove_locking",
