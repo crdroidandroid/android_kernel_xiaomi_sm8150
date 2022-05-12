@@ -1476,8 +1476,9 @@ static bool fuse_direct_write_extending_i_size(struct kiocb *iocb,
 static ssize_t fuse_direct_write_iter(struct kiocb *iocb, struct iov_iter *from)
 {
 	struct inode *inode = file_inode(iocb->ki_filp);
-	struct file *file = iocb->ki_filp;
-	struct fuse_file *ff = file->private_data;
+	//Unused variable after forcing p_write = true
+	//struct file *file = iocb->ki_filp;
+	//struct fuse_file *ff = file->private_data;
 	struct fuse_io_priv io = FUSE_IO_PRIV_SYNC(iocb);
 	ssize_t res;
 	//HACK: due to lacking support in Android rom, and no issues without locking
