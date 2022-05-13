@@ -247,6 +247,7 @@ struct dsi_panel {
 	u8 fod_dim_alpha;
 	bool fod_hbm_enabled;
 	bool fod_ui;
+	bool force_fod_ui;
 };
 
 static inline bool dsi_panel_ulps_feature_enabled(struct dsi_panel *panel)
@@ -377,5 +378,6 @@ void dsi_panel_calc_dsi_transfer_time(struct dsi_host_common_cfg *config,
 int dsi_panel_set_fod_hbm(struct dsi_panel *panel, bool status);
 bool dsi_panel_get_fod_ui(struct dsi_panel *panel);
 void dsi_panel_set_fod_ui(struct dsi_panel *panel, bool status);
+bool dsi_panel_get_force_fod_ui(struct dsi_panel *panel);
 
 #endif /* _DSI_PANEL_H_ */
