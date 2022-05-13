@@ -51,21 +51,6 @@ config SGI_MBCS
 source "drivers/tty/serial/Kconfig"
 source "drivers/tty/serdev/Kconfig"
 
-config SRANDOM
-	tristate "Seed PRNG to replace urandom"
-	default n
-	---help---
-	  If you say Y here, The kernel support for
-	  Seed PRNG will be enabled.
-
-	  This driver will improve built-in random number generators
-	  useful for faster RNG to wipe SSDs.
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called srandom.
-
-	  If unsure, say N.
-
 config TTY_PRINTK
 	tristate "TTY driver to output user messages via printk"
 	depends on EXPERT && TTY
@@ -647,6 +632,8 @@ config MSM_RDBG
 	  Implements a shared memory based transport mechanism that allows
 	  for a debugger running on a host PC to communicate with a remote
 	  stub running on peripheral subsystems such as the ADSP, MODEM etc.
+
+source "drivers/char/srandom/Kconfig"
 
 endmenu
 
