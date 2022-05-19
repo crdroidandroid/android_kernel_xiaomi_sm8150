@@ -82,7 +82,8 @@ int f2fs_init_casefolded_name(const struct inode *dir,
 #ifdef CONFIG_UNICODE
 	struct super_block *sb = dir->i_sb;
 
-	if (IS_CASEFOLDED(dir)) {
+	if (IS_CASEFOLDED(dir) &&
+	    !is_dot_dotdot(fname->usr_fname->name, fname->usr_fname->len)) {
 		fname->cf_name.name = f2fs_kmem_cache_alloc(f2fs_cf_name_slab,
 					GFP_NOFS, false, F2FS_SB(sb));
 		if (!fname->cf_name.name)
@@ -233,7 +234,7 @@ static int f2fs_match_ci_name(const struct inode *dir, const struct qstr *name,
 
 		decrypted_name.name = kmalloc(de_name_len, GFP_KERNEL);
 		if (!decrypted_name.name)
-			return -ENOMEM;
+			return -EINVAL;
 		res = fscrypt_fname_disk_to_usr(dir, 0, 0, &encrypted_name,
 						&decrypted_name);
 		if (res < 0)
