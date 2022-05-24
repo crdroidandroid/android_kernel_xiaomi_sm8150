@@ -6,7 +6,6 @@
 # Rewritten to use lists instead of if-statements.
 # 
 
-ccflags-y += -Ofast
 ccflags-y += -mllvm -inline-threshold=15000
 ccflags-y += -mllvm -inlinehint-threshold=10000
 
