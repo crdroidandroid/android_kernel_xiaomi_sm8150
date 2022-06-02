@@ -321,7 +321,7 @@ compound_page_dtor * const compound_page_dtors[] = {
  * allocations below this point, only high priority ones. Automatically
  * tuned according to the amount of memory in the system.
  */
-int min_free_kbytes = 1024;
+int min_free_kbytes = 16384;
 int user_min_free_kbytes = -1;
 int watermark_scale_factor = 10;
 
@@ -7354,22 +7354,6 @@ void setup_per_zone_wmarks(void)
  */
 int __meminit init_per_zone_wmark_min(void)
 {
-	unsigned long lowmem_kbytes;
-	int new_min_free_kbytes;
-
-	lowmem_kbytes = nr_free_buffer_pages() * (PAGE_SIZE >> 10);
-	new_min_free_kbytes = int_sqrt(lowmem_kbytes * 16);
-
-	if (new_min_free_kbytes > user_min_free_kbytes) {
-		min_free_kbytes = new_min_free_kbytes;
-		if (min_free_kbytes < 128)
-			min_free_kbytes = 128;
-		if (min_free_kbytes > 65536)
-			min_free_kbytes = 65536;
-	} else {
-		pr_warn("min_free_kbytes is not updated to %d because user defined value %d is preferred\n",
-				new_min_free_kbytes, user_min_free_kbytes);
-	}
 	setup_per_zone_wmarks();
 	refresh_zone_stat_thresholds();
 	setup_per_zone_lowmem_reserve();
@@ -7394,6 +7378,14 @@ int min_free_kbytes_sysctl_handler(struct ctl_table *table, int write,
 	void __user *buffer, size_t *length, loff_t *ppos)
 {
 	int rc;
+
+	/*
+	 * Block writes to the extra_free_kbytes sysctl, since it isn't
+	 * going to be used anyway.
+	 */
+	if (!strcmp((char *) table->procname, "extra_free_kbytes") && write) {
+		return 0;
+	}
 
 	rc = proc_dointvec_minmax(table, write, buffer, length, ppos);
 	if (rc)
