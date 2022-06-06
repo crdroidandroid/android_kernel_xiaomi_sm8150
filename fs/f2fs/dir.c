@@ -82,8 +82,7 @@ int f2fs_init_casefolded_name(const struct inode *dir,
 #ifdef CONFIG_UNICODE
 	struct super_block *sb = dir->i_sb;
 
-	if (IS_CASEFOLDED(dir) &&
-	    !is_dot_dotdot(fname->usr_fname->name, fname->usr_fname->len)) {
+	if (IS_CASEFOLDED(dir)) {
 		fname->cf_name.name = f2fs_kmem_cache_alloc(f2fs_cf_name_slab,
 					GFP_NOFS, false, F2FS_SB(sb));
 		if (!fname->cf_name.name)
