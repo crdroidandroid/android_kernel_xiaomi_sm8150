@@ -1,7 +1,7 @@
 qcom,xiaomi_j20s_sunwoda_5160mah_averaged_masterslave_aug26th2019 {
 	qcom,profile-revision = <24>;
 	/* #4174016_Xiaomi_J20S_5160mAh_averaged_MasterSlave_Aug26th2019*/
-	qcom,max-voltage-uv = <4475000>;
+	qcom,max-voltage-uv = <4460000>;
         qcom,fastchg-current-ma = <5900>;
 	qcom,jeita-fcc-ranges = <(-100)  0   500000
                                 1  50   1000000
@@ -13,14 +13,14 @@ qcom,xiaomi_j20s_sunwoda_5160mah_averaged_masterslave_aug26th2019 {
                                 1   50   4450000
 				51  100  4450000
 				101 150  4450000
-				151 450  4475000
+				151 450  4460000
 				451 600  4100000>;
 	qcom,step-chg-ranges = <3001000  4150000  5900000
 				4150001  4230000  5900000
 				4230001  4350000  5400000
 				4350001  4400000  5400000
 				4400001  4430000  5400000
-				4430001  4475000  4000000>;
+				4430001  4460000  4000000>;
 	qcom,taper-fcc;
 	qcom,jeita-too-hot = <590>;
 	qcom,jeita-too-cold = <(-100)>;
