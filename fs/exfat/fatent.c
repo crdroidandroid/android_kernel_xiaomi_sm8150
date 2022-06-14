@@ -304,15 +304,9 @@ int exfat_zeroed_cluster(struct inode *dir, unsigned int clu)
 	}
 
 	if (IS_DIRSYNC(dir))
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 19, 0)
 		return sync_blockdev_range(sb->s_bdev,
 				EXFAT_BLK_TO_B(blknr, sb),
 				EXFAT_BLK_TO_B(last_blknr, sb) - 1);
-#else
-		return filemap_write_and_wait_range(sb->s_bdev->bd_inode->i_mapping,
-				EXFAT_BLK_TO_B(blknr, sb),
-				EXFAT_BLK_TO_B(last_blknr, sb) - 1);
-#endif
 
 
 	return 0;
