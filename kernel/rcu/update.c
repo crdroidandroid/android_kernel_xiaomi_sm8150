@@ -63,12 +63,12 @@
 #define MODULE_PARAM_PREFIX "rcupdate."
 
 #ifndef CONFIG_TINY_RCU
-extern int rcu_expedited; /* from sysctl */
-module_param(rcu_expedited, int, 0);
-extern int rcu_normal; /* from sysctl */
-module_param(rcu_normal, int, 0);
-static int rcu_normal_after_boot;
-module_param(rcu_normal_after_boot, int, 0);
+static int rcu_expedited = 1; /* from sysctl */
+//module_param(rcu_expedited, int, 0);
+static int rcu_normal = 0; /* from sysctl */
+//module_param(rcu_normal, int, 0);
+static int rcu_normal_after_boot = 0;
+//module_param(rcu_normal_after_boot, int, 0);
 #endif /* #ifndef CONFIG_TINY_RCU */
 
 #ifdef CONFIG_DEBUG_LOCK_ALLOC
