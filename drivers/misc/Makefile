@@ -67,6 +67,7 @@ obj-$(CONFIG_MEMORY_STATE_TIME)	+= memory_state_time.o
 obj-$(CONFIG_QPNP_MISC) 	+= qpnp-misc.o
 obj-$(CONFIG_AKM09970) 	+= akm09970.o
 obj-$(CONFIG_TI_DRV8846) += drv8846.o
+obj-$(CONFIG_SIMTRAY_STATUS) += simtray.o
 
 obj-$(CONFIG_OKL4_USER_VIRQ)	+= okl4-virq.o
 obj-$(CONFIG_OKL4_RINGBUF)	+= okl4-ringbuf.o
