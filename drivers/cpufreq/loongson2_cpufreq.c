@@ -159,7 +159,7 @@ static int __init cpufreq_init(void)
 	if (ret)
 		return ret;
 
-	pr_info("Loongson-2F CPU frequency driver\n");
+	pr_debug("Loongson-2F CPU frequency driver\n");
 
 	cpufreq_register_notifier(&loongson2_cpufreq_notifier_block,
 				  CPUFREQ_TRANSITION_NOTIFIER);

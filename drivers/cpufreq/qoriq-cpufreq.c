@@ -347,7 +347,7 @@ static int __init qoriq_cpufreq_init(void)
 
 	ret = cpufreq_register_driver(&qoriq_cpufreq_driver);
 	if (!ret)
-		pr_info("Freescale QorIQ CPU frequency scaling driver\n");
+		pr_debug("Freescale QorIQ CPU frequency scaling driver\n");
 
 	return ret;
 }

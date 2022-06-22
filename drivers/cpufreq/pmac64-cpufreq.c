@@ -453,10 +453,10 @@ static int __init g5_neo2_cpufreq_init(struct device_node *cpunode)
 	g5_pmode_cur = -1;
 	g5_switch_freq(g5_query_freq());
 
-	pr_info("Registering G5 CPU frequency driver\n");
-	pr_info("Frequency method: %s, Voltage method: %s\n",
+	pr_debug("Registering G5 CPU frequency driver\n");
+	pr_debug("Frequency method: %s, Voltage method: %s\n",
 		freq_method, volt_method);
-	pr_info("Low: %d Mhz, High: %d Mhz, Cur: %d MHz\n",
+	pr_debug("Low: %d Mhz, High: %d Mhz, Cur: %d MHz\n",
 		g5_cpu_freqs[1].frequency/1000,
 		g5_cpu_freqs[0].frequency/1000,
 		g5_cpu_freqs[g5_pmode_cur].frequency/1000);
@@ -618,10 +618,10 @@ static int __init g5_pm72_cpufreq_init(struct device_node *cpunode)
 	g5_pmode_cur = -1;
 	g5_switch_freq(g5_query_freq());
 
-	pr_info("Registering G5 CPU frequency driver\n");
-	pr_info("Frequency method: i2c/pfunc, Voltage method: %s\n",
+	pr_debug("Registering G5 CPU frequency driver\n");
+	pr_debug("Frequency method: i2c/pfunc, Voltage method: %s\n",
 		has_volt ? "i2c/pfunc" : "none");
-	pr_info("Low: %d Mhz, High: %d Mhz, Cur: %d MHz\n",
+	pr_debug("Low: %d Mhz, High: %d Mhz, Cur: %d MHz\n",
 		g5_cpu_freqs[1].frequency/1000,
 		g5_cpu_freqs[0].frequency/1000,
 		g5_cpu_freqs[g5_pmode_cur].frequency/1000);

@@ -440,12 +440,12 @@ static void cpufreq_list_transition_notifiers(void)
 {
 	struct notifier_block *nb;
 
-	pr_info("Registered transition notifiers:\n");
+	pr_debug("Registered transition notifiers:\n");
 
 	mutex_lock(&cpufreq_transition_notifier_list.mutex);
 
 	for (nb = cpufreq_transition_notifier_list.head; nb; nb = nb->next)
-		pr_info("%pF\n", nb->notifier_call);
+		pr_debug("%pF\n", nb->notifier_call);
 
 	mutex_unlock(&cpufreq_transition_notifier_list.mutex);
 }
@@ -2607,7 +2607,7 @@ int cpufreq_register_driver(struct cpufreq_driver *driver_data)
 	hp_online = ret;
 	ret = 0;
 
-	pr_info("driver %s up and running\n", driver_data->name);
+	pr_debug("driver %s up and running\n", driver_data->name);
 	goto out;
 
 err_if_unreg:
@@ -2639,7 +2639,7 @@ int cpufreq_unregister_driver(struct cpufreq_driver *driver)
 	if (!cpufreq_driver || (driver != cpufreq_driver))
 		return -EINVAL;
 
-	pr_info("unregistering driver %s\n", driver->name);
+	pr_debug("unregistering driver %s\n", driver->name);
 
 	/* Protect against concurrent cpu hotplug */
 	cpus_read_lock();

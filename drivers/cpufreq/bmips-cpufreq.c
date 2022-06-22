@@ -145,7 +145,7 @@ static int bmips_cpufreq_init(struct cpufreq_policy *policy)
 	if (ret)
 		bmips_cpufreq_exit(policy);
 	else
-		pr_info("%s: registered\n", BMIPS_CPUFREQ_NAME);
+		pr_debug("%s: registered\n", BMIPS_CPUFREQ_NAME);
 
 	return ret;
 }

@@ -196,7 +196,7 @@ static int pxa3xx_cpufreq_init(struct cpufreq_policy *policy)
 		return ret;
 	}
 
-	pr_info("CPUFREQ support for PXA3xx initialized\n");
+	pr_debug("CPUFREQ support for PXA3xx initialized\n");
 	return 0;
 }
 

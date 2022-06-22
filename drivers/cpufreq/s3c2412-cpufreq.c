@@ -211,7 +211,7 @@ static int s3c2412_cpufreq_add(struct device *dev,
 
 	fclk_rate = clk_get_rate(fclk);
 	if (fclk_rate > 200000000) {
-		pr_info("fclk %ld MHz, assuming 266MHz capable part\n",
+		pr_debug("fclk %ld MHz, assuming 266MHz capable part\n",
 			fclk_rate / 1000000);
 		s3c2412_cpufreq_info.max.fclk = 266000000;
 		s3c2412_cpufreq_info.max.hclk = 133000000;

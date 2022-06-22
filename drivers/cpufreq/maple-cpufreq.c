@@ -223,8 +223,8 @@ static int __init maple_cpufreq_init(void)
 	maple_pmode_cur = -1;
 	maple_scom_switch_freq(maple_scom_query_freq());
 
-	pr_info("Registering Maple CPU frequency driver\n");
-	pr_info("Low: %d Mhz, High: %d Mhz, Cur: %d MHz\n",
+	pr_debug("Registering Maple CPU frequency driver\n");
+	pr_debug("Low: %d Mhz, High: %d Mhz, Cur: %d MHz\n",
 		maple_cpu_freqs[1].frequency/1000,
 		maple_cpu_freqs[0].frequency/1000,
 		maple_cpu_freqs[maple_pmode_cur].frequency/1000);
