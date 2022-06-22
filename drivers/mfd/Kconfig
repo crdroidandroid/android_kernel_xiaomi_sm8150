@@ -1829,5 +1829,10 @@ config MFD_VEXPRESS_SYSREG
 	  System Registers are the platform configuration block
 	  on the ARM Ltd. Versatile Express board.
 
+config MFD_SPK_ID
+	bool "Versatile Express System Registers"
+	help
+	  Xiaomi speaker ID driver.
+
 endmenu
 endif
