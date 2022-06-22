@@ -28,6 +28,9 @@ struct gpio_keys_button {
 	int wakeup;
 	int debounce_interval;
 	bool can_disable;
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	bool level_trigger;
+#endif
 	int value;
 	unsigned int irq;
 };
