@@ -40,6 +40,9 @@
 #include "../pinconf.h"
 #include "pinctrl-msm.h"
 #include "../pinctrl-utils.h"
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+#include <soc/qcom/socinfo.h>
+#endif
 #include <linux/suspend.h>
 #ifdef CONFIG_HIBERNATION
 #include <linux/notifier.h>
@@ -382,6 +385,12 @@ static int msm_config_group_set(struct pinctrl_dev *pctldev,
 	u32 val;
 	int i;
 
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	/* gpio 0~3 is NFC spi, gpio 126~129 is FP spi */
+	if (group < 4 || (group > 125 && group < 130))
+		return 0;
+#endif
+
 	g = &pctrl->soc->groups[group];
 	base = reassign_pctrl_reg(pctrl->soc, group);
 
@@ -623,6 +632,19 @@ static void msm_gpio_dbg_show(struct seq_file *s, struct gpio_chip *chip)
 	unsigned i;
 
 	for (i = 0; i < chip->ngpio; i++, gpio++) {
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+		/* gpio 0~3 is NFC spi, gpio 126~129 is FP spi */
+		if (i < 4 || (i > 125 && i < 130))
+			continue;
+
+		/*only for E5G*/
+		if (HARDWARE_PLATFORM_ANDROMEDA == get_hw_version_platform()){
+		  /*skip 5G related gpio: 5G IPC HS-UART, 5G RF HS-UART*/
+		  if ((i >= 4 && i <= 7) || (i >= 83 && i <= 86))
+			continue;
+		}
+#endif
+
 		msm_gpio_dbg_show_one(s, NULL, chip, i, gpio);
 		seq_puts(s, "\n");
 	}
