@@ -213,6 +213,10 @@ static void ufshcd_update_uic_error_cnt(struct ufs_hba *hba, u32 reg, int type)
 /* UIC command timeout, unit: ms */
 #define UIC_CMD_TIMEOUT	500
 
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+#define UIC_PWR_CTRL_TIMEOUT 3000
+#endif
+
 /* NOP OUT retries waiting for NOP IN response */
 #define NOP_OUT_RETRIES    10
 /* Timeout after 30 msecs if NOP OUT hangs without response */
@@ -221,7 +225,11 @@ static void ufshcd_update_uic_error_cnt(struct ufs_hba *hba, u32 reg, int type)
 /* Query request retries */
 #define QUERY_REQ_RETRIES 3
 /* Query request timeout */
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+#define QUERY_REQ_TIMEOUT 3000 /* 3.0 seconds */
+#else
 #define QUERY_REQ_TIMEOUT 1500 /* 1.5 seconds */
+#endif
 
 /* Task management command timeout */
 #define TM_CMD_TIMEOUT	100 /* msecs */
@@ -428,6 +436,10 @@ static struct ufs_dev_fix ufs_fixups[] = {
 		UFS_DEVICE_QUIRK_HOST_PA_SAVECONFIGTIME),
 	UFS_FIX(UFS_VENDOR_SKHYNIX, UFS_ANY_MODEL,
 		UFS_DEVICE_QUIRK_WAIT_AFTER_REF_CLK_UNGATE),
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	UFS_FIX(UFS_VENDOR_SANDISK, UFS_ANY_MODEL,
+		UFS_DEVICE_QUIRK_WAIT_AFTER_REF_CLK_UNGATE),
+#endif
 	UFS_FIX(UFS_VENDOR_SKHYNIX, "hB8aL1",
 		UFS_DEVICE_QUIRK_HS_G1_TO_HS_G3_SWITCH),
 	UFS_FIX(UFS_VENDOR_SKHYNIX, "hC8aL1",
@@ -442,6 +454,10 @@ static struct ufs_dev_fix ufs_fixups[] = {
 		UFS_DEVICE_QUIRK_HS_G1_TO_HS_G3_SWITCH),
 	UFS_FIX(UFS_VENDOR_SKHYNIX, "hC8HL1",
 		UFS_DEVICE_QUIRK_HS_G1_TO_HS_G3_SWITCH),
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	UFS_FIX(UFS_VENDOR_SANDISK, UFS_ANY_MODEL,
+		UFS_DEVICE_QUIRK_HOST_PA_TACTIVATE),
+#endif
 
 	END_FIX
 };
@@ -5127,8 +5143,13 @@ static int ufshcd_uic_pwr_ctrl(struct ufs_hba *hba, struct uic_command *cmd)
 	}
 
 more_wait:
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	if (!wait_for_completion_timeout(hba->uic_async_done,
+					 msecs_to_jiffies(UIC_PWR_CTRL_TIMEOUT))) {
+#else
 	if (!wait_for_completion_timeout(hba->uic_async_done,
 					 msecs_to_jiffies(UIC_CMD_TIMEOUT))) {
+#endif
 		u32 intr_status = 0;
 		s64 ts_since_last_intr;
 
@@ -5639,7 +5660,11 @@ static int ufshcd_complete_dev_init(struct ufs_hba *hba)
 	 * Some vendor devices are taking longer time to complete its internal
 	 * initialization, so set fDeviceInit flag poll time to 5 secs
 	 */
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	timeout = ktime_add_ms(ktime_get(), 8000);
+#else
 	timeout = ktime_add_ms(ktime_get(), 5000);
+#endif
 
 	/* poll for max. 5sec for fDeviceInit flag to clear */
 	while (1) {
