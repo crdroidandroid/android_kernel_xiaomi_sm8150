@@ -45,7 +45,17 @@ enum backlight_type {
 enum backlight_notification {
 	BACKLIGHT_REGISTERED,
 	BACKLIGHT_UNREGISTERED,
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	BACKLIGHT_UPDATED,
+#endif
 };
+
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+enum backlight_brightness {
+	BACKLIGHT_OFF,
+	BACKLIGHT_ON,
+};
+#endif
 
 struct backlight_device;
 struct fb_info;
