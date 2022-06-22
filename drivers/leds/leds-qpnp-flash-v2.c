@@ -354,6 +354,13 @@ static int max_ires_curr_ma_table[MAX_IRES_LEVELS] = {
 	FLASH_LED_IRES7P5_MAX_CURR_MA, FLASH_LED_IRES5P0_MAX_CURR_MA
 };
 
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+struct flash_node_data *g_torch_0 = NULL;
+struct flash_node_data *g_torch_1 = NULL;
+struct flash_switch_data *g_switch_0 = NULL;
+struct flash_switch_data *g_switch_1 = NULL;
+#endif
+
 static inline int get_current_reg_code(int target_curr_ma, int ires_ua)
 {
 	if (!ires_ua || !target_curr_ma || (target_curr_ma < (ires_ua / 1000)))
@@ -1751,6 +1758,11 @@ static void qpnp_flash_led_brightness_set(struct led_classdev *led_cdev,
 						strlen("led:torch"))) {
 		fnode = container_of(led_cdev, struct flash_node_data, cdev);
 		led = dev_get_drvdata(&fnode->pdev->dev);
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	} else if (!strncmp(led_cdev->name, "flashlight", strlen("flashlight"))) {
+		fnode = container_of(led_cdev, struct flash_node_data, cdev);
+		led = dev_get_drvdata(&fnode->pdev->dev);
+#endif
 	}
 
 	if (!led) {
@@ -1764,7 +1776,20 @@ static void qpnp_flash_led_brightness_set(struct led_classdev *led_cdev,
 		if (rc < 0)
 			pr_err("Failed to set flash LED switch rc=%d\n", rc);
 	} else if (fnode) {
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+		if (!strncmp(led_cdev->name, "flashlight", strlen("flashlight"))) {
+			if (g_torch_0 && g_torch_1 && g_switch_0 && g_switch_1) {
+				qpnp_flash_led_node_set(g_torch_0, value);
+				qpnp_flash_led_node_set(g_torch_1, value);
+				qpnp_flash_led_switch_set(g_switch_0, value > 0);
+				qpnp_flash_led_switch_set(g_switch_1, value > 0);
+			}
+		} else {
+			qpnp_flash_led_node_set(fnode, value);
+		}
+#else
 		qpnp_flash_led_node_set(fnode, value);
+#endif
 	}
 
 	spin_unlock(&led->lock);
@@ -2667,6 +2692,10 @@ static int qpnp_flash_led_probe(struct platform_device *pdev)
 	const char *temp_string;
 	unsigned int base;
 	int rc, i = 0, j = 0;
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	struct flash_node_data *fnode;
+	struct flash_switch_data *snode;
+#endif
 
 	node = pdev->dev.of_node;
 	if (!node) {
@@ -2759,12 +2788,28 @@ static int qpnp_flash_led_probe(struct platform_device *pdev)
 					i, rc);
 				goto error_led_register;
 			}
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+			fnode = &led->fnode[i];
+			if (!strcmp("led:torch_0", fnode->cdev.name)) {
+				g_torch_0 = fnode;
+			} else if (!strcmp("led:torch_1", fnode->cdev.name)){
+				g_torch_1 = fnode;
+			}
+#endif
 			i++;
 		}
 
 		if (!strcmp("switch", temp_string)) {
 			rc = qpnp_flash_led_parse_and_register_switch(led,
 					&led->snode[j], temp);
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+			snode = &led->snode[j];
+			if (!strcmp("led:switch_0", snode->cdev.name)) {
+				g_switch_0 = snode;
+			} else if (!strcmp("led:switch_1", snode->cdev.name)) {
+				g_switch_1 = snode;
+			}
+#endif
 			if (rc < 0) {
 				pr_err("Unable to parse and register switch node, rc=%d\n",
 					rc);
