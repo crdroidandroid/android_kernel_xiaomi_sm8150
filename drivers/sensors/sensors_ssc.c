@@ -123,6 +123,14 @@ static void slpi_load_fw(struct work_struct *slpi_ldr_work)
 
 fail:
 	dev_err(&pdev->dev, "%s: SLPI image loading failed\n", __func__);
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	priv->pil_h = subsystem_get_with_fwname("slpi", "slpi");
+	if (IS_ERR(priv->pil_h)) {
+		dev_err(&pdev->dev, "%s: SLPI image re-loading failed\n", __func__);
+	} else {
+		dev_info(&pdev->dev, "%s: SLPI image is loaded\n", __func__);
+	}
+#endif
 }
 
 static void slpi_loader_do(struct platform_device *pdev)
