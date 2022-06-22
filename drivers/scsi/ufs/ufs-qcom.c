@@ -1268,9 +1268,17 @@ static void ufs_qcom_dev_ref_clk_ctrl(struct ufs_qcom_host *host, bool enable)
 		if (enable) {
 			if (host->hba->dev_info.quirks &
 			    UFS_DEVICE_QUIRK_WAIT_AFTER_REF_CLK_UNGATE)
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+				usleep_range(960, 970);
+#else
 				usleep_range(50, 60);
+#endif
 			else
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+				usleep_range(200, 210);
+#else
 				udelay(1);
+#endif
 		}
 
 		host->is_dev_ref_clk_enabled = enable;
