@@ -38,18 +38,16 @@
 	qcom,adc2-switch-gpio = <&adc2_switch_gpio>;
 	qcom,msm-mbhc-usbc-audio-supported = <1>;
 	qcom,fsa4476-gpio-support = <1>;
-	qcom,usbc-analog-en1-gpio = <&wcd_usbc_analog_en1_gpio>;
+	qcom,usbc-analog-en1_gpio = <&wcd_usbc_analog_en1_gpio>;
+	qcom,usbc-analog-en2_n_gpio = <&wcd_usbc_analog_en2n_gpio>;
 	qcom,usbc-analog-en2-gpio = <&tlmm 58 0>;
 
 	pinctrl-names = "quat_mi2s_enable", "quat_mi2s_disable",
-			"quat_tdm_enable", "quat_tdm_disable",
-			"aud_active", "aud_sleep";
+			"quat_tdm_enable", "quat_tdm_disable";
 	pinctrl-0 = <&quat_mi2s_active &quat_mi2s_sd0_active &quat_mi2s_sd1_active>;
 	pinctrl-1 = <&quat_mi2s_sleep &quat_mi2s_sd0_sleep &quat_mi2s_sd1_sleep>;
 	pinctrl-2 = <&quat_tdm_active &quat_tdm_dout_active>;
 	pinctrl-3 = <&quat_tdm_sleep &quat_tdm_dout_sleep>;
-	pinctrl-4 = <&wcd_usbc_analog_en2_active>;
-	pinctrl-5 = <&wcd_usbc_analog_en2_idle>;
 };
 
 &soc {
@@ -72,5 +70,12 @@
 		pinctrl-names = "aud_active", "aud_sleep";
 		pinctrl-0 = <&wcd_usbc_analog_en1_active>;
 		pinctrl-1 = <&wcd_usbc_analog_en1_idle>;
+	};
+
+	wcd_usbc_analog_en2n_gpio: msm_cdc_pinctrl_usbc_audio_en2 {
+		compatible = "qcom,msm-cdc-pinctrl";
+		pinctrl-names = "aud_active", "aud_sleep";
+		pinctrl-0 = <&wcd_usbc_analog_en2n_active>;
+		pinctrl-1 = <&wcd_usbc_analog_en2n_idle>;
 	};
 };
