@@ -738,6 +738,9 @@ config PELT_UTIL_HALFLIFE_8
 	  decay of utlization and load four time as fast as for the default
 	  configuration using 32ms.
 
+config PELT_UTIL_HALFLIFE_4
+	bool "8/4 ms, more faster"
+
 endchoice
 
 endmenu # FAIR Scheduler tunables"
