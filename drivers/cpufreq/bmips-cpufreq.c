@@ -136,7 +136,7 @@ static int bmips_cpufreq_init(struct cpufreq_policy *policy)
 	freq_table = bmips_cpufreq_get_freq_table(policy);
 	if (IS_ERR(freq_table)) {
 		ret = PTR_ERR(freq_table);
-		pr_err("%s: couldn't determine frequency table (%d).\n",
+		pr_debug("%s: couldn't determine frequency table (%d).\n",
 			BMIPS_CPUFREQ_NAME, ret);
 		return ret;
 	}

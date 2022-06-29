@@ -72,7 +72,7 @@ static int loongson2_cpufreq_cpu_init(struct cpufreq_policy *policy)
 
 	cpuclk = clk_get(NULL, "cpu_clk");
 	if (IS_ERR(cpuclk)) {
-		pr_err("couldn't get CPU clk\n");
+		pr_debug("couldn't get CPU clk\n");
 		return PTR_ERR(cpuclk);
 	}
 

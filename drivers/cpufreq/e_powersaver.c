@@ -166,7 +166,7 @@ static int eps_target(struct cpufreq_policy *policy, unsigned int index)
 	dest_state = centaur->freq_table[index].driver_data & 0xffff;
 	ret = eps_set_state(centaur, policy, dest_state);
 	if (ret)
-		pr_err("Timeout!\n");
+		pr_debug("Timeout!\n");
 	return ret;
 }
 

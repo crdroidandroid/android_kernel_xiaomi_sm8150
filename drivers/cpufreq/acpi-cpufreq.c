@@ -925,7 +925,7 @@ static void __init acpi_cpufreq_boost_init(void)
 	ret = cpuhp_setup_state(CPUHP_AP_ONLINE_DYN, "cpufreq/acpi:online",
 				cpufreq_boost_online, cpufreq_boost_down_prep);
 	if (ret < 0) {
-		pr_err("acpi_cpufreq: failed to register hotplug callbacks\n");
+		pr_debug("acpi_cpufreq: failed to register hotplug callbacks\n");
 		return;
 	}
 	acpi_cpufreq_online = ret;

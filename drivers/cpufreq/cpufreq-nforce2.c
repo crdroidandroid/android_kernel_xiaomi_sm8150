@@ -174,13 +174,13 @@ static int nforce2_set_fsb(unsigned int fsb)
 	int pll = 0;
 
 	if ((fsb > max_fsb) || (fsb < NFORCE2_MIN_FSB)) {
-		pr_err("FSB %d is out of range!\n", fsb);
+		pr_debug("FSB %d is out of range!\n", fsb);
 		return -EINVAL;
 	}
 
 	tfsb = nforce2_fsb_read(0);
 	if (!tfsb) {
-		pr_err("Error while reading the FSB\n");
+		pr_debug("Error while reading the FSB\n");
 		return -EINVAL;
 	}
 
@@ -276,7 +276,7 @@ static int nforce2_target(struct cpufreq_policy *policy,
 	/* local_irq_save(flags); */
 
 	if (nforce2_set_fsb(target_fsb) < 0)
-		pr_err("Changing FSB to %d failed\n", target_fsb);
+		pr_debug("Changing FSB to %d failed\n", target_fsb);
 	else
 		pr_debug("Changed FSB successfully to %d\n",
 			target_fsb);

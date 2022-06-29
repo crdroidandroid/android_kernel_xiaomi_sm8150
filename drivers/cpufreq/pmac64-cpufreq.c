@@ -370,7 +370,7 @@ static int __init g5_neo2_cpufreq_init(struct device_node *cpunode)
 	}
 	pvr_hi = (*valp) >> 16;
 	if (pvr_hi != 0x3c && pvr_hi != 0x44) {
-		pr_err("Unsupported CPU version\n");
+		pr_debug("Unsupported CPU version\n");
 		goto bail_noprops;
 	}
 
@@ -405,7 +405,7 @@ static int __init g5_neo2_cpufreq_init(struct device_node *cpunode)
 
 		root = of_find_node_by_path("/");
 		if (root == NULL) {
-			pr_err("Can't find root of device tree\n");
+			pr_debug("Can't find root of device tree\n");
 			goto bail_noprops;
 		}
 		pfunc_set_vdnap0 = pmf_find_function(root, "set-vdnap0");
@@ -413,7 +413,7 @@ static int __init g5_neo2_cpufreq_init(struct device_node *cpunode)
 			pmf_find_function(root, "slewing-done");
 		if (pfunc_set_vdnap0 == NULL ||
 		    pfunc_vdnap0_complete == NULL) {
-			pr_err("Can't find required platform function\n");
+			pr_debug("Can't find required platform function\n");
 			goto bail_noprops;
 		}
 
@@ -493,7 +493,7 @@ static int __init g5_pm72_cpufreq_init(struct device_node *cpunode)
 	if (cpuid != NULL)
 		eeprom = of_get_property(cpuid, "cpuid", NULL);
 	if (eeprom == NULL) {
-		pr_err("Can't find cpuid EEPROM !\n");
+		pr_debug("Can't find cpuid EEPROM !\n");
 		rc = -ENODEV;
 		goto bail;
 	}
@@ -511,7 +511,7 @@ static int __init g5_pm72_cpufreq_init(struct device_node *cpunode)
 		break;
 	}
 	if (hwclock == NULL) {
-		pr_err("Can't find i2c clock chip !\n");
+		pr_debug("Can't find i2c clock chip !\n");
 		rc = -ENODEV;
 		goto bail;
 	}
@@ -539,7 +539,7 @@ static int __init g5_pm72_cpufreq_init(struct device_node *cpunode)
 	/* Check we have minimum requirements */
 	if (pfunc_cpu_getfreq == NULL || pfunc_cpu_setfreq_high == NULL ||
 	    pfunc_cpu_setfreq_low == NULL || pfunc_slewing_done == NULL) {
-		pr_err("Can't find platform functions !\n");
+		pr_debug("Can't find platform functions !\n");
 		rc = -ENODEV;
 		goto bail;
 	}
@@ -567,7 +567,7 @@ static int __init g5_pm72_cpufreq_init(struct device_node *cpunode)
 	/* Get max frequency from device-tree */
 	valp = of_get_property(cpunode, "clock-frequency", NULL);
 	if (!valp) {
-		pr_err("Can't find CPU frequency !\n");
+		pr_debug("Can't find CPU frequency !\n");
 		rc = -ENODEV;
 		goto bail;
 	}
@@ -594,7 +594,7 @@ static int __init g5_pm72_cpufreq_init(struct device_node *cpunode)
 
 	/* Sanity check */
 	if (min_freq >= max_freq || min_freq < 1000) {
-		pr_err("Can't calculate low frequency !\n");
+		pr_debug("Can't calculate low frequency !\n");
 		rc = -ENXIO;
 		goto bail;
 	}
@@ -653,7 +653,7 @@ static int __init g5_cpufreq_init(void)
 	/* Get first CPU node */
 	cpunode = of_cpu_device_node_get(0);
 	if (cpunode == NULL) {
-		pr_err("Can't find any CPU node\n");
+		pr_debug("Can't find any CPU node\n");
 		return -ENODEV;
 	}
 

@@ -199,13 +199,13 @@ static int s3c2412_cpufreq_add(struct device *dev,
 
 	hclk = clk_get(NULL, "hclk");
 	if (IS_ERR(hclk)) {
-		pr_err("cannot find hclk clock\n");
+		pr_debug("cannot find hclk clock\n");
 		return -ENOENT;
 	}
 
 	fclk = clk_get(NULL, "fclk");
 	if (IS_ERR(fclk)) {
-		pr_err("cannot find fclk clock\n");
+		pr_debug("cannot find fclk clock\n");
 		goto err_fclk;
 	}
 
@@ -220,13 +220,13 @@ static int s3c2412_cpufreq_add(struct device *dev,
 
 	armclk = clk_get(NULL, "armclk");
 	if (IS_ERR(armclk)) {
-		pr_err("cannot find arm clock\n");
+		pr_debug("cannot find arm clock\n");
 		goto err_armclk;
 	}
 
 	xtal = clk_get(NULL, "xtal");
 	if (IS_ERR(xtal)) {
-		pr_err("cannot find xtal clock\n");
+		pr_debug("cannot find xtal clock\n");
 		goto err_xtal;
 	}
 

@@ -188,7 +188,7 @@ static int pxa_cpufreq_change_voltage(const struct pxa_freqs *pxa_freq)
 
 	ret = regulator_set_voltage(vcc_core, vmin, vmax);
 	if (ret)
-		pr_err("Failed to set vcc_core in [%dmV..%dmV]\n", vmin, vmax);
+		pr_debug("Failed to set vcc_core in [%dmV..%dmV]\n", vmin, vmax);
 	return ret;
 }
 

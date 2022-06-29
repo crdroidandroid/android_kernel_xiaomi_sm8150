@@ -711,7 +711,7 @@ static int enable_arbiter_disable(void)
 			pci_write_config_byte(dev, reg, pci_cmd);
 			pci_read_config_byte(dev, reg, &pci_cmd);
 			if (!(pci_cmd & 1<<7)) {
-				pr_err("Can't enable access to port 0x22\n");
+				pr_debug("Can't enable access to port 0x22\n");
 				status = 0;
 			}
 		}
@@ -878,7 +878,7 @@ static int longhaul_cpu_init(struct cpufreq_policy *policy)
 	if (!(longhaul_flags & USE_ACPI_C3
 	     || longhaul_flags & USE_NORTHBRIDGE)
 	    && ((pr == NULL) || !(pr->flags.bm_control))) {
-		pr_err("No ACPI support: Unsupported northbridge\n");
+		pr_debug("No ACPI support: Unsupported northbridge\n");
 		return -ENODEV;
 	}
 
@@ -922,18 +922,18 @@ static int __init longhaul_init(void)
 		return -ENODEV;
 
 	if (!enable) {
-		pr_err("Option \"enable\" not set - Aborting\n");
+		pr_debug("Option \"enable\" not set - Aborting\n");
 		return -ENODEV;
 	}
 #ifdef CONFIG_SMP
 	if (num_online_cpus() > 1) {
-		pr_err("More than 1 CPU detected, longhaul disabled\n");
+		pr_debug("More than 1 CPU detected, longhaul disabled\n");
 		return -ENODEV;
 	}
 #endif
 #ifdef CONFIG_X86_IO_APIC
 	if (boot_cpu_has(X86_FEATURE_APIC)) {
-		pr_err("APIC detected. Longhaul is currently broken in this configuration.\n");
+		pr_debug("APIC detected. Longhaul is currently broken in this configuration.\n");
 		return -ENODEV;
 	}
 #endif
@@ -941,7 +941,7 @@ static int __init longhaul_init(void)
 	case 6 ... 9:
 		return cpufreq_register_driver(&longhaul_driver);
 	case 10:
-		pr_err("Use acpi-cpufreq driver for VIA C7\n");
+		pr_debug("Use acpi-cpufreq driver for VIA C7\n");
 	default:
 		;
 	}
