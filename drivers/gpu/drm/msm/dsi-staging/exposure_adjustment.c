@@ -45,7 +45,7 @@ static int ea_panel_send_pcc(u32 bl_lvl)
  	display = get_main_display();
 	crtc = display->drm_conn->state->crtc;
 	if (!crtc) {
-		pr_err("ERROR: Cannot find display panel with CRTC\n");
+		pr_debug("ERROR: Cannot find display panel with CRTC\n");
 		return -ENODEV;
 	}
 
@@ -53,13 +53,13 @@ static int ea_panel_send_pcc(u32 bl_lvl)
 	prop = priv->cp_property[1]; // SDE_CP_CRTC_DSPP_PCC
 
 	if (prop == NULL) {
-		pr_err("FAIL! PCC is not supported!!?!?!\n");
+		pr_debug("FAIL! PCC is not supported!!?!?!\n");
 		return -EINVAL;
 	}
 
 	rc = sde_cp_crtc_get_property(crtc, prop, &val);
 	if (rc) {
-		pr_err("Cannot get CRTC property. Things may go wrong.\n");
+		pr_debug("Cannot get CRTC property. Things may go wrong.\n");
 	}
 
 	pr_debug("%s: Backlight = %d\n", __func__, bl_lvl);
@@ -78,7 +78,7 @@ static int ea_panel_send_pcc(u32 bl_lvl)
 
 	blob = drm_property_create_blob(crtc->dev, sizeof(pcc_blk), &pcc_blk);
 	if (IS_ERR_OR_NULL(blob)) {
-		pr_err("Failed to create blob. Bailing out.\n");
+		pr_debug("Failed to create blob. Bailing out.\n");
 		return -EINVAL;
 	}
 	pr_debug("DSPP Blob ID %d has length %zu\n",
@@ -86,7 +86,7 @@ static int ea_panel_send_pcc(u32 bl_lvl)
 
 	rc = sde_cp_crtc_set_property(crtc, prop, blob->base.id);
 	if (rc) {
-		pr_err("DSPP: Cannot set PCC: %d.\n", rc);
+		pr_debug("DSPP: Cannot set PCC: %d.\n", rc);
 	}
 
 	return rc;
@@ -117,7 +117,7 @@ u32 ea_panel_calc_backlight(u32 bl_lvl)
 
 	if (pcc_backlight_enable && bl_lvl != 0 && bl_lvl < ELVSS_OFF_THRESHOLD) {
 		if (ea_panel_send_pcc(bl_lvl))
-			pr_err("ERROR: Failed to send PCC\n");
+			pr_debug("ERROR: Failed to send PCC\n");
 
 		return ELVSS_OFF_THRESHOLD;
 	} else {

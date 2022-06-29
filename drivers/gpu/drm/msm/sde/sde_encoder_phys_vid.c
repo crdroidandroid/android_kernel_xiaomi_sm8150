@@ -953,7 +953,7 @@ static int _sde_encoder_phys_vid_wait_for_vblank(
 			SDE_ENCODER_FRAME_EVENT_SIGNAL_RETIRE_FENCE;
 
 	if (!phys_enc) {
-		pr_err("invalid encoder\n");
+		pr_debug("invalid encoder\n");
 		return -EINVAL;
 	}
 

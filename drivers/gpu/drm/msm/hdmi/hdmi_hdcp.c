@@ -139,7 +139,7 @@ static int msm_hdmi_ddc_write(struct hdmi *hdmi, u16 addr, u8 offset,
 
 	DBG("Start DDC write");
 	if (data_len > (HDCP_DDC_WRITE_MAX_BYTE_NUM - 1)) {
-		pr_err("%s: write size too big\n", __func__);
+		pr_debug("%s: write size too big\n", __func__);
 		return -ERANGE;
 	}
 
@@ -187,7 +187,7 @@ static int msm_hdmi_hdcp_scm_wr(struct hdmi_hdcp_ctrl *hdcp_ctrl, u32 *preg,
 			ret = qcom_scm_hdcp_req(scm_buf, i, &resp);
 
 			if (ret || resp) {
-				pr_err("%s: error: scm_call ret=%d resp=%u\n",
+				pr_debug("%s: error: scm_call ret=%d resp=%u\n",
 					__func__, ret, resp);
 				ret = -EINVAL;
 				break;
@@ -276,9 +276,9 @@ static int msm_hdmi_hdcp_read_validate_aksv(struct hdmi_hdcp_ctrl *hdcp_ctrl)
 	/* check there are 20 ones in AKSV */
 	if ((hweight32(hdcp_ctrl->aksv_lsb) + hweight32(hdcp_ctrl->aksv_msb))
 			!= 20) {
-		pr_err("%s: AKSV QFPROM doesn't have 20 1's, 20 0's\n",
+		pr_debug("%s: AKSV QFPROM doesn't have 20 1's, 20 0's\n",
 			__func__);
-		pr_err("%s: QFPROM AKSV chk failed (AKSV=%02x%08x)\n",
+		pr_debug("%s: QFPROM AKSV chk failed (AKSV=%02x%08x)\n",
 			__func__, hdcp_ctrl->aksv_msb,
 			hdcp_ctrl->aksv_lsb);
 		return -EINVAL;
@@ -473,7 +473,7 @@ static int msm_hdmi_hdcp_auth_prepare(struct hdmi_hdcp_ctrl *hdcp_ctrl)
 	if (!hdcp_ctrl->aksv_valid) {
 		rc = msm_hdmi_hdcp_read_validate_aksv(hdcp_ctrl);
 		if (rc) {
-			pr_err("%s: ASKV validation failed\n", __func__);
+			pr_debug("%s: ASKV validation failed\n", __func__);
 			hdcp_ctrl->hdcp_state = HDCP_STATE_NO_AKSV;
 			return -ENOTSUPP;
 		}
@@ -618,7 +618,7 @@ static int msm_hdmi_hdcp_wait_key_an_ready(struct hdmi_hdcp_ctrl *hdcp_ctrl)
 
 		timeout_count--;
 		if (!timeout_count) {
-			pr_err("%s: Wait key state timedout", __func__);
+			pr_debug("%s: Wait key state timedout", __func__);
 			return -ETIMEDOUT;
 		}
 
@@ -640,7 +640,7 @@ static int msm_hdmi_hdcp_wait_key_an_ready(struct hdmi_hdcp_ctrl *hdcp_ctrl)
 
 		timeout_count--;
 		if (!timeout_count) {
-			pr_err("%s: Wait An timedout", __func__);
+			pr_debug("%s: Wait An timedout", __func__);
 			return -ETIMEDOUT;
 		}
 
@@ -680,7 +680,7 @@ static int msm_hdmi_hdcp_send_aksv_an(struct hdmi_hdcp_ctrl *hdcp_ctrl)
 	rc = msm_hdmi_ddc_write(hdmi, HDCP_PORT_ADDR, 0x18, (u8 *)link0_an,
 		(u16)sizeof(link0_an));
 	if (rc) {
-		pr_err("%s:An write failed\n", __func__);
+		pr_debug("%s:An write failed\n", __func__);
 		return rc;
 	}
 	DBG("Link0-An=%08x%08x", link0_an[0], link0_an[1]);
@@ -688,7 +688,7 @@ static int msm_hdmi_hdcp_send_aksv_an(struct hdmi_hdcp_ctrl *hdcp_ctrl)
 	/* Write AKSV to offset 0x10 */
 	rc = msm_hdmi_ddc_write(hdmi, HDCP_PORT_ADDR, 0x10, aksv, 5);
 	if (rc) {
-		pr_err("%s:AKSV write failed\n", __func__);
+		pr_debug("%s:AKSV write failed\n", __func__);
 		return rc;
 	}
 	DBG("Link0-AKSV=%02x%08x", link0_aksv_1 & 0xFF, link0_aksv_0);
@@ -706,7 +706,7 @@ static int msm_hdmi_hdcp_recv_bksv(struct hdmi_hdcp_ctrl *hdcp_ctrl)
 	/* Read BKSV at offset 0x00 */
 	rc = msm_hdmi_ddc_read(hdmi, HDCP_PORT_ADDR, 0x00, bksv, 5);
 	if (rc) {
-		pr_err("%s:BKSV read failed\n", __func__);
+		pr_debug("%s:BKSV read failed\n", __func__);
 		return rc;
 	}
 
@@ -718,8 +718,8 @@ static int msm_hdmi_hdcp_recv_bksv(struct hdmi_hdcp_ctrl *hdcp_ctrl)
 	/* check there are 20 ones in BKSV */
 	if ((hweight32(hdcp_ctrl->bksv_lsb) + hweight32(hdcp_ctrl->bksv_msb))
 			!= 20) {
-		pr_err(": BKSV doesn't have 20 1's and 20 0's\n");
-		pr_err(": BKSV chk fail. BKSV=%02x%02x%02x%02x%02x\n",
+		pr_debug(": BKSV doesn't have 20 1's and 20 0's\n");
+		pr_debug(": BKSV chk fail. BKSV=%02x%02x%02x%02x%02x\n",
 			bksv[4], bksv[3], bksv[2], bksv[1], bksv[0]);
 		return -EINVAL;
 	}
@@ -743,7 +743,7 @@ static int msm_hdmi_hdcp_recv_bcaps(struct hdmi_hdcp_ctrl *hdcp_ctrl)
 
 	rc = msm_hdmi_ddc_read(hdmi, HDCP_PORT_ADDR, 0x40, &bcaps, 1);
 	if (rc) {
-		pr_err("%s:BCAPS read failed\n", __func__);
+		pr_debug("%s:BCAPS read failed\n", __func__);
 		return rc;
 	}
 	DBG("BCAPS=%02x", bcaps);
@@ -768,14 +768,14 @@ static int msm_hdmi_hdcp_auth_part1_key_exchange(struct hdmi_hdcp_ctrl *hdcp_ctr
 	/* Wait for AKSV key and An ready */
 	rc = msm_hdmi_hdcp_wait_key_an_ready(hdcp_ctrl);
 	if (rc) {
-		pr_err("%s: wait key and an ready failed\n", __func__);
+		pr_debug("%s: wait key and an ready failed\n", __func__);
 		return rc;
 	};
 
 	/* Read BCAPS and send to HDCP engine */
 	rc = msm_hdmi_hdcp_recv_bcaps(hdcp_ctrl);
 	if (rc) {
-		pr_err("%s: read bcaps error, abort\n", __func__);
+		pr_debug("%s: read bcaps error, abort\n", __func__);
 		return rc;
 	}
 
@@ -788,14 +788,14 @@ static int msm_hdmi_hdcp_auth_part1_key_exchange(struct hdmi_hdcp_ctrl *hdcp_ctr
 	/* Send AKSV and An to sink */
 	rc = msm_hdmi_hdcp_send_aksv_an(hdcp_ctrl);
 	if (rc) {
-		pr_err("%s:An/Aksv write failed\n", __func__);
+		pr_debug("%s:An/Aksv write failed\n", __func__);
 		return rc;
 	}
 
 	/* Read BKSV and send to HDCP engine*/
 	rc = msm_hdmi_hdcp_recv_bksv(hdcp_ctrl);
 	if (rc) {
-		pr_err("%s:BKSV Process failed\n", __func__);
+		pr_debug("%s:BKSV Process failed\n", __func__);
 		return rc;
 	}
 
@@ -830,7 +830,7 @@ static int msm_hdmi_hdcp_auth_part1_recv_r0(struct hdmi_hdcp_ctrl *hdcp_ctrl)
 	/* Read R0' at offset 0x08 */
 	rc = msm_hdmi_ddc_read(hdmi, HDCP_PORT_ADDR, 0x08, buf, 2);
 	if (rc) {
-		pr_err("%s:R0' read failed\n", __func__);
+		pr_debug("%s:R0' read failed\n", __func__);
 		return rc;
 	}
 	DBG("R0'=%02x%02x", buf[1], buf[0]);
@@ -852,13 +852,13 @@ static int msm_hdmi_hdcp_auth_part1_verify_r0(struct hdmi_hdcp_ctrl *hdcp_ctrl)
 	/* wait for hdcp irq, 10 sec should be long enough */
 	rc = msm_hdmi_hdcp_msleep(hdcp_ctrl, 10000, AUTH_RESULT_RDY_EV);
 	if (!rc) {
-		pr_err("%s: Wait Auth IRQ timeout\n", __func__);
+		pr_debug("%s: Wait Auth IRQ timeout\n", __func__);
 		return -ETIMEDOUT;
 	}
 
 	link0_status = hdmi_read(hdmi, REG_HDMI_HDCP_LINK0_STATUS);
 	if (!(link0_status & HDMI_HDCP_LINK0_STATUS_RI_MATCHES)) {
-		pr_err("%s: Authentication Part I failed\n", __func__);
+		pr_debug("%s: Authentication Part I failed\n", __func__);
 		return -EINVAL;
 	}
 
@@ -883,7 +883,7 @@ static int msm_hdmi_hdcp_recv_check_bstatus(struct hdmi_hdcp_ctrl *hdcp_ctrl,
 	/* Read BSTATUS at offset 0x41 */
 	rc = msm_hdmi_ddc_read(hdmi, HDCP_PORT_ADDR, 0x41, buf, 2);
 	if (rc) {
-		pr_err("%s: BSTATUS read failed\n", __func__);
+		pr_debug("%s: BSTATUS read failed\n", __func__);
 		goto error;
 	}
 	*pbstatus = bstatus = (buf[1] << 8) | buf[0];
@@ -900,7 +900,7 @@ static int msm_hdmi_hdcp_recv_check_bstatus(struct hdmi_hdcp_ctrl *hdcp_ctrl,
 		 * then part II fails.
 		 * todo: The other approach would be to continue PART II.
 		 */
-		pr_err("%s: No downstream devices\n", __func__);
+		pr_debug("%s: No downstream devices\n", __func__);
 		rc = -EINVAL;
 		goto error;
 	}
@@ -911,7 +911,7 @@ static int msm_hdmi_hdcp_recv_check_bstatus(struct hdmi_hdcp_ctrl *hdcp_ctrl,
 	 * exceed max_devices_connected from bit 7 of Bstatus.
 	 */
 	if (max_devs_exceeded) {
-		pr_err("%s: no. of devs connected exceeds max allowed",
+		pr_debug("%s: no. of devs connected exceeds max allowed",
 			__func__);
 		rc = -EINVAL;
 		goto error;
@@ -923,7 +923,7 @@ static int msm_hdmi_hdcp_recv_check_bstatus(struct hdmi_hdcp_ctrl *hdcp_ctrl,
 	 * exceed max_cascade_connected from bit 11 of Bstatus.
 	 */
 	if (max_cascade_exceeded) {
-		pr_err("%s: no. of cascade conn exceeds max allowed",
+		pr_debug("%s: no. of cascade conn exceeds max allowed",
 			__func__);
 		rc = -EINVAL;
 		goto error;
@@ -956,7 +956,7 @@ static int msm_hdmi_hdcp_auth_part2_wait_ksv_fifo_ready(
 		/* Read BCAPS at offset 0x40 */
 		rc = msm_hdmi_ddc_read(hdmi, HDCP_PORT_ADDR, 0x40, &bcaps, 1);
 		if (rc) {
-			pr_err("%s: BCAPS read failed\n", __func__);
+			pr_debug("%s: BCAPS read failed\n", __func__);
 			return rc;
 		}
 
@@ -965,7 +965,7 @@ static int msm_hdmi_hdcp_auth_part2_wait_ksv_fifo_ready(
 
 		timeout_count--;
 		if (!timeout_count) {
-			pr_err("%s: Wait KSV fifo ready timedout", __func__);
+			pr_debug("%s: Wait KSV fifo ready timedout", __func__);
 			return -ETIMEDOUT;
 		}
 
@@ -976,7 +976,7 @@ static int msm_hdmi_hdcp_auth_part2_wait_ksv_fifo_ready(
 
 	rc = msm_hdmi_hdcp_recv_check_bstatus(hdcp_ctrl, &bstatus);
 	if (rc) {
-		pr_err("%s: bstatus error\n", __func__);
+		pr_debug("%s: bstatus error\n", __func__);
 		return rc;
 	}
 
@@ -985,7 +985,7 @@ static int msm_hdmi_hdcp_auth_part2_wait_ksv_fifo_ready(
 	data = bcaps | (bstatus << 8);
 	rc = msm_hdmi_hdcp_scm_wr(hdcp_ctrl, &reg, &data, 1);
 	if (rc) {
-		pr_err("%s: BSTATUS write failed\n", __func__);
+		pr_debug("%s: BSTATUS write failed\n", __func__);
 		return rc;
 	}
 
@@ -1020,7 +1020,7 @@ static int msm_hdmi_hdcp_transfer_v_h(struct hdmi_hdcp_ctrl *hdcp_ctrl)
 		rc = msm_hdmi_ddc_read(hdmi, HDCP_PORT_ADDR,
 			rd->off, (u8 *)&data[i], (u16)sizeof(data[i]));
 		if (rc) {
-			pr_err("%s: Read %s failed\n", __func__, rd->name);
+			pr_debug("%s: Read %s failed\n", __func__, rd->name);
 			goto error;
 		}
 
@@ -1045,7 +1045,7 @@ static int msm_hdmi_hdcp_recv_ksv_fifo(struct hdmi_hdcp_ctrl *hdcp_ctrl)
 	rc = msm_hdmi_ddc_read(hdmi, HDCP_PORT_ADDR, 0x43,
 		hdcp_ctrl->ksv_list, ksv_bytes);
 	if (rc)
-		pr_err("%s: KSV FIFO read failed\n", __func__);
+		pr_debug("%s: KSV FIFO read failed\n", __func__);
 
 	return rc;
 }
@@ -1088,7 +1088,7 @@ static int msm_hdmi_hdcp_auth_part2_recv_ksv_fifo(
 
 		timeout_count--;
 		if (!timeout_count) {
-			pr_err("%s: Recv ksv fifo timedout", __func__);
+			pr_debug("%s: Recv ksv fifo timedout", __func__);
 			return -ETIMEDOUT;
 		}
 
@@ -1099,14 +1099,14 @@ static int msm_hdmi_hdcp_auth_part2_recv_ksv_fifo(
 
 	rc = msm_hdmi_hdcp_transfer_v_h(hdcp_ctrl);
 	if (rc) {
-		pr_err("%s: transfer V failed\n", __func__);
+		pr_debug("%s: transfer V failed\n", __func__);
 		return rc;
 	}
 
 	/* reset SHA engine before write ksv fifo */
 	rc = msm_hdmi_hdcp_reset_sha_engine(hdcp_ctrl);
 	if (rc) {
-		pr_err("%s: fail to reset sha engine\n", __func__);
+		pr_debug("%s: fail to reset sha engine\n", __func__);
 		return rc;
 	}
 
@@ -1203,7 +1203,7 @@ static int msm_hdmi_hdcp_auth_part2_write_ksv_fifo(
 
 		timeout_count--;
 		if (!timeout_count) {
-			pr_err("%s: Write KSV fifo timedout", __func__);
+			pr_debug("%s: Write KSV fifo timedout", __func__);
 			return -ETIMEDOUT;
 		}
 
@@ -1229,7 +1229,7 @@ static int msm_hdmi_hdcp_auth_part2_check_v_match(struct hdmi_hdcp_ctrl *hdcp_ct
 
 		timeout_count--;
 		if (!timeout_count) {
-				pr_err("%s: HDCP V Match timedout", __func__);
+				pr_debug("%s: HDCP V Match timedout", __func__);
 				return -ETIMEDOUT;
 		}
 
@@ -1249,26 +1249,26 @@ static void msm_hdmi_hdcp_auth_work(struct work_struct *work)
 
 	rc = msm_hdmi_hdcp_auth_prepare(hdcp_ctrl);
 	if (rc) {
-		pr_err("%s: auth prepare failed %d\n", __func__, rc);
+		pr_debug("%s: auth prepare failed %d\n", __func__, rc);
 		goto end;
 	}
 
 	/* HDCP PartI */
 	rc = msm_hdmi_hdcp_auth_part1_key_exchange(hdcp_ctrl);
 	if (rc) {
-		pr_err("%s: key exchange failed %d\n", __func__, rc);
+		pr_debug("%s: key exchange failed %d\n", __func__, rc);
 		goto end;
 	}
 
 	rc = msm_hdmi_hdcp_auth_part1_recv_r0(hdcp_ctrl);
 	if (rc) {
-		pr_err("%s: receive r0 failed %d\n", __func__, rc);
+		pr_debug("%s: receive r0 failed %d\n", __func__, rc);
 		goto end;
 	}
 
 	rc = msm_hdmi_hdcp_auth_part1_verify_r0(hdcp_ctrl);
 	if (rc) {
-		pr_err("%s: verify r0 failed %d\n", __func__, rc);
+		pr_debug("%s: verify r0 failed %d\n", __func__, rc);
 		goto end;
 	}
 	pr_info("%s: Authentication Part I successful\n", __func__);
@@ -1278,25 +1278,25 @@ static void msm_hdmi_hdcp_auth_work(struct work_struct *work)
 	/* HDCP PartII */
 	rc = msm_hdmi_hdcp_auth_part2_wait_ksv_fifo_ready(hdcp_ctrl);
 	if (rc) {
-		pr_err("%s: wait ksv fifo ready failed %d\n", __func__, rc);
+		pr_debug("%s: wait ksv fifo ready failed %d\n", __func__, rc);
 		goto end;
 	}
 
 	rc = msm_hdmi_hdcp_auth_part2_recv_ksv_fifo(hdcp_ctrl);
 	if (rc) {
-		pr_err("%s: recv ksv fifo failed %d\n", __func__, rc);
+		pr_debug("%s: recv ksv fifo failed %d\n", __func__, rc);
 		goto end;
 	}
 
 	rc = msm_hdmi_hdcp_auth_part2_write_ksv_fifo(hdcp_ctrl);
 	if (rc) {
-		pr_err("%s: write ksv fifo failed %d\n", __func__, rc);
+		pr_debug("%s: write ksv fifo failed %d\n", __func__, rc);
 		goto end;
 	}
 
 	rc = msm_hdmi_hdcp_auth_part2_check_v_match(hdcp_ctrl);
 	if (rc)
-		pr_err("%s: check v match failed %d\n", __func__, rc);
+		pr_debug("%s: check v match failed %d\n", __func__, rc);
 
 end:
 	if (rc == -ECANCELED) {
@@ -1304,7 +1304,7 @@ end:
 	} else if (rc == -ENOTSUPP) {
 		pr_info("%s: hdcp is not supported\n", __func__);
 	} else if (rc) {
-		pr_err("%s: hdcp authentication failed\n", __func__);
+		pr_debug("%s: hdcp authentication failed\n", __func__);
 		msm_hdmi_hdcp_auth_fail(hdcp_ctrl);
 	} else {
 		msm_hdmi_hdcp_auth_done(hdcp_ctrl);
@@ -1405,7 +1405,7 @@ struct hdmi_hdcp_ctrl *msm_hdmi_hdcp_init(struct hdmi *hdmi)
 	struct hdmi_hdcp_ctrl *hdcp_ctrl = NULL;
 
 	if (!hdmi->qfprom_mmio) {
-		pr_err("%s: HDCP is not supported without qfprom\n",
+		pr_debug("%s: HDCP is not supported without qfprom\n",
 			__func__);
 		return ERR_PTR(-EINVAL);
 	}

@@ -1045,7 +1045,7 @@ reg_dmav1_setup_dspp_pa_hsicv17_kcal(struct sde_hw_dspp *ctx, void *ctl)
 
 	rc = reg_dmav1_setup_dspp_pa_hsicv17_apply(ctx, &hsic_cfg, ctl);
 	if (rc)
-		pr_err("kernel hsic application failed ret %d\n", rc);
+		pr_debug("kernel hsic application failed ret %d\n", rc);
 }
 
 void reg_dmav1_setup_dspp_pccv4(struct sde_hw_dspp *ctx, void *cfg)

@@ -152,7 +152,7 @@ static int sde_hw_kcal_ctrl_probe(struct platform_device *pdev)
 	ret |= device_create_file(&pdev->dev, &dev_attr_kcal_val);
 	ret |= device_create_file(&pdev->dev, &dev_attr_kcal_cont);
 	if (ret)
-		pr_err("Unable to create sysfs nodes\n");
+		pr_debug("Unable to create sysfs nodes\n");
 
 	return ret;
 }
@@ -189,13 +189,13 @@ static int __init sde_hw_kcal_ctrl_init(void)
 
 	ret = platform_driver_register(&sde_hw_kcal_ctrl_driver);
 	if (ret) {
-		pr_err("Unable to register platform driver\n");
+		pr_debug("Unable to register platform driver\n");
 		return ret;
 	}
 
 	ret = platform_device_register(&sde_hw_kcal_ctrl_device);
 	if (ret) {
-		pr_err("Unable to register platform device\n");
+		pr_debug("Unable to register platform device\n");
 		platform_driver_unregister(&sde_hw_kcal_ctrl_driver);
 		return ret;
 	}

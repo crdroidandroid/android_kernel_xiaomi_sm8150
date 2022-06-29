@@ -168,7 +168,7 @@ static int dsi_bridge_attach(struct drm_bridge *bridge)
 	struct dsi_bridge *c_bridge = to_dsi_bridge(bridge);
 
 	if (!bridge) {
-		pr_err("Invalid params\n");
+		pr_debug("Invalid params\n");
 		return -EINVAL;
 	}
 
@@ -186,12 +186,12 @@ static void dsi_bridge_pre_enable(struct drm_bridge *bridge)
 	notify_data.data = &event;
 
 	if (!bridge) {
-		pr_err("Invalid params\n");
+		pr_debug("Invalid params\n");
 		return;
 	}
 
 	if (!c_bridge || !c_bridge->display || !c_bridge->display->panel) {
-		pr_err("Incorrect bridge details\n");
+		pr_debug("Incorrect bridge details\n");
 		return;
 	}
 
@@ -203,7 +203,7 @@ static void dsi_bridge_pre_enable(struct drm_bridge *bridge)
 	rc = dsi_display_set_mode(c_bridge->display,
 			&(c_bridge->dsi_mode), 0x0);
 	if (rc) {
-		pr_err("[%d] failed to perform a mode set, rc=%d\n",
+		pr_debug("[%d] failed to perform a mode set, rc=%d\n",
 		       c_bridge->id, rc);
 		return;
 	}
@@ -231,7 +231,7 @@ static void dsi_bridge_pre_enable(struct drm_bridge *bridge)
 	SDE_ATRACE_BEGIN("dsi_display_prepare");
 	rc = dsi_display_prepare(c_bridge->display);
 	if (rc) {
-		pr_err("[%d] DSI display prepare failed, rc=%d\n",
+		pr_debug("[%d] DSI display prepare failed, rc=%d\n",
 		       c_bridge->id, rc);
 		SDE_ATRACE_END("dsi_display_prepare");
 		return;
@@ -241,7 +241,7 @@ static void dsi_bridge_pre_enable(struct drm_bridge *bridge)
 	SDE_ATRACE_BEGIN("dsi_display_enable");
 	rc = dsi_display_enable(c_bridge->display);
 	if (rc) {
-		pr_err("[%d] DSI display enable failed, rc=%d\n",
+		pr_debug("[%d] DSI display enable failed, rc=%d\n",
 				c_bridge->id, rc);
 		(void)dsi_display_unprepare(c_bridge->display);
 	}
@@ -252,7 +252,7 @@ static void dsi_bridge_pre_enable(struct drm_bridge *bridge)
 
 	rc = dsi_display_splash_res_cleanup(c_bridge->display);
 	if (rc)
-		pr_err("Continuous splash pipeline cleanup failed, rc=%d\n",
+		pr_debug("Continuous splash pipeline cleanup failed, rc=%d\n",
 									rc);
 	if (c_bridge->display->is_prim_display)
 		atomic_set(&prim_panel_is_on, true);
@@ -309,7 +309,7 @@ static void dsi_bridge_enable(struct drm_bridge *bridge)
 	struct dsi_display *display;
 
 	if (!bridge) {
-		pr_err("Invalid params\n");
+		pr_debug("Invalid params\n");
 		return;
 	}
 
@@ -323,7 +323,7 @@ static void dsi_bridge_enable(struct drm_bridge *bridge)
 
 	rc = dsi_display_post_enable(display);
 	if (rc)
-		pr_err("[%d] DSI display post enabled failed, rc=%d\n",
+		pr_debug("[%d] DSI display post enabled failed, rc=%d\n",
 		       c_bridge->id, rc);
 
 	if (display && display->drm_conn) {
@@ -342,7 +342,7 @@ static void dsi_bridge_disable(struct drm_bridge *bridge)
 	int private_flags;
 
 	if (!bridge) {
-		pr_err("Invalid params\n");
+		pr_debug("Invalid params\n");
 		return;
 	}
 	display = c_bridge->display;
@@ -358,7 +358,7 @@ static void dsi_bridge_disable(struct drm_bridge *bridge)
 
 	rc = dsi_display_pre_disable(c_bridge->display);
 	if (rc) {
-		pr_err("[%d] DSI display pre disable failed, rc=%d\n",
+		pr_debug("[%d] DSI display pre disable failed, rc=%d\n",
 		       c_bridge->id, rc);
 	}
 }
@@ -371,7 +371,7 @@ static void dsi_bridge_post_disable(struct drm_bridge *bridge)
 	notify_data.data = &event;
 
 	if (!bridge) {
-		pr_err("Invalid params\n");
+		pr_debug("Invalid params\n");
 		return;
 	}
 
@@ -381,7 +381,7 @@ static void dsi_bridge_post_disable(struct drm_bridge *bridge)
 	SDE_ATRACE_BEGIN("dsi_display_disable");
 	rc = dsi_display_disable(c_bridge->display);
 	if (rc) {
-		pr_err("[%d] DSI display disable failed, rc=%d\n",
+		pr_debug("[%d] DSI display disable failed, rc=%d\n",
 		       c_bridge->id, rc);
 		SDE_ATRACE_END("dsi_display_disable");
 		return;
@@ -390,7 +390,7 @@ static void dsi_bridge_post_disable(struct drm_bridge *bridge)
 
 	rc = dsi_display_unprepare(c_bridge->display);
 	if (rc) {
-		pr_err("[%d] DSI display unprepare failed, rc=%d\n",
+		pr_debug("[%d] DSI display unprepare failed, rc=%d\n",
 		       c_bridge->id, rc);
 		SDE_ATRACE_END("dsi_bridge_post_disable");
 		return;
@@ -421,7 +421,7 @@ static void dsi_bridge_mode_set(struct drm_bridge *bridge,
 	struct dsi_bridge *c_bridge = to_dsi_bridge(bridge);
 
 	if (!bridge || !mode || !adjusted_mode) {
-		pr_err("Invalid params\n");
+		pr_debug("Invalid params\n");
 		return;
 	}
 
@@ -451,13 +451,13 @@ static bool dsi_bridge_mode_fixup(struct drm_bridge *bridge,
 	crtc_state = container_of(mode, struct drm_crtc_state, mode);
 
 	if (!bridge || !mode || !adjusted_mode) {
-		pr_err("Invalid params\n");
+		pr_debug("Invalid params\n");
 		return false;
 	}
 
 	display = c_bridge->display;
 	if (!display) {
-		pr_err("Invalid params\n");
+		pr_debug("Invalid params\n");
 		return false;
 	}
 
@@ -491,7 +491,7 @@ static bool dsi_bridge_mode_fixup(struct drm_bridge *bridge,
 	rc = dsi_display_validate_mode(c_bridge->display, &dsi_mode,
 			DSI_VALIDATE_FLAG_ALLOW_ADJUST);
 	if (rc) {
-		pr_err("[%d] mode is not valid, rc=%d\n", c_bridge->id, rc);
+		pr_debug("[%d] mode is not valid, rc=%d\n", c_bridge->id, rc);
 		return false;
 	}
 
@@ -506,7 +506,7 @@ static bool dsi_bridge_mode_fixup(struct drm_bridge *bridge,
 		rc = dsi_display_validate_mode_change(c_bridge->display,
 					&cur_dsi_mode, &dsi_mode);
 		if (rc) {
-			pr_err("[%s] seamless mode mismatch failure rc=%d\n",
+			pr_debug("[%s] seamless mode mismatch failure rc=%d\n",
 				c_bridge->display->name, rc);
 			return false;
 		}
@@ -542,7 +542,7 @@ static bool dsi_bridge_mode_fixup(struct drm_bridge *bridge,
 			(crtc_state->connectors_changed && clone_mode)) &&
 			((dsi_mode.dsi_mode_flags & DSI_MODE_FLAG_VRR) ||
 			(dsi_mode.dsi_mode_flags & DSI_MODE_FLAG_DYN_CLK))) {
-			pr_err("seamless on active/conn(%d/%d) changed 0x%x\n",
+			pr_debug("seamless on active/conn(%d/%d) changed 0x%x\n",
 				crtc_state->active_changed,
 				crtc_state->connectors_changed,
 				dsi_mode.dsi_mode_flags);
@@ -796,7 +796,7 @@ enum drm_connector_status dsi_conn_detect(struct drm_connector *conn,
 	memset(&info, 0x0, sizeof(info));
 	rc = dsi_display_get_info(conn, &info, display);
 	if (rc) {
-		pr_err("failed to get display info, rc=%d\n", rc);
+		pr_debug("failed to get display info, rc=%d\n", rc);
 		return connector_status_disconnected;
 	}
 
@@ -949,13 +949,13 @@ int dsi_connector_get_modes(struct drm_connector *connector, void *data)
 	}
 	rc = dsi_display_get_mode_count(display, &count);
 	if (rc) {
-		pr_err("failed to get num of modes, rc=%d\n", rc);
+		pr_debug("failed to get num of modes, rc=%d\n", rc);
 		goto end;
 	}
 
 	rc = dsi_display_get_modes(display, &modes);
 	if (rc) {
-		pr_err("failed to get modes, rc=%d\n", rc);
+		pr_debug("failed to get modes, rc=%d\n", rc);
 		count = 0;
 		goto end;
 	}
@@ -967,7 +967,7 @@ int dsi_connector_get_modes(struct drm_connector *connector, void *data)
 		dsi_convert_to_drm_mode(&modes[i], &drm_mode);
 		m = drm_mode_duplicate(connector->dev, &drm_mode);
 		if (!m) {
-			pr_err("failed to add mode %ux%u\n",
+			pr_debug("failed to add mode %ux%u\n",
 			       drm_mode.hdisplay,
 			       drm_mode.vdisplay);
 			count = -ENOMEM;
@@ -1005,7 +1005,7 @@ enum drm_mode_status dsi_conn_mode_valid(struct drm_connector *connector,
 	int rc;
 
 	if (!connector || !mode) {
-		pr_err("Invalid params\n");
+		pr_debug("Invalid params\n");
 		return MODE_ERROR;
 	}
 
@@ -1014,7 +1014,7 @@ enum drm_mode_status dsi_conn_mode_valid(struct drm_connector *connector,
 	rc = dsi_display_validate_mode(display, &dsi_mode,
 			DSI_VALIDATE_FLAG_ALLOW_ADJUST);
 	if (rc) {
-		pr_err("mode not supported, rc=%d\n", rc);
+		pr_debug("mode not supported, rc=%d\n", rc);
 		return MODE_BAD;
 	}
 
@@ -1026,7 +1026,7 @@ int dsi_conn_pre_kickoff(struct drm_connector *connector,
 		struct msm_display_kickoff_params *params)
 {
 	if (!connector || !display || !params) {
-		pr_err("Invalid params\n");
+		pr_debug("Invalid params\n");
 		return -EINVAL;
 	}
 
@@ -1037,7 +1037,7 @@ int dsi_conn_prepare_commit(void *display,
 		struct msm_display_conn_params *params)
 {
 	if (!display || !params) {
-		pr_err("Invalid params\n");
+		pr_debug("Invalid params\n");
 		return -EINVAL;
 	}
 
@@ -1070,7 +1070,7 @@ int dsi_conn_post_kickoff(struct drm_connector *connector,
 	bool enable;
 
 	if (!connector || !connector->state) {
-		pr_err("invalid connector or connector state");
+		pr_debug("invalid connector or connector state");
 		return -EINVAL;
 	}
 
@@ -1088,7 +1088,7 @@ int dsi_conn_post_kickoff(struct drm_connector *connector,
 		m_ctrl = &display->ctrl[display->clk_master_idx];
 		rc = dsi_ctrl_timing_db_update(m_ctrl->ctrl, false);
 		if (rc) {
-			pr_err("[%s] failed to dfps update  rc=%d\n",
+			pr_debug("[%s] failed to dfps update  rc=%d\n",
 				display->name, rc);
 			return -EINVAL;
 		}
@@ -1101,7 +1101,7 @@ int dsi_conn_post_kickoff(struct drm_connector *connector,
 
 			rc = dsi_ctrl_timing_db_update(ctrl->ctrl, false);
 			if (rc) {
-				pr_err("[%s] failed to dfps update rc=%d\n",
+				pr_debug("[%s] failed to dfps update rc=%d\n",
 					display->name,  rc);
 				return -EINVAL;
 			}
@@ -1142,7 +1142,7 @@ struct dsi_bridge *dsi_drm_bridge_init(struct dsi_display *display,
 
 	rc = drm_bridge_attach(encoder, &bridge->base, NULL);
 	if (rc) {
-		pr_err("failed to attach bridge, rc=%d\n", rc);
+		pr_debug("failed to attach bridge, rc=%d\n", rc);
 		goto error_free_bridge;
 	}
 

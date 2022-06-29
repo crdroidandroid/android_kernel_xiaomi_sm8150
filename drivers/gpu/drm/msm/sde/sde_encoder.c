@@ -817,7 +817,7 @@ void sde_encoder_helper_update_intf_cfg(
 
 	/* setup interface configuration */
 	if (intf_cfg->intf_count >= MAX_INTF_PER_CTL_V1) {
-		pr_err("invalid inf_count %d\n", intf_cfg->intf_count);
+		pr_debug("invalid inf_count %d\n", intf_cfg->intf_count);
 		return;
 	}
 	intf_cfg->intf[intf_cfg->intf_count++] = phys_enc->intf_idx;
@@ -1489,7 +1489,7 @@ static int _sde_encoder_dsc_2_lm_2_enc_2_intf(struct sde_encoder_virt *sde_enc,
 
 		if (active) {
 			if (cfg.dsc_count >= MAX_DSC_PER_CTL_V1) {
-				pr_err("Invalid dsc count:%d\n",
+				pr_debug("Invalid dsc count:%d\n",
 						cfg.dsc_count);
 				return -EINVAL;
 			}
@@ -1863,7 +1863,7 @@ static int _sde_encoder_switch_to_watchdog_vsync(struct drm_encoder *drm_enc)
 	struct msm_display_info disp_info;
 
 	if (!drm_enc) {
-		pr_err("invalid drm encoder\n");
+		pr_debug("invalid drm encoder\n");
 		return -EINVAL;
 	}
 
@@ -3000,13 +3000,13 @@ static int _sde_encoder_input_connect(struct input_handler *handler,
 
 	rc = input_register_handle(handle);
 	if (rc) {
-		pr_err("failed to register input handle\n");
+		pr_debug("failed to register input handle\n");
 		goto error;
 	}
 
 	rc = input_open_device(handle);
 	if (rc) {
-		pr_err("failed to open input device\n");
+		pr_debug("failed to open input device\n");
 		goto error_unregister;
 	}
 
@@ -3051,7 +3051,7 @@ static int _sde_encoder_input_handler_register(
 
 	rc = input_register_handler(input_handler);
 	if (rc) {
-		pr_err("input_register_handler failed, rc= %d\n", rc);
+		pr_debug("input_register_handler failed, rc= %d\n", rc);
 		kfree(input_handler);
 		return rc;
 	}
