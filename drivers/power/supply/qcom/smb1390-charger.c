@@ -162,7 +162,7 @@ static int smb1390_read(struct smb1390 *chip, int reg, int *val)
 
 	rc = regmap_read(chip->regmap, reg, val);
 	if (rc < 0)
-		pr_err("Couldn't read 0x%04x\n", reg);
+		pr_debug("Couldn't read 0x%04x\n", reg);
 
 	return rc;
 }
@@ -175,7 +175,7 @@ static int smb1390_masked_write(struct smb1390 *chip, int reg, int mask,
 	pr_debug("Writing 0x%02x to 0x%04x with mask 0x%02x\n", val, reg, mask);
 	rc = regmap_update_bits(chip->regmap, reg, mask, val);
 	if (rc < 0)
-		pr_err("Couldn't write 0x%02x to 0x%04x with mask 0x%02x\n",
+		pr_debug("Couldn't write 0x%02x to 0x%04x with mask 0x%02x\n",
 		       val, reg, mask);
 
 	return rc;
@@ -247,7 +247,7 @@ static int smb1390_is_batt_soc_valid(struct smb1390 *chip)
 	rc = power_supply_get_property(chip->batt_psy,
 			POWER_SUPPLY_PROP_CAPACITY, &pval);
 	if (rc < 0) {
-		pr_err("Couldn't get CAPACITY rc=%d\n", rc);
+		pr_debug("Couldn't get CAPACITY rc=%d\n", rc);
 		goto out;
 	}
 
@@ -430,7 +430,7 @@ static ssize_t die_temp_show(struct class *c, struct class_attribute *attr,
 	mutex_unlock(&chip->die_chan_lock);
 
 	if (rc < 0) {
-		pr_err("Couldn't read die chan, rc = %d\n", rc);
+		pr_debug("Couldn't read die chan, rc = %d\n", rc);
 		return -EINVAL;
 	}
 
@@ -450,21 +450,21 @@ static ssize_t isns_show(struct class *c, struct class_attribute *attr,
 				ATEST1_OUTPUT_ENABLE_BIT | ATEST1_SEL_MASK,
 				ATEST1_OUTPUT_ENABLE_BIT | ISNS_INT_VAL);
 	if (rc < 0) {
-		pr_err("Couldn't set CORE_ATEST1_SEL_REG, rc = %d\n", rc);
+		pr_debug("Couldn't set CORE_ATEST1_SEL_REG, rc = %d\n", rc);
 		goto unlock;
 	}
 
 	rc = iio_read_channel_processed(chip->iio.die_temp_chan,
 			&temp);
 	if (rc < 0) {
-		pr_err("Couldn't read die chan for isns, rc = %d\n", rc);
+		pr_debug("Couldn't read die chan for isns, rc = %d\n", rc);
 		goto unlock;
 	}
 
 	rc = smb1390_masked_write(chip, CORE_ATEST1_SEL_REG,
 				ATEST1_OUTPUT_ENABLE_BIT | ATEST1_SEL_MASK, 0);
 	if (rc < 0)
-		pr_err("Couldn't set CORE_ATEST1_SEL_REG, rc = %d\n", rc);
+		pr_debug("Couldn't set CORE_ATEST1_SEL_REG, rc = %d\n", rc);
 
 unlock:
 	mutex_unlock(&chip->die_chan_lock);
@@ -532,7 +532,7 @@ static int smb1390_ilim_vote_cb(struct votable *votable, void *data,
 
 	/* ILIM should always have at least one active vote */
 	if (!client) {
-		pr_err("Client missing\n");
+		pr_debug("Client missing\n");
 		return -EINVAL;
 	}
 
@@ -546,7 +546,7 @@ static int smb1390_ilim_vote_cb(struct votable *votable, void *data,
 				CFG_ILIM_MASK,
 				DIV_ROUND_CLOSEST(ilim_uA - 500000, 100000));
 		if (rc < 0)
-			pr_err("Failed to write ILIM Register, rc=%d\n", rc);
+			pr_debug("Failed to write ILIM Register, rc=%d\n", rc);
 		if (rc >= 0)
 			vote(chip->disable_votable, ILIM_VOTER, false, 0);
 	}
@@ -614,7 +614,7 @@ static void smb1390_status_change_work(struct work_struct *work)
 	rc = power_supply_get_property(chip->usb_psy,
 			POWER_SUPPLY_PROP_SMB_EN_MODE, &pval);
 	if (rc < 0) {
-		pr_err("Couldn't get usb present rc=%d\n", rc);
+		pr_debug("Couldn't get usb present rc=%d\n", rc);
 		goto out;
 	}
 
@@ -622,7 +622,7 @@ static void smb1390_status_change_work(struct work_struct *work)
 		rc = power_supply_get_property(chip->usb_psy,
 				POWER_SUPPLY_PROP_SMB_EN_REASON, &pval);
 		if (rc < 0) {
-			pr_err("Couldn't get cp reason rc=%d\n", rc);
+			pr_debug("Couldn't get cp reason rc=%d\n", rc);
 			goto out;
 		}
 
@@ -639,7 +639,7 @@ static void smb1390_status_change_work(struct work_struct *work)
 			rc = power_supply_get_property(chip->dc_psy,
 					POWER_SUPPLY_PROP_CURRENT_MAX, &pval);
 			if (rc < 0)
-				pr_err("Couldn't get dc icl rc=%d\n", rc);
+				pr_debug("Couldn't get dc icl rc=%d\n", rc);
 			else
 				vote(chip->ilim_votable, WIRELESS_VOTER, true,
 								pval.intval);
@@ -648,7 +648,7 @@ static void smb1390_status_change_work(struct work_struct *work)
 			rc = power_supply_get_property(chip->usb_psy,
 				POWER_SUPPLY_PROP_INPUT_CURRENT_SETTLED, &pval);
 			if (rc < 0)
-				pr_err("Couldn't get usb icl rc=%d\n", rc);
+				pr_debug("Couldn't get usb icl rc=%d\n", rc);
 			else
 				vote(chip->ilim_votable, ICL_VOTER, true,
 								pval.intval);
@@ -678,7 +678,7 @@ static void smb1390_status_change_work(struct work_struct *work)
 		rc = power_supply_get_property(chip->batt_psy,
 			       POWER_SUPPLY_PROP_CAPACITY, &pval);
 		if (rc < 0) {
-			pr_err("Couldn't get batt capacity rc=%d\n", rc);
+			pr_debug("Couldn't get batt capacity rc=%d\n", rc);
 			goto out;
 		}
 		capacity = pval.intval;
@@ -686,7 +686,7 @@ static void smb1390_status_change_work(struct work_struct *work)
 		rc = power_supply_get_property(chip->batt_psy,
 			       POWER_SUPPLY_PROP_TEMP, &pval);
 		if (rc < 0) {
-			pr_err("Couldn't get batt temp rc=%d\n", rc);
+			pr_debug("Couldn't get batt temp rc=%d\n", rc);
 			goto out;
 		}
 		batt_temp = pval.intval;
@@ -694,7 +694,7 @@ static void smb1390_status_change_work(struct work_struct *work)
 		rc = power_supply_get_property(chip->batt_psy,
 					POWER_SUPPLY_PROP_CHARGE_TYPE, &pval);
 		if (rc < 0) {
-			pr_err("Couldn't get charge type rc=%d\n", rc);
+			pr_debug("Couldn't get charge type rc=%d\n", rc);
 			goto out;
 		}
 		charge_type = pval.intval;
@@ -717,7 +717,7 @@ static void smb1390_status_change_work(struct work_struct *work)
 		rc = power_supply_get_property(chip->batt_psy,
 				POWER_SUPPLY_PROP_CHARGE_TYPE, &pval);
 		if (rc < 0) {
-			pr_err("Couldn't get charge type rc=%d\n", rc);
+			pr_debug("Couldn't get charge type rc=%d\n", rc);
 		} else if (pval.intval ==
 				POWER_SUPPLY_CHARGE_TYPE_TAPER) {
 			/*
@@ -761,7 +761,7 @@ static void smb1390_taper_work(struct work_struct *work)
 		rc = power_supply_get_property(chip->batt_psy,
 			       POWER_SUPPLY_PROP_CAPACITY, &pval);
 		if (rc < 0) {
-			pr_err("Couldn't get batt capacity rc=%d\n", rc);
+			pr_debug("Couldn't get batt capacity rc=%d\n", rc);
 			goto out;
 		}
 		capacity = pval.intval;
@@ -772,7 +772,7 @@ static void smb1390_taper_work(struct work_struct *work)
 		rc = power_supply_get_property(chip->batt_psy,
 					POWER_SUPPLY_PROP_CHARGE_TYPE, &pval);
 		if (rc < 0) {
-			pr_err("Couldn't get charge type rc=%d\n", rc);
+			pr_debug("Couldn't get charge type rc=%d\n", rc);
 			goto out;
 		}
 
@@ -898,11 +898,11 @@ static int smb1390_init_hw(struct smb1390 *chip)
 		return rc;
 
 	rc = smb1390_read(chip, 0x1032, &val);
-	pr_err("default smb1390 400K 0x1032_REG: 0x%x\n", val);
+	pr_debug("default smb1390 400K 0x1032_REG: 0x%x\n", val);
 
 	rc = smb1390_masked_write(chip, 0x1032, 0x0F, 0x07);
 	rc = smb1390_read(chip, 0x1032, &val);
-	pr_err("modify smb1390 800K 0x1032_REG: 0x%x\n", val);
+	pr_debug("modify smb1390 800K 0x1032_REG: 0x%x\n", val);
 
 	if (rc < 0)
 		return rc;
@@ -930,13 +930,13 @@ static int smb1390_request_interrupt(struct smb1390 *chip,
 
 	irq = of_irq_get_byname(node, irq_name);
 	if (irq < 0) {
-		pr_err("Couldn't get irq %s byname\n", irq_name);
+		pr_debug("Couldn't get irq %s byname\n", irq_name);
 		return irq;
 	}
 
 	irq_index = smb1390_get_irq_index_byname(irq_name);
 	if (irq_index < 0) {
-		pr_err("%s is not a defined irq\n", irq_name);
+		pr_debug("%s is not a defined irq\n", irq_name);
 		return irq_index;
 	}
 
@@ -947,7 +947,7 @@ static int smb1390_request_interrupt(struct smb1390 *chip,
 				smb_irqs[irq_index].handler,
 				IRQF_ONESHOT, irq_name, chip);
 	if (rc < 0) {
-		pr_err("Couldn't request irq %d rc=%d\n", irq, rc);
+		pr_debug("Couldn't request irq %d rc=%d\n", irq, rc);
 		return rc;
 	}
 
@@ -971,7 +971,7 @@ static int smb1390_request_interrupts(struct smb1390 *chip)
 					    prop, name) {
 			rc = smb1390_request_interrupt(chip, child, name);
 			if (rc < 0) {
-				pr_err("Couldn't request interrupt %s rc=%d\n",
+				pr_debug("Couldn't request interrupt %s rc=%d\n",
 					name, rc);
 				return rc;
 			}
@@ -996,7 +996,7 @@ static int smb1390_probe(struct platform_device *pdev)
 
 	chip->regmap = dev_get_regmap(chip->dev->parent, NULL);
 	if (!chip->regmap) {
-		pr_err("Couldn't get regmap\n");
+		pr_debug("Couldn't get regmap\n");
 		return -EINVAL;
 	}
 
@@ -1005,7 +1005,7 @@ static int smb1390_probe(struct platform_device *pdev)
 
 	rc = smb1390_parse_dt(chip);
 	if (rc < 0) {
-		pr_err("Couldn't parse device tree rc=%d\n", rc);
+		pr_debug("Couldn't parse device tree rc=%d\n", rc);
 		goto out_work;
 	}
 
@@ -1015,20 +1015,20 @@ static int smb1390_probe(struct platform_device *pdev)
 
 	rc = smb1390_create_votables(chip);
 	if (rc < 0) {
-		pr_err("Couldn't create votables rc=%d\n", rc);
+		pr_debug("Couldn't create votables rc=%d\n", rc);
 		goto out_work;
 	}
 
 	rc = smb1390_init_hw(chip);
 	if (rc < 0) {
-		pr_err("Couldn't init hardware rc=%d\n", rc);
+		pr_debug("Couldn't init hardware rc=%d\n", rc);
 		goto out_votables;
 	}
 
 	chip->nb.notifier_call = smb1390_notifier_cb;
 	rc = power_supply_reg_notifier(&chip->nb);
 	if (rc < 0) {
-		pr_err("Couldn't register psy notifier rc=%d\n", rc);
+		pr_debug("Couldn't register psy notifier rc=%d\n", rc);
 		goto out_votables;
 	}
 
@@ -1037,14 +1037,14 @@ static int smb1390_probe(struct platform_device *pdev)
 	chip->cp_class.class_groups = cp_class_groups;
 	rc = class_register(&chip->cp_class);
 	if (rc < 0) {
-		pr_err("Couldn't register charge_pump sysfs class rc=%d\n", rc);
+		pr_debug("Couldn't register charge_pump sysfs class rc=%d\n", rc);
 		goto out_notifier;
 
 	}
 
 	rc = smb1390_request_interrupts(chip);
 	if (rc < 0) {
-		pr_err("Couldn't request interrupts rc=%d\n", rc);
+		pr_debug("Couldn't request interrupts rc=%d\n", rc);
 		goto out_class;
 	}
 

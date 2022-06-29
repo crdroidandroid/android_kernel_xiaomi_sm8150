@@ -90,7 +90,7 @@ static inline int psy_get_prop(struct power_supply *psy,
 	pr_debug("get %s for '%s'...\n", prop_name, psy->desc->name);
 	ret = power_supply_get_property(psy, psp, &val);
 	if (ret < 0) {
-		pr_err("failed to get %s from '%s', ret=%d\n", prop_name,
+		pr_debug("failed to get %s from '%s', ret=%d\n", prop_name,
 		       psy->desc->name, ret);
 		return ret;
 	}
@@ -479,13 +479,13 @@ static int ovh_probe(struct platform_device *pdev)
 
 	usb_icl_votable = find_votable("USB_ICL");
 	if (usb_icl_votable == NULL) {
-		pr_err("Couldn't find USB_ICL votable\n");
+		pr_debug("Couldn't find USB_ICL votable\n");
 		return -EPROBE_DEFER;
 	}
 
 	disable_power_role_switch = find_votable("DISABLE_POWER_ROLE_SWITCH");
 	if (disable_power_role_switch == NULL) {
-		pr_err("Couldn't find DISABLE_POWER_ROLE_SWITCH votable\n");
+		pr_debug("Couldn't find DISABLE_POWER_ROLE_SWITCH votable\n");
 		return -EPROBE_DEFER;
 	}
 

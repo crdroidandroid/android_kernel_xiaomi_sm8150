@@ -206,7 +206,7 @@ static int __init test_power_init(void)
 						&test_power_desc[i],
 						&test_power_configs[i]);
 		if (IS_ERR(test_power_supplies[i])) {
-			pr_err("%s: failed to register %s\n", __func__,
+			pr_debug("%s: failed to register %s\n", __func__,
 				test_power_desc[i].name);
 			ret = PTR_ERR(test_power_supplies[i]);
 			goto failed;

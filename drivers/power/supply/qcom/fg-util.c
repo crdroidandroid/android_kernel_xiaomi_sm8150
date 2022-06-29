@@ -112,7 +112,7 @@ int fg_decode(struct fg_sram_param *sp, enum fg_sram_param_id id,
 			int value)
 {
 	if (!sp[id].decode) {
-		pr_err("No decoding function for parameter %d\n", id);
+		pr_debug("No decoding function for parameter %d\n", id);
 		return -EINVAL;
 	}
 
@@ -174,7 +174,7 @@ void fg_encode(struct fg_sram_param *sp, enum fg_sram_param_id id,
 			int val, u8 *buf)
 {
 	if (!sp[id].encode) {
-		pr_err("No encoding function for parameter %d\n", id);
+		pr_debug("No encoding function for parameter %d\n", id);
 		return;
 	}
 
@@ -202,7 +202,7 @@ int fg_get_sram_prop(struct fg_dev *fg, enum fg_sram_param_id id,
 	rc = fg_sram_read(fg, fg->sp[id].addr_word, fg->sp[id].addr_byte,
 		buf, fg->sp[id].len, FG_IMA_DEFAULT);
 	if (rc < 0) {
-		pr_err("Error reading address %d[%d] rc=%d\n",
+		pr_debug("Error reading address %d[%d] rc=%d\n",
 			fg->sp[id].addr_word, fg->sp[id].addr_byte, rc);
 		return rc;
 	}
@@ -282,12 +282,12 @@ int fg_lerp(const struct fg_pt *pts, size_t tablesize, s32 input, s32 *output)
 	s64 temp;
 
 	if (pts == NULL) {
-		pr_err("Table is NULL\n");
+		pr_debug("Table is NULL\n");
 		return -EINVAL;
 	}
 
 	if (tablesize < 1) {
-		pr_err("Table has no entries\n");
+		pr_debug("Table has no entries\n");
 		return -ENOENT;
 	}
 
@@ -297,7 +297,7 @@ int fg_lerp(const struct fg_pt *pts, size_t tablesize, s32 input, s32 *output)
 	}
 
 	if (pts[0].x > pts[1].x) {
-		pr_err("Table is not in acending order\n");
+		pr_debug("Table is not in acending order\n");
 		return -EINVAL;
 	}
 
@@ -402,7 +402,7 @@ void fg_notify_charger(struct fg_dev *fg)
 		rc = power_supply_set_property(fg->batt_psy,
 				POWER_SUPPLY_PROP_VOLTAGE_MAX, &prop);
 		if (rc < 0) {
-			pr_err("Error in setting voltage_max property on batt_psy, rc=%d\n",
+			pr_debug("Error in setting voltage_max property on batt_psy, rc=%d\n",
 				rc);
 			return;
 		}
@@ -416,7 +416,7 @@ void fg_notify_charger(struct fg_dev *fg)
 				POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX,
 				&prop);
 		if (rc < 0) {
-			pr_err("Error in setting constant_charge_current_max property on batt_psy, rc=%d\n",
+			pr_debug("Error in setting constant_charge_current_max property on batt_psy, rc=%d\n",
 				rc);
 			return;
 		}
@@ -609,7 +609,7 @@ int fg_sram_write(struct fg_dev *fg, u16 address, u8 offset,
 		}
 
 		if (rc < 0) {
-			pr_err("wait for soc_update timed out rc=%d\n", rc);
+			pr_debug("wait for soc_update timed out rc=%d\n", rc);
 			goto out;
 		}
 	}
@@ -622,7 +622,7 @@ int fg_sram_write(struct fg_dev *fg, u16 address, u8 offset,
 				atomic_access);
 
 	if (rc < 0)
-		pr_err("Error in writing SRAM address 0x%x[%d], rc=%d\n",
+		pr_debug("Error in writing SRAM address 0x%x[%d], rc=%d\n",
 			address, offset, rc);
 
 out:
@@ -660,7 +660,7 @@ int fg_sram_read(struct fg_dev *fg, u16 address, u8 offset,
 		rc = fg_interleaved_mem_read(fg, address, offset, val, len);
 
 	if (rc < 0)
-		pr_err("Error in reading SRAM address 0x%x[%d], rc=%d\n",
+		pr_debug("Error in reading SRAM address 0x%x[%d], rc=%d\n",
 			address, offset, rc);
 
 	mutex_unlock(&fg->sram_rw_lock);
@@ -680,7 +680,7 @@ int fg_sram_masked_write(struct fg_dev *fg, u16 address, u8 offset,
 
 	rc = fg_sram_read(fg, address, 0, buf, length, flags);
 	if (rc < 0) {
-		pr_err("sram read failed: address=%03X, rc=%d\n", address, rc);
+		pr_debug("sram read failed: address=%03X, rc=%d\n", address, rc);
 		return rc;
 	}
 
@@ -689,7 +689,7 @@ int fg_sram_masked_write(struct fg_dev *fg, u16 address, u8 offset,
 
 	rc = fg_sram_write(fg, address, 0, buf, length, flags);
 	if (rc < 0) {
-		pr_err("sram write failed: address=%03X, rc=%d\n", address, rc);
+		pr_debug("sram write failed: address=%03X, rc=%d\n", address, rc);
 		return rc;
 	}
 
@@ -836,7 +836,7 @@ int fg_restart(struct fg_dev *fg, int wait_time_ms)
 	rc = power_supply_get_property(fg->fg_psy, POWER_SUPPLY_PROP_CAPACITY,
 					&pval);
 	if (rc < 0) {
-		pr_err("Error in getting capacity, rc=%d\n", rc);
+		pr_debug("Error in getting capacity, rc=%d\n", rc);
 		return rc;
 	}
 
@@ -846,7 +846,7 @@ int fg_restart(struct fg_dev *fg, int wait_time_ms)
 	rc = fg_masked_write(fg, BATT_SOC_RESTART(fg), RESTART_GO_BIT,
 			RESTART_GO_BIT);
 	if (rc < 0) {
-		pr_err("Error in writing to %04x, rc=%d\n",
+		pr_debug("Error in writing to %04x, rc=%d\n",
 			BATT_SOC_RESTART(fg), rc);
 		goto out;
 	}
@@ -860,12 +860,12 @@ wait:
 		tried_again = true;
 		goto wait;
 	} else if (rc <= 0) {
-		pr_err("wait for soc_ready timed out rc=%d\n", rc);
+		pr_debug("wait for soc_ready timed out rc=%d\n", rc);
 	}
 
 	rc = fg_masked_write(fg, BATT_SOC_RESTART(fg), RESTART_GO_BIT, 0);
 	if (rc < 0) {
-		pr_err("Error in writing to %04x, rc=%d\n",
+		pr_debug("Error in writing to %04x, rc=%d\n",
 			BATT_SOC_RESTART(fg), rc);
 		goto out;
 	}
@@ -886,7 +886,7 @@ int fg_get_msoc_raw(struct fg_dev *fg, int *val)
 	while (tries < MAX_READ_TRIES) {
 		rc = fg_read(fg, BATT_SOC_FG_MONOTONIC_SOC(fg), cap, 2);
 		if (rc < 0) {
-			pr_err("failed to read addr=0x%04x, rc=%d\n",
+			pr_debug("failed to read addr=0x%04x, rc=%d\n",
 				BATT_SOC_FG_MONOTONIC_SOC(fg), rc);
 			return rc;
 		}
@@ -898,7 +898,7 @@ int fg_get_msoc_raw(struct fg_dev *fg, int *val)
 	}
 
 	if (tries == MAX_READ_TRIES) {
-		pr_err("MSOC: shadow registers do not match\n");
+		pr_debug("MSOC: shadow registers do not match\n");
 		return -EINVAL;
 	}
 
@@ -974,13 +974,13 @@ int fg_get_battery_resistance(struct fg_dev *fg, int *val)
 
 	rc = fg_get_sram_prop(fg, FG_SRAM_ESR, &esr_uohms);
 	if (rc < 0) {
-		pr_err("failed to get ESR, rc=%d\n", rc);
+		pr_debug("failed to get ESR, rc=%d\n", rc);
 		return rc;
 	}
 
 	rc = fg_get_sram_prop(fg, FG_SRAM_RSLOW, &rslow_uohms);
 	if (rc < 0) {
-		pr_err("failed to get Rslow, rc=%d\n", rc);
+		pr_debug("failed to get Rslow, rc=%d\n", rc);
 		return rc;
 	}
 
@@ -999,14 +999,14 @@ int fg_get_battery_current(struct fg_dev *fg, int *val)
 	while (tries++ < MAX_READ_TRIES) {
 		rc = fg_read(fg, BATT_INFO_IBATT_LSB(fg), buf, 2);
 		if (rc < 0) {
-			pr_err("failed to read addr=0x%04x, rc=%d\n",
+			pr_debug("failed to read addr=0x%04x, rc=%d\n",
 				BATT_INFO_IBATT_LSB(fg), rc);
 			return rc;
 		}
 
 		rc = fg_read(fg, BATT_INFO_IBATT_LSB_CP(fg), buf_cp, 2);
 		if (rc < 0) {
-			pr_err("failed to read addr=0x%04x, rc=%d\n",
+			pr_debug("failed to read addr=0x%04x, rc=%d\n",
 				BATT_INFO_IBATT_LSB_CP(fg), rc);
 			return rc;
 		}
@@ -1016,7 +1016,7 @@ int fg_get_battery_current(struct fg_dev *fg, int *val)
 	}
 
 	if (tries == MAX_READ_TRIES) {
-		pr_err("IBATT: shadow registers do not match\n");
+		pr_debug("IBATT: shadow registers do not match\n");
 		return -EINVAL;
 	}
 
@@ -1043,14 +1043,14 @@ int fg_get_battery_voltage(struct fg_dev *fg, int *val)
 	while (tries++ < MAX_READ_TRIES) {
 		rc = fg_read(fg, BATT_INFO_VBATT_LSB(fg), buf, 2);
 		if (rc < 0) {
-			pr_err("failed to read addr=0x%04x, rc=%d\n",
+			pr_debug("failed to read addr=0x%04x, rc=%d\n",
 				BATT_INFO_VBATT_LSB(fg), rc);
 			return rc;
 		}
 
 		rc = fg_read(fg, BATT_INFO_VBATT_LSB_CP(fg), buf_cp, 2);
 		if (rc < 0) {
-			pr_err("failed to read addr=0x%04x, rc=%d\n",
+			pr_debug("failed to read addr=0x%04x, rc=%d\n",
 				BATT_INFO_VBATT_LSB_CP(fg), rc);
 			return rc;
 		}
@@ -1060,7 +1060,7 @@ int fg_get_battery_voltage(struct fg_dev *fg, int *val)
 	}
 
 	if (tries == MAX_READ_TRIES) {
-		pr_err("VBATT: shadow registers do not match\n");
+		pr_debug("VBATT: shadow registers do not match\n");
 		return -EINVAL;
 	}
 
@@ -1080,7 +1080,7 @@ int fg_set_constant_chg_voltage(struct fg_dev *fg, int volt_uv)
 	int rc;
 
 	if (volt_uv <= 0 || volt_uv > 15590000) {
-		pr_err("Invalid voltage %d\n", volt_uv);
+		pr_debug("Invalid voltage %d\n", volt_uv);
 		return -EINVAL;
 	}
 
@@ -1090,7 +1090,7 @@ int fg_set_constant_chg_voltage(struct fg_dev *fg, int volt_uv)
 		fg->sp[FG_SRAM_VBATT_FULL].addr_byte, buf,
 		fg->sp[FG_SRAM_VBATT_FULL].len, FG_IMA_DEFAULT);
 	if (rc < 0) {
-		pr_err("Error in writing vbatt_full, rc=%d\n", rc);
+		pr_debug("Error in writing vbatt_full, rc=%d\n", rc);
 		return rc;
 	}
 
@@ -1120,7 +1120,7 @@ int fg_set_esr_timer(struct fg_dev *fg, int cycles_init,
 			fg->sp[timer_max].addr_byte, buf,
 			fg->sp[timer_max].len, flags);
 	if (rc < 0) {
-		pr_err("Error in writing esr_timer_dischg_max, rc=%d\n",
+		pr_debug("Error in writing esr_timer_dischg_max, rc=%d\n",
 			rc);
 		return rc;
 	}
@@ -1131,7 +1131,7 @@ int fg_set_esr_timer(struct fg_dev *fg, int cycles_init,
 			fg->sp[timer_init].addr_byte, buf,
 			fg->sp[timer_init].len, flags);
 	if (rc < 0) {
-		pr_err("Error in writing esr_timer_dischg_init, rc=%d\n",
+		pr_debug("Error in writing esr_timer_dischg_init, rc=%d\n",
 			rc);
 		return rc;
 	}
@@ -1154,7 +1154,7 @@ static int fg_get_irq_index_byname(struct fg_dev *fg, const char *name,
 			return i;
 	}
 
-	pr_err("%s is not in irq list\n", name);
+	pr_debug("%s is not in irq list\n", name);
 	return -ENOENT;
 }
 
@@ -1235,7 +1235,7 @@ static int fg_sram_dfs_open(struct inode *inode, struct file *file)
 	size_t databufsize = SZ_4K;
 
 	if (!dbgfs_data.fg) {
-		pr_err("Not initialized data\n");
+		pr_debug("Not initialized data\n");
 		return -EINVAL;
 	}
 
@@ -1395,7 +1395,7 @@ static int get_log_data(struct fg_trans *trans)
 		return 0;
 
 	if (item_cnt > SZ_4K) {
-		pr_err("Reading too many bytes\n");
+		pr_debug("Reading too many bytes\n");
 		return -EINVAL;
 	}
 
@@ -1404,7 +1404,7 @@ static int get_log_data(struct fg_trans *trans)
 	rc = fg_sram_read(trans->fg, trans->addr, 0,
 			trans->data, trans->cnt, 0);
 	if (rc < 0) {
-		pr_err("SRAM read failed: rc = %d\n", rc);
+		pr_debug("SRAM read failed: rc = %d\n", rc);
 		return rc;
 	}
 	/* Reset the log buffer 'pointers' */
@@ -1456,7 +1456,7 @@ static ssize_t fg_sram_dfs_reg_read(struct file *file, char __user *buf,
 
 	ret = copy_to_user(buf, &log->data[log->rpos], len);
 	if (ret == len) {
-		pr_err("error copy sram register values to user\n");
+		pr_debug("error copy sram register values to user\n");
 		len = -EFAULT;
 		goto unlock_mutex;
 	}
@@ -1503,7 +1503,7 @@ static ssize_t fg_sram_dfs_reg_write(struct file *file, const char __user *buf,
 
 	ret = copy_from_user(kbuf, buf, count);
 	if (ret == count) {
-		pr_err("failed to copy data from user\n");
+		pr_debug("failed to copy data from user\n");
 		ret = -EFAULT;
 		goto free_buf;
 	}
@@ -1541,7 +1541,7 @@ static ssize_t fg_sram_dfs_reg_write(struct file *file, const char __user *buf,
 
 	ret = fg_sram_write(trans->fg, address, 0, values, cnt, 0);
 	if (ret) {
-		pr_err("SRAM write failed, err = %zu\n", ret);
+		pr_debug("SRAM write failed, err = %zu\n", ret);
 	} else {
 		ret = count;
 		trans->offset += cnt > 4 ? 4 : cnt;
@@ -1570,7 +1570,7 @@ static int fg_sram_debugfs_create(struct fg_dev *fg)
 	pr_debug("Creating FG_SRAM debugfs file-system\n");
 	dfs_sram = debugfs_create_dir("sram", fg->dfs_root);
 	if (!dfs_sram) {
-		pr_err("error creating fg sram dfs rc=%ld\n",
+		pr_debug("error creating fg sram dfs rc=%ld\n",
 		       (long)dfs_sram);
 		return -ENOMEM;
 	}
@@ -1579,7 +1579,7 @@ static int fg_sram_debugfs_create(struct fg_dev *fg)
 	file = debugfs_create_blob("help", 0444, dfs_sram,
 					&dbgfs_data.help_msg);
 	if (!file) {
-		pr_err("error creating help entry\n");
+		pr_debug("error creating help entry\n");
 		goto err_remove_fs;
 	}
 
@@ -1588,21 +1588,21 @@ static int fg_sram_debugfs_create(struct fg_dev *fg)
 	file = debugfs_create_u32("count", dfs_mode, dfs_sram,
 					&(dbgfs_data.cnt));
 	if (!file) {
-		pr_err("error creating 'count' entry\n");
+		pr_debug("error creating 'count' entry\n");
 		goto err_remove_fs;
 	}
 
 	file = debugfs_create_x32("address", dfs_mode, dfs_sram,
 					&(dbgfs_data.addr));
 	if (!file) {
-		pr_err("error creating 'address' entry\n");
+		pr_debug("error creating 'address' entry\n");
 		goto err_remove_fs;
 	}
 
 	file = debugfs_create_file("data", dfs_mode, dfs_sram, &dbgfs_data,
 					&fg_sram_dfs_reg_fops);
 	if (!file) {
-		pr_err("error creating 'data' entry\n");
+		pr_debug("error creating 'data' entry\n");
 		goto err_remove_fs;
 	}
 
@@ -1631,7 +1631,7 @@ static ssize_t fg_alg_flags_read(struct file *file, char __user *userbuf,
 			  fg->sp[FG_SRAM_ALG_FLAGS].addr_byte, &alg_flags, 1,
 			  FG_IMA_DEFAULT);
 	if (rc < 0) {
-		pr_err("failed to read algorithm flags rc=%d\n", rc);
+		pr_debug("failed to read algorithm flags rc=%d\n", rc);
 		return -EFAULT;
 	}
 
@@ -1667,23 +1667,23 @@ int fg_debugfs_create(struct fg_dev *fg)
 	fg->dfs_root = debugfs_create_dir("fg", NULL);
 	if (IS_ERR_OR_NULL(fg->dfs_root)) {
 		if (PTR_ERR(fg->dfs_root) == -ENODEV)
-			pr_err("debugfs is not enabled in the kernel\n");
+			pr_debug("debugfs is not enabled in the kernel\n");
 		else
-			pr_err("error creating fg dfs root rc=%ld\n",
+			pr_debug("error creating fg dfs root rc=%ld\n",
 			       (long)fg->dfs_root);
 		return -ENODEV;
 	}
 
 	rc = fg_sram_debugfs_create(fg);
 	if (rc < 0) {
-		pr_err("failed to create sram dfs rc=%d\n", rc);
+		pr_debug("failed to create sram dfs rc=%d\n", rc);
 		goto err_remove_fs;
 	}
 
 	if (fg->alg_flags) {
 		if (!debugfs_create_file("alg_flags", 0400, fg->dfs_root, fg,
 					 &fg_alg_flags_fops)) {
-			pr_err("failed to create alg_flags file\n");
+			pr_debug("failed to create alg_flags file\n");
 			goto err_remove_fs;
 		}
 	}

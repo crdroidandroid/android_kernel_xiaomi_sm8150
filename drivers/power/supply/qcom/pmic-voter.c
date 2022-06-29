@@ -738,13 +738,13 @@ struct votable *create_votable(const char *name,
 	if (debug_root == NULL) {
 		debug_root = debugfs_create_dir("pmic-votable", NULL);
 		if (!debug_root) {
-			pr_err("Couldn't create debug dir\n");
+			pr_debug("Couldn't create debug dir\n");
 			return ERR_PTR(-ENOMEM);
 		}
 	}
 
 	if (votable_type >= NUM_VOTABLE_TYPES) {
-		pr_err("Invalid votable_type specified for voter\n");
+		pr_debug("Invalid votable_type specified for voter\n");
 		return ERR_PTR(-EINVAL);
 	}
 
@@ -780,7 +780,7 @@ struct votable *create_votable(const char *name,
 
 	votable->root = debugfs_create_dir(name, debug_root);
 	if (!votable->root) {
-		pr_err("Couldn't create debug dir %s\n", name);
+		pr_debug("Couldn't create debug dir %s\n", name);
 		kfree(votable->name);
 		kfree(votable);
 		return ERR_PTR(-ENOMEM);
@@ -790,7 +790,7 @@ struct votable *create_votable(const char *name,
 				  votable->root, votable,
 				  &votable_status_ops);
 	if (!votable->status_ent) {
-		pr_err("Couldn't create status dbg file for %s\n", name);
+		pr_debug("Couldn't create status dbg file for %s\n", name);
 		debugfs_remove_recursive(votable->root);
 		kfree(votable->name);
 		kfree(votable);
@@ -803,7 +803,7 @@ struct votable *create_votable(const char *name,
 					&(votable->force_val));
 
 	if (!votable->force_val_ent) {
-		pr_err("Couldn't create force_val dbg file for %s\n", name);
+		pr_debug("Couldn't create force_val dbg file for %s\n", name);
 		debugfs_remove_recursive(votable->root);
 		kfree(votable->name);
 		kfree(votable);
@@ -815,7 +815,7 @@ struct votable *create_votable(const char *name,
 					votable->root, votable,
 					&votable_force_ops);
 	if (!votable->force_active_ent) {
-		pr_err("Couldn't create force_active dbg file for %s\n", name);
+		pr_debug("Couldn't create force_active dbg file for %s\n", name);
 		debugfs_remove_recursive(votable->root);
 		kfree(votable->name);
 		kfree(votable);
