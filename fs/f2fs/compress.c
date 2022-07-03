@@ -1889,7 +1889,7 @@ void f2fs_invalidate_compress_pages(struct f2fs_sb_info *sbi, nid_t ino)
 	if (!mapping->nrpages)
 		return;
 
-	pagevec_init(&pvec, 0);
+	pagevec_init(&pvec);
 
 	do {
 		unsigned int nr_pages;
