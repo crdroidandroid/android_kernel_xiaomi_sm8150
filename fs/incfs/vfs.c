@@ -111,7 +111,7 @@ static const struct address_space_operations incfs_address_space_ops = {
 	/* .readpages = readpages */
 };
 
-static vm_fault_t incfs_fault(struct vm_fault *vmf)
+static int incfs_fault(struct vm_fault *vmf)
 {
 	vmf->flags &= ~FAULT_FLAG_ALLOW_RETRY;
 	return filemap_fault(vmf);
