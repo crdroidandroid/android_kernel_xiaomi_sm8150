@@ -1033,7 +1033,6 @@ static void crng_backtrack_protect(__u8 tmp[CHACHA_BLOCK_SIZE], int used)
 	_crng_backtrack_protect(select_crng(), tmp, used);
 }
 
-#ifndef CONFIG_SRANDOM
 static ssize_t extract_crng_user(void __user *buf, size_t nbytes)
 {
 	ssize_t ret = 0, i = CHACHA_BLOCK_SIZE;
@@ -1068,7 +1067,7 @@ static ssize_t extract_crng_user(void __user *buf, size_t nbytes)
 
 	return ret;
 }
-#endif
+
 
 /*********************************************************************
  *
