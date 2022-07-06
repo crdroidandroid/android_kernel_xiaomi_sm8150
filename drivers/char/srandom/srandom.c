@@ -21,7 +21,7 @@
 #define SDEVICE_NAME "srandom"      /* Dev name as it appears in /proc/devices */
 #define APP_VERSION "1.40.0"
 #define THREAD_SLEEP_VALUE 11       /* Amount of time the background thread should sleep between each operation. Recommended prime */
-#define PAID 1
+#define PAID 0
 
 //#define DEBUG_CONNECTIONS 0
 //#define DEBUG_READ 0
