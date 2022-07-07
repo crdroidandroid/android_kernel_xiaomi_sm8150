@@ -215,44 +215,25 @@ struct pci_controller;
  * \param fmt printf() like format string.
  * \param arg arguments
  */
-#define DRM_DEV_DEBUG(dev, fmt, args...)				\
-	drm_dev_printk(dev, KERN_DEBUG, DRM_UT_CORE, __func__, "", fmt,	\
-		       ##args)
-#define DRM_DEBUG(fmt, ...)						\
-	drm_printk(KERN_DEBUG, DRM_UT_CORE, fmt, ##__VA_ARGS__)
+#define DRM_DEV_DEBUG(dev, fmt, args...) (0)
+#define DRM_DEBUG(fmt, ...) (0)
 
-#define DRM_DEV_DEBUG_DRIVER(dev, fmt, args...)				\
-	drm_dev_printk(dev, KERN_DEBUG, DRM_UT_DRIVER, __func__, "",	\
-		       fmt, ##args)
-#define DRM_DEBUG_DRIVER(fmt, ...)					\
-	drm_printk(KERN_DEBUG, DRM_UT_DRIVER, fmt, ##__VA_ARGS__)
+#define DRM_DEV_DEBUG_DRIVER(dev, fmt, args...) (0)
+#define DRM_DEBUG_DRIVER(fmt, ...) (0)
 
-#define DRM_DEV_DEBUG_KMS(dev, fmt, args...)				\
-	drm_dev_printk(dev, KERN_DEBUG, DRM_UT_KMS, __func__, "", fmt,	\
-		       ##args)
-#define DRM_DEBUG_KMS(fmt, ...)					\
-	drm_printk(KERN_DEBUG, DRM_UT_KMS, fmt, ##__VA_ARGS__)
+#define DRM_DEV_DEBUG_KMS(dev, fmt, args...) (0)
+#define DRM_DEBUG_KMS(fmt, ...) (0)
 
-#define DRM_DEV_DEBUG_PRIME(dev, fmt, args...)				\
-	drm_dev_printk(dev, KERN_DEBUG, DRM_UT_PRIME, __func__, "",	\
-		       fmt, ##args)
-#define DRM_DEBUG_PRIME(fmt, ...)					\
-	drm_printk(KERN_DEBUG, DRM_UT_PRIME, fmt, ##__VA_ARGS__)
+#define DRM_DEV_DEBUG_PRIME(dev, fmt, args...) (0)
+#define DRM_DEBUG_PRIME(fmt, ...) (0)
 
-#define DRM_DEV_DEBUG_ATOMIC(dev, fmt, args...)				\
-	drm_dev_printk(dev, KERN_DEBUG, DRM_UT_ATOMIC, __func__, "",	\
-		       fmt, ##args)
-#define DRM_DEBUG_ATOMIC(fmt, ...)					\
-	drm_printk(KERN_DEBUG, DRM_UT_ATOMIC, fmt, ##__VA_ARGS__)
+#define DRM_DEV_DEBUG_ATOMIC(dev, fmt, args...) (0)
+#define DRM_DEBUG_ATOMIC(fmt, ...) (0)
 
-#define DRM_DEV_DEBUG_VBL(dev, fmt, args...)				\
-	drm_dev_printk(dev, KERN_DEBUG, DRM_UT_VBL, __func__, "", fmt,	\
-		       ##args)
-#define DRM_DEBUG_VBL(fmt, ...)					\
-	drm_printk(KERN_DEBUG, DRM_UT_VBL, fmt, ##__VA_ARGS__)
+#define DRM_DEV_DEBUG_VBL(dev, fmt, args...) (0)
+#define DRM_DEBUG_VBL(fmt, ...) (0)
 
-#define DRM_DEBUG_LEASE(fmt, ...)					\
-	drm_printk(KERN_DEBUG, DRM_UT_LEASE, fmt, ##__VA_ARGS__)
+#define DRM_DEBUG_LEASE(fmt, ...) (0)
 
 #define _DRM_DEV_DEFINE_DEBUG_RATELIMITED(dev, level, fmt, args...)	\
 ({									\
