@@ -215,6 +215,26 @@ And public attribution of xiaomi platforms(like J20S and so and)
 		//ti,bq2597x,sense-resistor-mohm = <2>;
 
 	};
+
+	ln8000_charger@51 {
+		compatible = "lionsemi,ln8000";
+		reg = <0x51>;
+		ln8000_charger,irq_index = <0x128>;
+		ln8000_charger,bat-ovp-threshold = <0x11d0>;
+		ln8000_charger,bat-ovp-alarm-threshold = <0x11ad>;
+		ln8000_charger,bus-ovp-threshold = <0x32c8>;
+		ln8000_charger,bus-ovp-alarm-threshold = <0x2af8>;
+		ln8000_charger,bus-ocp-threshold = <0xea6>;
+		ln8000_charger,bus-ocp-alarm-threshold = <0xdac>;
+		ln8000_charger,ntc-alarm-cfg = <0xe2>;
+		ln8000_charger,tdie-prot-disable;
+		ln8000_charger,tbus-mon-disable;
+		ln8000_charger,tbat-mon-disable;
+		ln8000_charger,iin-ocp-disable;
+		ln8000_charger,iin-reg-disable;
+		ln8000_charger,tdie-reg-disable;
+		ln8000_charger,vbat-reg-disable;
+	};
 };
 
 &soc {
