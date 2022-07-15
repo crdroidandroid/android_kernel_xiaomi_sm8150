@@ -131,7 +131,7 @@ static unsigned int get_min_freq(struct cpufreq_policy *policy)
 	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
 		freq = cpu_freq_min_little;
 
-	if (kp_active_mode() == 3) {
+	if (kp_active_mode() != 1) {
 		if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
 			freq = cpu_freq_min_big;
 		else if (cpumask_test_cpu(policy->cpu, cpu_prime_mask))
