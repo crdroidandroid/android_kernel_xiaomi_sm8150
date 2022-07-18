@@ -128,10 +128,10 @@ static unsigned int get_min_freq(struct cpufreq_policy *policy)
 {
 	unsigned int freq;
 
-	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
-		freq = cpu_freq_min_little;
+	if (kp_active_mode() == 3) {
+		if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
+			freq = cpu_freq_min_little;
 
-	if (kp_active_mode() != 1) {
 		if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
 			freq = cpu_freq_min_big;
 		else if (cpumask_test_cpu(policy->cpu, cpu_prime_mask))
@@ -188,10 +188,12 @@ static void __cpu_input_boost_kick(struct boost_drv *b)
 	if (kp_active_mode() == 3)
 		multi = 2;
 
-	set_bit(INPUT_BOOST, &b->state);
-	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
-			      msecs_to_jiffies(input_boost_duration * multi)))
-		wake_up(&b->boost_waitq);
+	if (kp_active_mode() != 1) {
+		set_bit(INPUT_BOOST, &b->state);
+		if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
+				      msecs_to_jiffies(input_boost_duration * multi)))
+			wake_up(&b->boost_waitq);
+	}
 }
 
 void cpu_input_boost_kick(void)
@@ -208,6 +210,9 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 	unsigned long curr_expires, new_expires;
 
 	if (test_bit(SCREEN_OFF, &b->state))
+		return;
+
+	if (kp_active_mode() == 1)
 		return;
 
 	do {
