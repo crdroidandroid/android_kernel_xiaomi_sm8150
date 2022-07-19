@@ -186,7 +186,7 @@ static void __cpu_input_boost_kick(struct boost_drv *b)
 		return;
 
 	if (kp_active_mode() == 3)
-		multi = 2;
+		multi = 4;
 
 	if (kp_active_mode() != 1) {
 		set_bit(INPUT_BOOST, &b->state);
