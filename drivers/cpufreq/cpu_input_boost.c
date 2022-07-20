@@ -188,12 +188,10 @@ static void __cpu_input_boost_kick(struct boost_drv *b)
 	if (kp_active_mode() == 3)
 		multi = 4;
 
-	if (kp_active_mode() != 1) {
-		set_bit(INPUT_BOOST, &b->state);
-		if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
-				      msecs_to_jiffies(input_boost_duration * multi)))
-			wake_up(&b->boost_waitq);
-	}
+	set_bit(INPUT_BOOST, &b->state);
+	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
+			      msecs_to_jiffies(input_boost_duration * multi)))
+		wake_up(&b->boost_waitq);
 }
 
 void cpu_input_boost_kick(void)
