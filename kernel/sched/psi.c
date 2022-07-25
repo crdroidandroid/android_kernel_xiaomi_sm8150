@@ -674,14 +674,13 @@ static void record_times(struct psi_group_cpu *groupc, int cpu,
 		groupc->times[PSI_NONIDLE] += delta;
 }
 
-static void psi_group_change(struct psi_group *group, int cpu,
-			     unsigned int clear, unsigned int set,
-			     bool wake_clock)
+static u32 psi_group_change(struct psi_group *group, int cpu,
+			    unsigned int clear, unsigned int set)
 {
 	struct psi_group_cpu *groupc;
-	u32 state_mask = 0;
 	unsigned int t, m;
 	enum psi_states s;
+	u32 state_mask = 0;
 
 	groupc = per_cpu_ptr(group->pcpu, cpu);
 
@@ -723,11 +722,7 @@ static void psi_group_change(struct psi_group *group, int cpu,
 
 	write_seqcount_end(&groupc->seq);
 
-	if (state_mask & group->poll_states)
-		psi_schedule_poll_work(group, 1);
-
-	if (wake_clock && !delayed_work_pending(&group->avgs_work))
-		schedule_delayed_work(&group->avgs_work, PSI_FREQ);
+	return state_mask;
 }
 
 static struct psi_group *iterate_groups(struct task_struct *task, void **iter)
@@ -754,21 +749,6 @@ static struct psi_group *iterate_groups(struct task_struct *task, void **iter)
 	return &psi_system;
 }
 
-static void psi_flags_change(struct task_struct *task, int clear, int set)
-{
-	if (((task->psi_flags & set) ||
-	     (task->psi_flags & clear) != clear) &&
-	    !psi_bug) {
-		printk_deferred(KERN_ERR "psi: inconsistent task state! task=%d:%s cpu=%d psi_flags=%x clear=%x set=%x\n",
-				task->pid, task->comm, task_cpu(task),
-				task->psi_flags, clear, set);
-		psi_bug = 1;
-	}
-
-	task->psi_flags &= ~clear;
-	task->psi_flags |= set;
-}
-
 void psi_task_change(struct task_struct *task, int clear, int set)
 {
 	int cpu = task_cpu(task);
@@ -779,7 +759,17 @@ void psi_task_change(struct task_struct *task, int clear, int set)
 	if (!task->pid)
 		return;
 
-	psi_flags_change(task, clear, set);
+	if (((task->psi_flags & set) ||
+	     (task->psi_flags & clear) != clear) &&
+	    !psi_bug) {
+		printk_deferred(KERN_ERR "psi: inconsistent task state! task=%d:%s cpu=%d psi_flags=%x clear=%x set=%x\n",
+				task->pid, task->comm, cpu,
+				task->psi_flags, clear, set);
+		psi_bug = 1;
+	}
+
+	task->psi_flags &= ~clear;
+	task->psi_flags |= set;
 
 	/*
 	 * Periodic aggregation shuts off if there is a period of no
@@ -792,51 +782,14 @@ void psi_task_change(struct task_struct *task, int clear, int set)
 		     wq_worker_last_func(task) == psi_avgs_work))
 		wake_clock = false;
 
-	while ((group = iterate_groups(task, &iter)))
-		psi_group_change(group, cpu, clear, set, wake_clock);
-}
+	while ((group = iterate_groups(task, &iter))) {
+		u32 state_mask = psi_group_change(group, cpu, clear, set);
 
-void psi_task_switch(struct task_struct *prev, struct task_struct *next,
-		     bool sleep)
-{
-	struct psi_group *group, *common = NULL;
-	int cpu = task_cpu(prev);
-	void *iter;
+		if (state_mask & group->poll_states)
+			psi_schedule_poll_work(group, 1);
 
-	if (next->pid) {
-		psi_flags_change(next, 0, TSK_ONCPU);
-		/*
-		 * When moving state between tasks, the group that
-		 * contains them both does not change: we can stop
-		 * updating the tree once we reach the first common
-		 * ancestor. Iterate @next's ancestors until we
-		 * encounter @prev's state.
-		 */
-		iter = NULL;
-		while ((group = iterate_groups(next, &iter))) {
-			if (per_cpu_ptr(group->pcpu, cpu)->tasks[NR_ONCPU]) {
-				common = group;
-				break;
-			}
-
-			psi_group_change(group, cpu, 0, TSK_ONCPU, true);
-		}
-	}
-
-	/*
-	 * If this is a voluntary sleep, dequeue will have taken care
-	 * of the outgoing TSK_ONCPU alongside TSK_RUNNING already. We
-	 * only need to deal with it during preemption.
-	 */
-	if (sleep)
-		return;
-
-	if (prev->pid) {
-		psi_flags_change(prev, TSK_ONCPU, 0);
-
-		iter = NULL;
-		while ((group = iterate_groups(prev, &iter)) && group != common)
-			psi_group_change(group, cpu, TSK_ONCPU, 0, true);
+		if (wake_clock && !delayed_work_pending(&group->avgs_work))
+			schedule_delayed_work(&group->avgs_work, PSI_FREQ);
 	}
 }
 
