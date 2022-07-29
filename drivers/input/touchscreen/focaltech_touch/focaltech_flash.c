@@ -45,22 +45,12 @@
 /*****************************************************************************
 * Global variable or extern global variabls/functions
 *****************************************************************************/
-u8 fw_file[] = {
-#include FTS_UPGRADE_FW_FILE
-};
-
-u8 fw_file2[] = {
-#include FTS_UPGRADE_FW2_FILE
-};
-
-u8 fw_file3[] = {
-#include FTS_UPGRADE_FW3_FILE
+u8 fw_file[1] = {
+0,
 };
 
 struct upgrade_module module_list[] = {
 	{FTS_MODULE_ID, FTS_MODULE_NAME, fw_file, sizeof(fw_file)},
-	{FTS_MODULE2_ID, FTS_MODULE2_NAME, fw_file2, sizeof(fw_file2)},
-	{FTS_MODULE3_ID, FTS_MODULE3_NAME, fw_file3, sizeof(fw_file3)},
 };
 
 struct upgrade_func *upgrade_func_list[] = {
@@ -1029,127 +1019,6 @@ read_flash_err:
 	ret = fts_fwupg_reset_in_boot();
 	if (ret < 0) {
 		FTS_ERROR("reset to normal boot fail");
-	}
-	return ret;
-}
-
-static int fts_read_file(char *file_name, u8 **file_buf)
-{
-	int ret = 0;
-	char file_path[FILE_NAME_LENGTH] = { 0 };
-	struct file *filp = NULL;
-	struct inode *inode;
-	mm_segment_t old_fs;
-	loff_t pos;
-	loff_t file_len = 0;
-
-	if ((NULL == file_name) || (NULL == file_buf)) {
-		FTS_ERROR("filename/filebuf is NULL");
-		return -EINVAL;
-	}
-
-	snprintf(file_path, FILE_NAME_LENGTH, "%s%s", FTS_FW_BIN_FILEPATH, file_name);
-	filp = filp_open(file_path, O_RDONLY, 0);
-	if (IS_ERR(filp)) {
-		FTS_ERROR("open %s file fail", file_path);
-		return -ENOENT;
-	}
-
-#if 1
-	inode = filp->f_inode;
-#else
-	/* reserved for linux earlier verion */
-	inode = filp->f_dentry->d_inode;
-#endif
-
-	file_len = inode->i_size;
-	*file_buf = (u8 *)vmalloc(file_len);
-	if (NULL == *file_buf) {
-		FTS_ERROR("file buf malloc fail");
-		filp_close(filp, NULL);
-		return -ENOMEM;
-	}
-	old_fs = get_fs();
-	set_fs(KERNEL_DS);
-	pos = 0;
-	ret = vfs_read(filp, *file_buf, file_len , &pos);
-	if (ret < 0)
-		FTS_ERROR("read file fail");
-	FTS_INFO("file len:%d read len:%d pos:%d", (u32)file_len, ret, (u32)pos);
-	filp_close(filp, NULL);
-	set_fs(old_fs);
-
-	return ret;
-}
-
-int fts_upgrade_bin(char *fw_name, bool force)
-{
-	int ret = 0;
-	u32 fw_file_len = 0;
-	u8 *fw_file_buf = NULL;
-	struct fts_upgrade *upg = fwupgrade;
-
-	FTS_INFO("start upgrade with fw bin");
-	if ((!upg) || (!upg->func) || !upg->ts_data) {
-		FTS_ERROR("upgrade/func/ts_data is null");
-		return -EINVAL;
-	}
-
-	upg->ts_data->fw_loading = 1;
-	fts_irq_disable();
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_switch(DISABLE);
-#endif
-
-	ret = fts_read_file(fw_name, &fw_file_buf);
-	if ((ret < 0) || (ret < FTS_MIN_LEN) || (ret > FTS_MAX_LEN_FILE)) {
-		FTS_ERROR("read fw bin file(sdcard) fail, len:%d", fw_file_len);
-		goto err_bin;
-	}
-
-	fw_file_len = ret;
-	FTS_INFO("fw bin file len:%d", fw_file_len);
-	if (force) {
-		if (upg->func->force_upgrade) {
-			ret = upg->func->force_upgrade(fw_file_buf, fw_file_len);
-		} else {
-			FTS_INFO("force_upgrade function is null, no upgrade");
-			goto err_bin;
-		}
-	} else {
-#if FTS_AUTO_LIC_UPGRADE_EN
-		if (upg->func->lic_upgrade) {
-			ret = upg->func->lic_upgrade(fw_file_buf, fw_file_len);
-		} else {
-			FTS_INFO("lic_upgrade function is null, no upgrade");
-		}
-#endif
-		if (upg->func->upgrade) {
-			ret = upg->func->upgrade(fw_file_buf, fw_file_len);
-		} else {
-			FTS_INFO("upgrade function is null, no upgrade");
-		}
-	}
-
-	if (ret < 0) {
-		FTS_ERROR("upgrade fw bin failed");
-		fts_fwupg_reset_in_boot();
-		goto err_bin;
-	}
-
-	FTS_INFO("upgrade fw bin success");
-	ret = 0;
-
-err_bin:
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_switch(ENABLE);
-#endif
-	fts_irq_enable();
-	upg->ts_data->fw_loading = 0;
-
-	if (fw_file_buf) {
-		vfree(fw_file_buf);
-		fw_file_buf = NULL;
 	}
 	return ret;
 }
