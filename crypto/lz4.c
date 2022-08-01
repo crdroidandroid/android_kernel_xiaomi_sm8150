@@ -94,7 +94,7 @@ static int lz4_compress_crypto(struct crypto_tfm *tfm, const u8 *src,
 static int __lz4_decompress_crypto(const u8 *src, unsigned int slen,
 				   u8 *dst, unsigned int *dlen, void *ctx)
 {
-	int out_len = LZ4_decompress_safe(src, dst, slen, *dlen, false);
+	int out_len = LZ4_decompress_safe(src, dst, slen, *dlen);
 
 	if (out_len < 0)
 		return -EINVAL;
@@ -165,7 +165,7 @@ static void __exit lz4_mod_fini(void)
 	crypto_unregister_scomp(&scomp);
 }
 
-subsys_initcall(lz4_mod_init);
+module_init(lz4_mod_init);
 module_exit(lz4_mod_fini);
 
 MODULE_LICENSE("GPL");
