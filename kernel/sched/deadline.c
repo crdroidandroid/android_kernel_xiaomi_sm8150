@@ -1153,8 +1153,7 @@ static void update_curr_dl(struct rq *rq)
 {
 	struct task_struct *curr = rq->curr;
 	struct sched_dl_entity *dl_se = &curr->dl;
-	u64 delta_exec, scaled_delta_exec;
-	int cpu = cpu_of(rq);
+	u64 delta_exec;
 	u64 now;
 
 	if (!dl_task(curr) || !on_dl_rq(dl_se))
