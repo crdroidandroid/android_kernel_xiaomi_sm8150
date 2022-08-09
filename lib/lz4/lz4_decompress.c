@@ -136,8 +136,6 @@ static FORCE_INLINE void LZ4_memcpy_using_offset(BYTE *dstPtr,
 }
 #endif
 
-#define IS_OVERLAPPED(srcptr, dstptr, srcend, dstend) (max((void*)srcptr, (void*)dstptr) <= min((void*)srcend, (void*)dstend))
-
 /*
  * LZ4_decompress_generic() :
  * This generic decompression function covers all use cases.
@@ -766,12 +764,11 @@ static FORCE_INLINE int LZ4_decompress_generic(
 }
 
 int LZ4_decompress_safe(const char *source, char *dest,
-	int compressedSize, int maxDecompressedSize)
+	int compressedSize, int maxDecompressedSize, bool dip)
 {
 	uint8_t *dstPtr = dest;
     const uint8_t *srcPtr = source;
     ssize_t ret;
-	bool dip = IS_OVERLAPPED(source, dest, source + compressedSize, dest + maxDecompressedSize);
 
 #ifdef __ARCH_HAS_LZ4_ACCELERATOR
     /* Go fast if we can, keeping away from the end of buffers */
@@ -785,15 +782,13 @@ int LZ4_decompress_safe(const char *source, char *dest,
 	return __LZ4_decompress_generic(source, dest, srcPtr, dstPtr, compressedSize, maxDecompressedSize, endOnInputSize, decode_full_block, noDict, (BYTE *)dest, NULL, 0);
 }
 
-int LZ4_decompress_safe_partial(const char *src, char *dst, int compressedSize,
-				int targetOutputSize, int dstCapacity)
+int LZ4_decompress_safe_partial(const char *src, char *dst,
+	int compressedSize, int targetOutputSize, int dstCapacity, bool dip)
 {
 	uint8_t *dstPtr = dst;
     const uint8_t *srcPtr = src;
     ssize_t ret;
-	bool dip;
 	dstCapacity = min(targetOutputSize, dstCapacity);
-	dip = IS_OVERLAPPED(src, dst, src + compressedSize, dst + dstCapacity);
 
 #ifdef __ARCH_HAS_LZ4_ACCELERATOR
     /* Go fast if we can, keeping away from the end of buffers */
@@ -915,8 +910,8 @@ int LZ4_decompress_safe_continue(LZ4_streamDecode_t *LZ4_streamDecode,
 	if (lz4sd->prefixSize == 0) {
 		/* The first call, no dictionary yet. */
 		assert(lz4sd->extDictSize == 0);
-		result = LZ4_decompress_safe(source, dest, compressedSize,
-					     maxOutputSize);
+		result = LZ4_decompress_safe(source, dest,
+			compressedSize, maxOutputSize, false);
 		if (result <= 0)
 			return result;
 		lz4sd->prefixSize = (size_t)result;
@@ -1007,9 +1002,9 @@ int LZ4_decompress_safe_usingDict(const char *source, char *dest,
 				  const char *dictStart, int dictSize)
 {
 	if (dictSize == 0)
-		return LZ4_decompress_safe(source, dest, compressedSize,
-					   maxOutputSize);
-	if (dictStart + dictSize == dest) {
+		return LZ4_decompress_safe(source, dest,
+					   compressedSize, maxOutputSize, false);
+	if (dictStart+dictSize == dest) {
 		if (dictSize >= 64 * KB - 1)
 			return LZ4_decompress_safe_withPrefix64k(
 				source, dest, compressedSize, maxOutputSize);

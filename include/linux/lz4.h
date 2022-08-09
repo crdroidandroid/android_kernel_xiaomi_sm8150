@@ -280,7 +280,7 @@ int LZ4_compress_destSize(const char *source, char *dest, int *sourceSizePtr,
  *	or a negative result in case of error
  */
 int LZ4_decompress_safe(const char *source, char *dest, int compressedSize,
-			int maxDecompressedSize);
+	int maxDecompressedSize, bool dip);
 
 /**
  * LZ4_decompress_safe_partial() - Decompress a block of size 'compressedSize'
