@@ -38,6 +38,7 @@
 #include <linux/delay.h>
 #include <linux/show_mem_notifier.h>
 #include <trace/events/cma.h>
+#include <linux/sched/signal.h>
 
 #include "cma.h"
 
