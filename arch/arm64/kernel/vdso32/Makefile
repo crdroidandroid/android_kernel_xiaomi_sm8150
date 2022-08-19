@@ -10,10 +10,10 @@ else
   CC_ARM32 := $(CROSS_COMPILE_ARM32)$(cc-name)
 endif
 
-ifeq ($(cc-name),clang)
+ifneq ($(LLVM),)
 LD_COMPAT ?= $(LD)
 else
-LD_COMPAT ?= $(CROSS_COMPILE_COMPAT)ld
+LD_COMPAT ?= $(CROSS_COMPILE_ARM32)ld
 endif
 
 # Same as cc-*option, but using CC_ARM32 instead of CC
@@ -94,8 +94,8 @@ VDSO_AFLAGS += -D__ASSEMBLY__
 
 # From arm vDSO Makefile
 VDSO_LDFLAGS += -Bsymbolic --no-undefined -soname=linux-vdso.so.1
-VDSO_LDFLAGS += -z max-page-size=4096 -z common-page-size=4096
-VDSO_LDFLAGS += -shared --hash-style=sysv --build-id
+VDSO_LDFLAGS += -z,max-page-size=4096 -z,common-page-size=4096
+VDSO_LDFLAGS += -nostdlib -shared --hash-style=sysv --build-id
 
 
 # Borrow vdsomunge.c from the arm vDSO
