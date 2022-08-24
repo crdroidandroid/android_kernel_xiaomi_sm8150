@@ -919,6 +919,7 @@ void f2fs_handle_failed_inode(struct inode *inode)
 	} else {
 		set_inode_flag(inode, FI_FREE_NID);
 	}
+
 out:
 	f2fs_unlock_op(sbi);
 
