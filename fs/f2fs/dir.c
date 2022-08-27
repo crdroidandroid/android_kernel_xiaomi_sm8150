@@ -234,7 +234,7 @@ static int f2fs_match_ci_name(const struct inode *dir, const struct qstr *name,
 
 		decrypted_name.name = kmalloc(de_name_len, GFP_KERNEL);
 		if (!decrypted_name.name)
-			return -EINVAL;
+			return -ENOMEM;
 		res = fscrypt_fname_disk_to_usr(dir, 0, 0, &encrypted_name,
 						&decrypted_name);
 		if (res < 0)

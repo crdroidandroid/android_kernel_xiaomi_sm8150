@@ -385,7 +385,7 @@ long f2fs_sync_meta_pages(struct f2fs_sb_info *sbi, enum page_type type,
 	};
 	struct blk_plug plug;
 
-	pagevec_init(&pvec);
+	pagevec_init(&pvec, 0);
 
 	blk_start_plug(&plug);
 
