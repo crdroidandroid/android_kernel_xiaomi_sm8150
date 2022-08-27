@@ -947,7 +947,6 @@ struct rndis_params *rndis_register(void (*resp_avail)(void *v), void *v,
 	params->flow_ctrl_enable = flow_ctrl_enable;
 	params->v = v;
 	INIT_LIST_HEAD(&params->resp_queue);
-	spin_lock_init(&params->resp_lock);
 	pr_debug("%s: configNr = %d\n", __func__, i);
 
 	return params;
@@ -1125,7 +1124,6 @@ u8 *rndis_get_next_response(struct rndis_params *params, u32 *length)
 	if (!length) return NULL;
 
 	spin_lock_irqsave(&params->lock, flags);
-	spin_lock(&params->resp_lock);
 
 	list_for_each_entry_safe(r, n, &params->resp_queue, list) {
 		if (!r->send) {
@@ -1133,13 +1131,10 @@ u8 *rndis_get_next_response(struct rndis_params *params, u32 *length)
 			*length = r->length;
 
 			spin_unlock_irqrestore(&params->lock, flags);
-			spin_unlock(&params->resp_lock);
 			return r->buf;
 		}
 	}
 	spin_unlock_irqrestore(&params->lock, flags);
-
-	spin_unlock(&params->resp_lock);
 	return NULL;
 }
 EXPORT_SYMBOL_GPL(rndis_get_next_response);
