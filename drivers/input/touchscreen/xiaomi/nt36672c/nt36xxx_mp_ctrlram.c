@@ -1606,7 +1606,7 @@ static int32_t nvt_selftest_open(struct inode *inode, struct file *file)
 	fw_ver = ts->fw_ver;
 #if NVT_TOUCH_MP_SETTING_CRITERIA_FROM_CSV
 	/* ---Check if MP Setting Criteria CSV file exist and load--- */
-	snprintf(mp_setting_criteria_csv_filename, PAGE_SIZE,
+	snprintf(mp_setting_criteria_csv_filename, sizeof(mp_setting_criteria_csv_filename),
 		 "NT36xxx_MP_Setting_Criteria_%04X.csv", ts->nvt_pid);
 	NVT_LOG("MP setting criteria csv filename: %s\n",
 		mp_setting_criteria_csv_filename);
@@ -1624,7 +1624,7 @@ static int32_t nvt_selftest_open(struct inode *inode, struct file *file)
 			 * Ex. nvt_pid = 500A
 			 *     mpcriteria = "novatek-mp-criteria-500A"
 			 */
-			snprintf(mpcriteria, PAGE_SIZE,
+			snprintf(mpcriteria, sizeof(mpcriteria),
 				 "novatek-mp-criteria-%04X", ts->nvt_pid);
 
 			if (nvt_mp_parse_dt(np, mpcriteria)) {
@@ -2021,7 +2021,7 @@ static int nvt_short_test(void)
 	fw_ver = ts->fw_ver;
 #if NVT_TOUCH_MP_SETTING_CRITERIA_FROM_CSV
 	/* ---Check if MP Setting Criteria CSV file exist and load--- */
-	snprintf(mp_setting_criteria_csv_filename, PAGE_SIZE,
+	snprintf(mp_setting_criteria_csv_filename, sizeof(mp_setting_criteria_csv_filename),
 		 "NT36xxx_MP_Setting_Criteria_%04X.csv", ts->nvt_pid);
 	NVT_LOG("MP setting criteria csv filename: %s\n",
 		mp_setting_criteria_csv_filename);
@@ -2039,7 +2039,7 @@ static int nvt_short_test(void)
 			 * Ex. nvt_pid = 500A
 			 *     mpcriteria = "novatek-mp-criteria-500A"
 			 */
-			snprintf(mpcriteria, PAGE_SIZE,
+			snprintf(mpcriteria, sizeof(mpcriteria),
 				 "novatek-mp-criteria-%04X", ts->nvt_pid);
 
 			if (nvt_mp_parse_dt(np, mpcriteria)) {
@@ -2151,7 +2151,7 @@ static int nvt_open_test(void)
 	fw_ver = ts->fw_ver;
 #if NVT_TOUCH_MP_SETTING_CRITERIA_FROM_CSV
 	/* ---Check if MP Setting Criteria CSV file exist and load--- */
-	snprintf(mp_setting_criteria_csv_filename, PAGE_SIZE,
+	snprintf(mp_setting_criteria_csv_filename, sizeof(mp_setting_criteria_csv_filename),
 		 "NT36xxx_MP_Setting_Criteria_%04X.csv", ts->nvt_pid);
 	NVT_LOG("MP setting criteria csv filename: %s\n",
 		mp_setting_criteria_csv_filename);
@@ -2169,7 +2169,7 @@ static int nvt_open_test(void)
 			 * Ex. nvt_pid = 500A
 			 *     mpcriteria = "novatek-mp-criteria-500A"
 			 */
-			snprintf(mpcriteria, PAGE_SIZE,
+			snprintf(mpcriteria, sizeof(mpcriteria),
 				 "novatek-mp-criteria-%04X", ts->nvt_pid);
 
 			if (nvt_mp_parse_dt(np, mpcriteria)) {
@@ -2252,7 +2252,7 @@ static ssize_t nvt_selftest_read(struct file *file, char __user *buf,
 
 	if (*pos != 0)
 		return 0;
-	cnt = snprintf(tmp, sizeof(ts->result_type), "%d\n", ts->result_type);
+	cnt = snprintf(tmp, sizeof(tmp), "%d\n", ts->result_type);
 	if (copy_to_user(buf, tmp, strlen(tmp))) {
 		return -EFAULT;
 	}
