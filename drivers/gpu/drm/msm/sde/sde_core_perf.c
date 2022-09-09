@@ -140,10 +140,6 @@ static void _sde_core_perf_calc_doze_suspend(struct drm_crtc *crtc,
 				is_doze_suspend = true;
 		}
 
-		if (!is_doze_suspend && conn && c_conn)
-			SDE_ERROR("No BW, planes:%x dpms_mode:%d lpmode:%d\n",
-				state->plane_mask, c_conn->dpms_mode,
-				sde_connector_get_lp(conn));
 		if (conn && c_conn)
 			SDE_EVT32(state->plane_mask, c_conn->dpms_mode,
 				sde_connector_get_lp(conn), is_doze_suspend,
