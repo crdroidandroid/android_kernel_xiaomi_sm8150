@@ -23,7 +23,9 @@ static int htc_recovery_notifier_call(struct notifier_block *block,
 				      unsigned long state,
 				      void *data)
 {
+#if defined(CONFIG_FEATURE_HTC_CREDIT_HISTORY)
 	htc_log_hang_credit_history(block, data);
+#endif
 
 	return NOTIFY_OK;
 }
