@@ -421,6 +421,20 @@ static int LZ4_compress_fast_extState(
 
 	memset(state, 0, sizeof(LZ4_stream_t));
 
+	return LZ4_compress_generic_validated(
+		cctx, src, dst, srcSize,
+		inputConsumed, /* only written into if outputDirective == fillOutput */
+		dstCapacity, outputDirective, tableType, dictDirective,
+		dictIssue, acceleration);
+}
+
+static int LZ4_compress_fast_extState(void *state, const char *source, char *dest,
+				      int inputSize, int maxOutputSize,
+				      int acceleration)
+{
+	LZ4_stream_t_internal *const ctx =
+		&LZ4_initStream(state, sizeof(LZ4_stream_t))->internal_donotuse;
+	assert(ctx != NULL);
 	if (acceleration < 1)
 		acceleration = LZ4_ACCELERATION_DEFAULT;
 
