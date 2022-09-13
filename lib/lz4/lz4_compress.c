@@ -835,9 +835,9 @@ static FORCE_INLINE int LZ4_compress_generic(
 		dictIssue, acceleration);
 }
 
-int LZ4_compress_fast_extState(void *state, const char *source, char *dest,
-			       int inputSize, int maxOutputSize,
-			       int acceleration)
+static int LZ4_compress_fast_extState(void *state, const char *source, char *dest,
+				      int inputSize, int maxOutputSize,
+				      int acceleration)
 {
 	LZ4_stream_t_internal *const ctx =
 		&LZ4_initStream(state, sizeof(LZ4_stream_t))->internal_donotuse;
