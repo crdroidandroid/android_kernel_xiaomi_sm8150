@@ -6496,7 +6496,7 @@ schedtune_margin(unsigned long signal, long boost, long capacity)
 	 */
 	if (boost >= 0) {
 		if (capacity > signal) {
-			margin  = capacity - signal;
+			margin = capacity - signal;
 			margin *= boost;
 		}
 	} else
