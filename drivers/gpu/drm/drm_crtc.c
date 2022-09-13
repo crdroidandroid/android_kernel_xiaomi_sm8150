@@ -627,7 +627,7 @@ retry:
 			ret = drm_plane_check_pixel_format(crtc->primary,
 							   fb->format->format);
 			if (ret) {
-				struct drm_format_name_buf format_name;
+				__maybe_unused struct drm_format_name_buf format_name;
 				DRM_DEBUG_KMS("Invalid pixel format %s\n",
 				              drm_get_format_name(fb->format->format,
 				                                  &format_name));

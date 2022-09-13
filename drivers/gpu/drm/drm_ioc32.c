@@ -966,7 +966,7 @@ static struct {
 long drm_compat_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	unsigned int nr = DRM_IOCTL_NR(cmd);
-	struct drm_file *file_priv = filp->private_data;
+	__maybe_unused struct drm_file *file_priv = filp->private_data;
 	drm_ioctl_compat_t *fn;
 	int ret;
 

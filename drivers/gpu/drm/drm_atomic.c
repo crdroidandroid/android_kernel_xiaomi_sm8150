@@ -896,7 +896,7 @@ static int drm_atomic_plane_check(struct drm_plane *plane,
 	/* Check whether this plane supports the fb pixel format. */
 	ret = drm_plane_check_pixel_format(plane, state->fb->format->format);
 	if (ret) {
-		struct drm_format_name_buf format_name;
+		__maybe_unused struct drm_format_name_buf format_name;
 		DRM_DEBUG_ATOMIC("Invalid pixel format %s\n",
 		                 drm_get_format_name(state->fb->format->format,
 		                                     &format_name));
