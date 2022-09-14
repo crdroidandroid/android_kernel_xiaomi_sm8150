@@ -7,12 +7,12 @@
 
 #ifdef CONFIG_CPU_INPUT_BOOST
 void cpu_input_boost_kick(void);
-void cpu_input_boost_kick_max(unsigned int duration_ms);
+void cpu_input_boost_kick_max(unsigned int duration_ms, bool always);
 #else
 static inline void cpu_input_boost_kick(void)
 {
 }
-static inline void cpu_input_boost_kick_max(unsigned int duration_ms)
+static inline void cpu_input_boost_kick_max(unsigned int duration_ms, bool always)
 {
 }
 #endif
