@@ -75,6 +75,7 @@ struct sugov_cpu {
 
 	/* The fields below are only needed when sharing a policy. */
 	unsigned long util;
+	unsigned long min;
 	unsigned long max;
 	unsigned int flags;
 
@@ -359,6 +360,9 @@ static bool sugov_iowait_reset(struct sugov_cpu *sg_cpu, u64 time,
 static void sugov_iowait_boost(struct sugov_cpu *sg_cpu, u64 time,
 			       unsigned int flags)
 {
+        int cpu = true;
+        struct rq *rq = cpu_rq(cpu);
+        unsigned int max_boost;
 	bool set_iowait_boost = flags & SCHED_CPUFREQ_IOWAIT;
 
 	/* Reset boost if the CPU appears to have been idle enough */
@@ -377,9 +381,13 @@ static void sugov_iowait_boost(struct sugov_cpu *sg_cpu, u64 time,
 
 	/* Double the boost at each request */
 	if (sg_cpu->iowait_boost) {
+		max_boost = uclamp_rq_util_with(rq, max_boost, NULL);
 
 		sg_cpu->iowait_boost =
 			min_t(unsigned int, sg_cpu->iowait_boost << 1, SCHED_CAPACITY_SCALE);
+
+		if (sg_cpu->iowait_boost > max_boost)
+                               sg_cpu->iowait_boost = max_boost;
 
 		return;
 	}
