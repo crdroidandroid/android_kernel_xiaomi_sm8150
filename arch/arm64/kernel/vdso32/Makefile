@@ -31,6 +31,7 @@ cc32-disable-warning = $(call try-run,\
 
 # KBUILD_CPPFLAGS and NOSTDINC_FLAGS from top-level Makefile
 VDSO_CPPFLAGS := -D__KERNEL__ -nostdinc -isystem $(shell $(CC_ARM32) -print-file-name=include)
+VDSO_CPPFLAGS += $(LINUXINCLUDE)
 
 # Common C and assembly flags
 # From top-level Makefile
@@ -94,9 +95,8 @@ VDSO_AFLAGS += -D__ASSEMBLY__
 
 # From arm vDSO Makefile
 VDSO_LDFLAGS += -Bsymbolic --no-undefined -soname=linux-vdso.so.1
-VDSO_LDFLAGS += -z,max-page-size=4096 -z,common-page-size=4096
-VDSO_LDFLAGS += -nostdlib -shared --hash-style=sysv --build-id
-
+VDSO_LDFLAGS += -z max-page-size=4096 -z common-page-size=4096
+VDSO_LDFLAGS += -shared --hash-style=sysv --build-id
 
 # Borrow vdsomunge.c from the arm vDSO
 # We have to use a relative path because scripts/Makefile.host prefixes
