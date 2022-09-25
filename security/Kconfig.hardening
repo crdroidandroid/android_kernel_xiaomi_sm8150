@@ -4,7 +4,6 @@ menu "Memory initialization"
 
 choice
 	prompt "Initialize kernel stack variables at function entry"
-	default INIT_STACK_ALL_ZERO if CC_HAS_AUTO_VAR_INIT_PATTERN
 	default INIT_STACK_NONE
 	help
 	  This option enables initialization of stack variables at
