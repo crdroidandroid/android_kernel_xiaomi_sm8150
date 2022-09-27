@@ -854,6 +854,7 @@ KBUILD_CFLAGS += $(call cc-option,-fno-delete-null-pointer-checks,)
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
 
 ifeq ($(ld-name),lld)
+KBUILD_LDFLAGS  += -mllvm -mcpu=cortex-a76
 LDFLAGS += --lto-O3
 endif
 
