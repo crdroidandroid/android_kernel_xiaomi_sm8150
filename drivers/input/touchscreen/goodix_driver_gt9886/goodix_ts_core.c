@@ -1757,13 +1757,14 @@ int goodix_ts_suspend(struct goodix_ts_core *core_data)
 				} else if (core_data->udfps_enabled) {
 					atomic_set(&core_data->suspend_stat, TP_GESTURE_FOD);
 				}
-				mutex_unlock(&goodix_modules.mutex);
 				ts_info("suspend_stat[%d]", atomic_read(&core_data->suspend_stat));
 				ts_info("Canceled by module:%s", ext_module->name);
-				if (!atomic_read(&core_data->suspend_stat))
+				if (!atomic_read(&core_data->suspend_stat)) {
 					ts_info("go suspend remaind work\n");
-				else
+				} else {
+					mutex_unlock(&goodix_modules.mutex);
 					goto out;
+				}
 			}
 		}
 	}
