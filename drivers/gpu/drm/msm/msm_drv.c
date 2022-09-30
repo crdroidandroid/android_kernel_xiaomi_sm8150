@@ -2372,13 +2372,18 @@ void __exit adreno_unregister(void)
 }
 #endif
 
+static void __init kmem_vblank_init(void)
+{
+	kmem_vblank_work_pool = KMEM_CACHE(vblank_work, SLAB_HWCACHE_ALIGN | SLAB_PANIC);
+}
+
 static int __init msm_drm_register(void)
 {
 	if (!modeset)
 		return -EINVAL;
 
 	DBG("init");
-	kmem_vblank_work_pool = KMEM_CACHE(vblank_work, SLAB_HWCACHE_ALIGN | SLAB_PANIC);
+	kmem_vblank_init();
 	msm_smmu_driver_init();
 	msm_dsi_register();
 	msm_edp_register();
