@@ -47,11 +47,9 @@
 /* This implementation handles overlaps and supports both memcpy and memmove
    from a single entry point.  It uses unaligned accesses and branchless
    sequences to keep the code small, simple and improve performance.
-
    Copies are split into 3 main cases: small copies of up to 32 bytes, medium
    copies of up to 128 bytes, and large copies.  The overhead of the overlap
    check is negligible since it is only required for large copies.
-
    Large copies use a software pipelined loop processing 64 bytes per iteration.
    The destination pointer is 16-byte aligned to minimize unaligned accesses.
    The loop tail is handled by always copying 64 bytes from the end.
