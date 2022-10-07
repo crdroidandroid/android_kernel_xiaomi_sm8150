@@ -571,10 +571,11 @@ static struct kmemleak_object *create_object(unsigned long ptr, size_t size,
 	struct rb_node **link, *rb_parent;
 	unsigned long untagged_ptr;
 
-	while (1) {
-		object = kmem_cache_alloc(object_cache, gfp_kmemleak_mask(gfp));
-		if (object)
-			break;
+	object = kmem_cache_alloc(object_cache, gfp_kmemleak_mask(gfp));
+	if (!object) {
+		pr_warn("Cannot allocate a kmemleak_object structure\n");
+		kmemleak_disable();
+		return NULL;
 	}
 
 	INIT_LIST_HEAD(&object->object_list);
