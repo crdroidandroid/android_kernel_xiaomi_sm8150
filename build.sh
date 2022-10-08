@@ -9,7 +9,7 @@ restore='\033[0m'
 clear
 
 # Resources
-export CLANG_PATH=~/trb_clang/bin
+export CLANG_PATH=~/tc/neutron-clang/bin
 export PATH=${CLANG_PATH}:${PATH}
 export CROSS_COMPILE=${CLANG_PATH}/aarch64-linux-gnu-
 export CROSS_COMPILE_ARM32=${CLANG_PATH}/arm-linux-gnueabi-
