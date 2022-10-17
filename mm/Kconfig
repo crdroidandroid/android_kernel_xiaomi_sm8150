@@ -838,10 +838,6 @@ config HAVE_LOW_MEMORY_KILLER
 	  want page allocator to provide sufficient time before it triggers
 	  Out of Memory killer.
 
-config VMSTAT_INTERVAL
-	int "Default interval in seconds to update vmstat"
-	default 1
-
 config FORCE_ALLOC_FROM_DMA_ZONE
 	bool "Force certain memory allocators to always return ZONE_DMA memory"
 	depends on ZONE_DMA
