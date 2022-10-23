@@ -626,6 +626,11 @@ config VIRTIO_FASTRPC
 	  applications DSP processor. Say Y if you want to support virtual
 	  fastrpc.
 
+config XLOGCHAR
+	tristate "xlogchar driver"
+	help
+	  Implements a high performance log driver
+
 config MSM_RDBG
 	tristate "QTI Remote debug driver"
 	help
