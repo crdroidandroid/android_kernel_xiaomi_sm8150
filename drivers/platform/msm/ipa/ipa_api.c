@@ -111,32 +111,6 @@ static bool running_emulation;
 static enum ipa_hw_type ipa_api_hw_type;
 static struct ipa_api_controller *ipa_api_ctrl;
 
-#define MAX_CPY_BUFF_SZ		4096
-unsigned long
-ipa_safe_copy_from_user(char *dst, const char __user *buf, size_t count)
-{
-	unsigned long missing = 0;
-	char *from_user = NULL;
-	int sz;
-
-	if (MAX_CPY_BUFF_SZ < count + 1)
-		return ULONG_MAX;
-
-	sz = count * sizeof(char);
-	from_user = kmalloc(sz + 1, GFP_KERNEL);
-	if (!from_user)
-		return ULONG_MAX;
-
-	missing = copy_from_user(from_user, buf, count);
-	if (missing)
-		goto end;
-
-	memcpy(dst, from_user, sz);
-end:
-	kfree(from_user);
-	return missing;
-}
-
 const char *ipa_clients_strings[IPA_CLIENT_MAX] = {
 	__stringify(IPA_CLIENT_HSIC1_PROD),
 	__stringify(IPA_CLIENT_HSIC1_CONS),
@@ -3952,19 +3926,16 @@ static int ipa_pci_probe(
 	if (result && result != -EPROBE_DEFER)
 		pr_err("ipa: ipa3_pci_drv_probe failed\n");
 
-#ifdef CONFIG_IPA_EMULATION
 	if (running_emulation)
 		ipa_ut_module_init();
-#endif
+
 	return result;
 }
 
 static void ipa_pci_remove(struct pci_dev *pci_dev)
 {
-#ifdef CONFIG_IPA_EMULATION
 	if (running_emulation)
 		ipa_ut_module_exit();
-#endif
 }
 
 static void ipa_pci_shutdown(struct pci_dev *pci_dev)

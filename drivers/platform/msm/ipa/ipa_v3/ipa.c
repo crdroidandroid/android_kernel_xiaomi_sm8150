@@ -5616,7 +5616,6 @@ void ipa3_dec_client_disable_clks_no_block(
 		&ipa_dec_clients_disable_clks_on_wq_work, 0);
 }
 
-#ifdef IPA_WAKELOCKS
 /**
  * ipa3_inc_acquire_wakelock() - Increase active clients counter, and
  * acquire wakelock if necessary
@@ -5657,7 +5656,6 @@ void ipa3_dec_release_wakelock(void)
 		__pm_relax(&ipa3_ctx->w_lock);
 	spin_unlock_irqrestore(&ipa3_ctx->wakelock_ref_cnt.spinlock, flags);
 }
-#endif
 
 int ipa3_set_clock_plan_from_pm(int idx)
 {
@@ -5855,13 +5853,11 @@ void ipa3_suspend_handler(enum ipa_irq_type interrupt,
 					atomic_set(
 					&ipa3_ctx->transport_pm.dec_clients,
 					1);
-				#ifdef IPA_WAKELOCKS
 					/*
 					 * acquire wake lock as long as suspend
 					 * vote is held
 					 */
 					ipa3_inc_acquire_wakelock();
-				#endif
 					ipa3_process_irq_schedule_rel();
 				}
 				mutex_unlock(pm_mutex_ptr);
@@ -5938,9 +5934,7 @@ static void ipa3_transport_release_resource(struct work_struct *work)
 			ipa3_process_irq_schedule_rel();
 		} else {
 			atomic_set(&ipa3_ctx->transport_pm.dec_clients, 0);
-		#ifdef IPA_WAKELOCKS
 			ipa3_dec_release_wakelock();
-		#endif
 			IPA_ACTIVE_CLIENTS_DEC_SPECIAL("TRANSPORT_RESOURCE");
 		}
 	}
@@ -6715,24 +6709,19 @@ static ssize_t ipa3_write(struct file *file, const char __user *buf,
 			  size_t count, loff_t *ppos)
 {
 	unsigned long missing;
-	char *dbg_buff = NULL;
-	int ret = 0;
+
+	char dbg_buff[32] = { 0 };
 
 	int i = 0;
 
-	if (count < 1)
-		return -EINVAL;
+	if (count >= sizeof(dbg_buff))
+		return -EFAULT;
 
-	dbg_buff = kmalloc((count + 1) * sizeof(char), GFP_KERNEL);
-	if (!dbg_buff)
-		return -ENOMEM;
-
-	missing = copy_from_user(dbg_buff, buf, count);
+	missing = copy_from_user(dbg_buff, buf, min(sizeof(dbg_buff), count));
 
 	if (missing) {
 		IPAERR("Unable to copy data from user\n");
-		ret = -EFAULT;
-		goto end;
+		return -EFAULT;
 	}
 
 	if (count > 0)
@@ -6749,7 +6738,7 @@ static ssize_t ipa3_write(struct file *file, const char __user *buf,
 
 	if (i == count) {
 		IPADBG("Empty ipa_config file\n");
-		goto end_msg;
+		return count;
 	}
 
 	/* Check MHI configuration on MDM devices */
@@ -6780,7 +6769,7 @@ static ssize_t ipa3_write(struct file *file, const char __user *buf,
 				ipa3_ctx->vlan_mode_iface[IPA_VLAN_IF_RNDIS]);
 			IPAERR("ecm vlan(%d)\n",
 				ipa3_ctx->vlan_mode_iface[IPA_VLAN_IF_ECM]);
-			goto end_msg;
+			return count;
 		}
 
 		/* trim ending newline character if any */
@@ -6799,7 +6788,7 @@ static ssize_t ipa3_write(struct file *file, const char __user *buf,
 		} else if (strcmp(dbg_buff, "1")) {
 			IPAERR("got invalid string %s not loading FW\n",
 				dbg_buff);
-			goto end;
+			return count;
 		}
 		pr_info("IPA is loading with %sMHI configuration\n",
 			ipa3_ctx->ipa_config_is_mhi ? "" : "non ");
@@ -6807,12 +6796,12 @@ static ssize_t ipa3_write(struct file *file, const char __user *buf,
 
 	/* Prevent consequent calls from trying to load the FW again. */
 	if (ipa3_is_ready())
-		goto end_msg;
+		return count;
 
 	/* Prevent multiple calls from trying to load the FW again. */
 	if (ipa3_ctx->fw_loaded) {
 		IPAERR("not load FW again\n");
-		goto end_msg;
+		return count;
 	}
 
 	/* Schedule WQ to load ipa-fws */
@@ -6821,11 +6810,8 @@ static ssize_t ipa3_write(struct file *file, const char __user *buf,
 	queue_work(ipa3_ctx->transport_power_mgmt_wq,
 		&ipa3_fw_loading_work);
 
-end_msg:
 	IPADBG("Scheduled a work to load IPA FW\n");
-end:
-	kfree(dbg_buff);
-	return ret < 0 ? ret : count;
+	return count;
 }
 
 /**
@@ -7444,11 +7430,10 @@ static int ipa3_pre_init(const struct ipa3_plat_drv_res *resource_p,
 #ifdef CONFIG_DEBUGFS
 	ipa3_debugfs_pre_init();
 #endif
-#ifdef IPA_WAKELOCKS
 	/* Create a wakeup source. */
 	wakeup_source_init(&ipa3_ctx->w_lock, "IPA_WS");
 	spin_lock_init(&ipa3_ctx->wakelock_ref_cnt.spinlock);
-#endif
+
 	/* Initialize Power Management framework */
 	if (ipa3_ctx->use_ipa_pm) {
 		result = ipa_pm_init(&ipa3_res.pm_init);
@@ -9300,6 +9285,7 @@ int ipa3_pci_drv_probe(
 	struct ipa_api_controller *api_ctrl,
 	const struct of_device_id *pdrv_match)
 {
+#ifdef CONFIG_PCI
 	int result;
 	struct ipa3_plat_drv_res *ipa_drv_res;
 	u32 bar0_offset;
@@ -9453,6 +9439,9 @@ int ipa3_pci_drv_probe(
 	}
 
 	return result;
+#else
+	return -EOPNOTSUPP;
+#endif
 }
 
 /*

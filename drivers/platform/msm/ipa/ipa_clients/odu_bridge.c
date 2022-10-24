@@ -159,7 +159,7 @@ static struct odu_bridge_ctx *odu_bridge_ctx;
 
 #ifdef CONFIG_DEBUG_FS
 #define ODU_MAX_MSG_LEN 512
-static char *dbg_buff;
+static char dbg_buff[ODU_MAX_MSG_LEN];
 #endif
 
 static void odu_bridge_emb_cons_cb(void *priv, enum ipa_dp_evt_type evt,
@@ -710,10 +710,10 @@ static ssize_t odu_debugfs_hw_bridge_mode_write(struct file *file,
 	unsigned long missing;
 	enum odu_bridge_mode mode;
 
-	if (ODU_MAX_MSG_LEN < count + 1)
+	if (sizeof(dbg_buff) < count + 1)
 		return -EFAULT;
 
-	missing = ipa_safe_copy_from_user(dbg_buff, ubuf, count);
+	missing = copy_from_user(dbg_buff, ubuf, min(sizeof(dbg_buff), count));
 	if (missing)
 		return -EFAULT;
 
@@ -783,10 +783,6 @@ static void odu_debugfs_init(void)
 		return;
 	}
 
-	dbg_buff = kmalloc(ODU_MAX_MSG_LEN * sizeof(char), GFP_KERNEL);
-	if (!dbg_buff)
-		return;
-
 	dfile_stats =
 		debugfs_create_file("stats", read_only_mode, dent,
 				    0, &odu_stats_ops);
@@ -806,14 +802,12 @@ static void odu_debugfs_init(void)
 
 	return;
 fail:
-	kfree(dbg_buff);
 	debugfs_remove_recursive(dent);
 }
 
 static void odu_debugfs_destroy(void)
 {
 	debugfs_remove_recursive(dent);
-	kfree(dbg_buff);
 }
 
 #else
@@ -857,7 +851,7 @@ int odu_bridge_tx_dp(struct sk_buff *skb, struct ipa_tx_meta *metadata)
 	case ODU_BRIDGE_MODE_ROUTER:
 		/* Router mode - pass skb to IPA */
 		res = ipa_tx_dp(IPA_CLIENT_ODU_PROD, skb, metadata);
-		if (res) {
+		if (unlikely(res)) {
 			ODU_BRIDGE_DBG("tx dp failed %d\n", res);
 			goto out;
 		}
@@ -870,7 +864,7 @@ int odu_bridge_tx_dp(struct sk_buff *skb, struct ipa_tx_meta *metadata)
 		    ODU_BRIDGE_IS_QMI_ADDR(ipv6hdr->daddr)) {
 			ODU_BRIDGE_DBG_LOW("QMI packet\n");
 			skb_copied = skb_clone(skb, GFP_KERNEL);
-			if (!skb_copied) {
+			if (unlikely(!skb_copied)) {
 				ODU_BRIDGE_ERR("No memory\n");
 				return -ENOMEM;
 			}
@@ -891,13 +885,13 @@ int odu_bridge_tx_dp(struct sk_buff *skb, struct ipa_tx_meta *metadata)
 			ODU_BRIDGE_DBG_LOW(
 				"Multicast pkt, send to APPS and IPA\n");
 			skb_copied = skb_clone(skb, GFP_KERNEL);
-			if (!skb_copied) {
+			if (unlikely(!skb_copied)) {
 				ODU_BRIDGE_ERR("No memory\n");
 				return -ENOMEM;
 			}
 
 			res = ipa_tx_dp(IPA_CLIENT_ODU_PROD, skb, metadata);
-			if (res) {
+			if (unlikely(res)) {
 				ODU_BRIDGE_DBG("tx dp failed %d\n", res);
 				dev_kfree_skb(skb_copied);
 				goto out;
@@ -912,7 +906,7 @@ int odu_bridge_tx_dp(struct sk_buff *skb, struct ipa_tx_meta *metadata)
 		}
 
 		res = ipa_tx_dp(IPA_CLIENT_ODU_PROD, skb, metadata);
-		if (res) {
+		if (unlikely(res)) {
 			ODU_BRIDGE_DBG("tx dp failed %d\n", res);
 			goto out;
 		}
