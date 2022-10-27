@@ -22,15 +22,15 @@ The design objectives are:
 The representation of access recency is at the core of all LRU
 implementations. In the multi-gen LRU, each generation represents a
 group of pages with similar access recency. Generations establish a
-common frame of reference and therefore help make better choices,
-e.g., between different memcgs on a computer or different computers in
-a data center (for job scheduling).
+(time-based) common frame of reference and therefore help make better
+choices, e.g., between different memcgs on a computer or different
+computers in a data center (for job scheduling).
 
 Exploiting spatial locality improves efficiency when gathering the
 accessed bit. A rmap walk targets a single page and does not try to
 profit from discovering a young PTE. A page table walk can sweep all
 the young PTEs in an address space, but the address space can be too
-large to make a profit. The key is to optimize both methods and use
+sparse to make a profit. The key is to optimize both methods and use
 them in combination.
 
 Fast paths reduce code complexity and runtime overhead. Unmapped pages
@@ -38,7 +38,7 @@ do not require TLB flushes; clean pages do not require writeback.
 These facts are only helpful when other conditions, e.g., access
 recency, are similar. With generations as a common frame of reference,
 additional factors stand out. But obvious choices might not be good
-choices; thus self-correction is required.
+choices; thus self-correction is necessary.
 
 The benefits of simple self-correcting heuristics are self-evident.
 Again, with generations as a common frame of reference, this becomes
@@ -64,7 +64,7 @@ The protection of the former channel is by design stronger because:
 3. The penalty of underprotecting the former channel is higher because
    applications usually do not prepare themselves for major page
    faults like they do for blocked I/O. E.g., GUI applications
-   commonly use dedicated I/O threads to avoid blocking the rendering
+   commonly use dedicated I/O threads to avoid blocking rendering
    threads.
 
 There are also two access patterns:
@@ -99,11 +99,11 @@ Each generation is divided into multiple tiers. Tiers represent
 different ranges of numbers of accesses through file descriptors. A
 page accessed ``N`` times through file descriptors is in tier
 ``order_base_2(N)``. In contrast to moving across generations, which
-requires the LRU lock, moving across tiers only requires operations on
-``page->flags`` and therefore has a negligible cost. A feedback loop
-modeled after the PID controller monitors refaults over all the tiers
-from anon and file types and decides which tiers from which types to
-evict or protect.
+requires the LRU lock, moving across tiers only involves atomic
+operations on ``page->flags`` and therefore has a negligible cost. A
+feedback loop modeled after the PID controller monitors refaults over
+all the tiers from anon and file types and decides which tiers from
+which types to evict or protect.
 
 There are two conceptually independent procedures: the aging and the
 eviction. They form a closed-loop system, i.e., the page reclaim.
@@ -118,12 +118,11 @@ demotion of cold pages happens consequently when it increments
 ``max_seq``. The aging uses page table walks and rmap walks to find
 young PTEs. For the former, it iterates ``lruvec_memcg()->mm_list``
 and calls ``walk_page_range()`` with each ``mm_struct`` on this list
-to scan PTEs. On finding a young PTE, it clears the accessed bit and
-updates the gen counter of the page mapped by this PTE to
-``(max_seq%MAX_NR_GENS)+1``. After each iteration of this list, it
-increments ``max_seq``. For the latter, when the eviction walks the
-rmap and finds a young PTE, the aging scans the adjacent PTEs and
-follows the same steps just described.
+to scan PTEs, and after each iteration, it increments ``max_seq``. For
+the latter, when the eviction walks the rmap and finds a young PTE,
+the aging scans the adjacent PTEs. For both, on finding a young PTE,
+the aging clears the accessed bit and updates the gen counter of the
+page mapped by this PTE to ``(max_seq%MAX_NR_GENS)+1``.
 
 Eviction
 --------
@@ -134,8 +133,8 @@ evict from, it first compares ``min_seq[]`` to select the older type.
 If both types are equally old, it selects the one whose first tier has
 a lower refault percentage. The first tier contains single-use
 unmapped clean pages, which are the best bet. The eviction sorts a
-page according to the gen counter if the aging has found this page
-accessed through page tables and updated the gen counter. It also
+page according to its gen counter if the aging has found this page
+accessed through page tables and updated its gen counter. It also
 moves a page to the next generation, i.e., ``min_seq+1``, if this page
 was accessed multiple times through file descriptors and the feedback
 loop has detected outlying refaults from the tier this page is in. To
@@ -150,14 +149,14 @@ The multi-gen LRU can be disassembled into the following parts:
 * Page table walks
 * Rmap walks
 * Bloom filters
-* The PID controller
+* PID controller
 
-The aging and the eviction is a producer-consumer model; specifically,
-the latter drives the former by the sliding window over generations.
-Within the aging, rmap walks drive page table walks by inserting hot
-densely populated page tables to the Bloom filters. Within the
-eviction, the PID controller uses refaults as the feedback to select
-types to evict and tiers to protect.
+The aging and the eviction form a producer-consumer model;
+specifically, the latter drives the former by the sliding window over
+generations. Within the aging, rmap walks drive page table walks by
+inserting hot densely populated page tables to the Bloom filters.
+Within the eviction, the PID controller uses refaults as the feedback
+to select types to evict and tiers to protect.
 
 
 Quick start
@@ -176,12 +175,13 @@ following subsections.
 
 Kill switch
 -----------
-``enable`` accepts different values to enable or disable the following
-components. Its default value depends on ``CONFIG_LRU_GEN_ENABLED``.
-All the components should be enabled unless some of them have
-unforeseen side effects. Writing to ``enable`` has no effect when a
-component is not supported by the hardware, and valid values will be
-accepted even when the main switch is off.
+``enabled`` accepts different values to enable or disable the
+following components. Its default value depends on
+``CONFIG_LRU_GEN_ENABLED``. All the components should be enabled
+unless some of them have unforeseen side effects. Writing to
+``enabled`` has no effect when a component is not supported by the
+hardware, and valid values will be accepted even when the main switch
+is off.
 
 ====== ===============================================================
 Values Components
@@ -191,7 +191,9 @@ Values Components
        batches, when MMU sets it (e.g., on x86). This behavior can
        theoretically worsen lock contention (mmap_lock). If it is
        disabled, the multi-gen LRU will suffer a minor performance
-       degradation.
+       degradation for workloads that contiguously map hot pages,
+       whose accessed bits can be otherwise cleared by fewer larger
+       batches.
 0x0004 Clearing the accessed bit in non-leaf page table entries as
        well, when MMU sets it (e.g., on x86). This behavior was not
        verified on x86 varieties other than Intel and AMD. If it is
@@ -242,18 +244,19 @@ evicted generations in this file.
 
 Working set estimation
 ----------------------
-Working set estimation measures how much memory an application
-requires in a given time interval, and it is usually done with little
-impact on the performance of the application. E.g., data centers want
-to optimize job scheduling (bin packing) to improve memory
-utilizations. When a new job comes in, the job scheduler needs to find
-out whether each server it manages can allocate a certain amount of
-memory for this new job before it can pick a candidate. To do so, this
-job scheduler needs to estimate the working sets of the existing jobs.
+Working set estimation measures how much memory an application needs
+in a given time interval, and it is usually done with little impact on
+the performance of the application. E.g., data centers want to
+optimize job scheduling (bin packing) to improve memory utilizations.
+When a new job comes in, the job scheduler needs to find out whether
+each server it manages can allocate a certain amount of memory for
+this new job before it can pick a candidate. To do so, the job
+scheduler needs to estimate the working sets of the existing jobs.
 
 When it is read, ``lru_gen`` returns a histogram of numbers of pages
 accessed over different time intervals for each memcg and node.
-``MAX_NR_GENS`` decides the number of bins for each histogram.
+``MAX_NR_GENS`` decides the number of bins for each histogram. The
+histograms are noncumulative.
 ::
 
     memcg  memcg_id  memcg_path
@@ -262,30 +265,30 @@ accessed over different time intervals for each memcg and node.
            ...
            max_gen_nr  age_in_ms  nr_anon_pages  nr_file_pages
 
-Each generation contains an estimated number of pages that have been
-accessed within ``age_in_ms`` non-cumulatively. E.g., ``min_gen_nr``
-contains the coldest pages and ``max_gen_nr`` contains the hottest
-pages, since ``age_in_ms`` of the former is the largest and that of
-the latter is the smallest.
+Each bin contains an estimated number of pages that have been accessed
+within ``age_in_ms``. E.g., ``min_gen_nr`` contains the coldest pages
+and ``max_gen_nr`` contains the hottest pages, since ``age_in_ms`` of
+the former is the largest and that of the latter is the smallest.
 
 Users can write ``+ memcg_id node_id max_gen_nr
-[can_swap[full_scan]]`` to ``lru_gen`` to create a new generation
+[can_swap [force_scan]]`` to ``lru_gen`` to create a new generation
 ``max_gen_nr+1``. ``can_swap`` defaults to the swap setting and, if it
-is set to ``1``, it forces the scan of anon pages when swap is off.
-``full_scan`` defaults to ``1`` and, if it is set to ``0``, it reduces
-the overhead as well as the coverage when scanning page tables.
+is set to ``1``, it forces the scan of anon pages when swap is off,
+and vice versa. ``force_scan`` defaults to ``1`` and, if it is set to
+``0``, it employs heuristics to reduce the overhead, which is likely
+to reduce the coverage as well.
 
 A typical use case is that a job scheduler writes to ``lru_gen`` at a
 certain time interval to create new generations, and it ranks the
-servers it manages based on the sizes of their cold memory defined by
+servers it manages based on the sizes of their cold pages defined by
 this time interval.
 
 Proactive reclaim
 -----------------
-Proactive reclaim induces memory reclaim when there is no memory
-pressure and usually targets cold memory only. E.g., when a new job
-comes in, the job scheduler wants to proactively reclaim memory on the
-server it has selected to improve the chance of successfully landing
+Proactive reclaim induces page reclaim when there is no memory
+pressure. It usually targets cold pages only. E.g., when a new job
+comes in, the job scheduler wants to proactively reclaim cold pages on
+the server it selected to improve the chance of successfully landing
 this new job.
 
 Users can write ``- memcg_id node_id min_gen_nr [swappiness
@@ -297,8 +300,8 @@ default value in ``/proc/sys/vm/swappiness``. ``nr_to_reclaim`` limits
 the number of pages to evict.
 
 A typical use case is that a job scheduler writes to ``lru_gen``
-before it tries to land a new job on a server, and if it fails to
-materialize the cold memory without impacting the existing jobs on
-this server, it retries on the next server according to the ranking
-result obtained from the working set estimation step described
-earlier.
+before it tries to land a new job on a server. If it fails to
+materialize enough cold pages because of the overestimation, it
+retries on the next server according to the ranking result obtained
+from the working set estimation step. This less forceful approach
+limits the impacts on the existing jobs.
