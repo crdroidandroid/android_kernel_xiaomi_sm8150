@@ -1259,7 +1259,13 @@ config CPUSET_BG
 
 config CPUSET_CAMERA
 	string "Value for 'camera-daemon' cpuset"
-	default "4-7"
+	default "0-7"
+	help
+	  The CPU mask to use for the camera-daemon cpuset.
+
+config CPUSET_GAME
+	string "Value for 'game' cpuset"
+	default "0-7"
 	help
 	  The CPU mask to use for the audio-app cpuset.
 
