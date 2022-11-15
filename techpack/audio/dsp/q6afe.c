@@ -1979,6 +1979,7 @@ afe_mi_ultrasound_state_t mius_afe = {
 	.ptr_status= &this_afe.status,
 	.ptr_state= &this_afe.state,
 	.ptr_wait= this_afe.wait,
+	.ptr_afe_apr_lock= &this_afe.afe_apr_lock,
 	.timeout_ms= TIMEOUT_MS,
 };
 EXPORT_SYMBOL(mius_afe);
