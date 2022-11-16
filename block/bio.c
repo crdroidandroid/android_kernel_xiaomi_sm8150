@@ -315,7 +315,7 @@ static struct bio *__bio_chain_endio(struct bio *bio)
 {
 	struct bio *parent = bio->bi_private;
 
-	if (!parent->bi_status)
+	if (bio->bi_status && !parent->bi_status)
 		parent->bi_status = bio->bi_status;
 	bio_put(bio);
 	return parent;
@@ -1020,6 +1020,25 @@ int submit_bio_wait(struct bio *bio)
 	return ret.error;
 }
 EXPORT_SYMBOL(submit_bio_wait);
+
+static void submit_bio_nowait_endio(struct bio *bio)
+{
+	bio_put(bio);
+}
+
+/**
+ * submit_bio_nowait - submit a bio for fire-and-forget
+ * @bio: The &struct bio which describes the I/O
+ *
+ * Simple wrapper around submit_bio() that takes care of bio_put() on completion
+ */
+void submit_bio_nowait(struct bio *bio)
+{
+	bio->bi_end_io = submit_bio_nowait_endio;
+	bio->bi_opf |= REQ_SYNC;
+	submit_bio(bio);
+}
+EXPORT_SYMBOL(submit_bio_nowait);
 
 /**
  * bio_advance - increment/complete a bio by some number of bytes

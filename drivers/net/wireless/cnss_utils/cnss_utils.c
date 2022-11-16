@@ -106,18 +106,6 @@ static void cnss_utils_stop_avtimer(void)
 	else
 		pr_err("AV Timer is not supported\n");
 }
-#else
-static void cnss_utils_start_avtimer(void)
-{
-	pr_err("AV Timer is not supported\n");
-}
-EXPORT_SYMBOL(cnss_utils_start_avtimer);
-
-static void cnss_utils_stop_avtimer(void)
-{
-	pr_err("AV Timer is not supported\n");
-}
-EXPORT_SYMBOL(cnss_utils_stop_avtimer);
 #endif
 
 int cnss_utils_set_wlan_unsafe_channel(struct device *dev,
@@ -586,6 +574,7 @@ static const struct file_operations cnss_utils_mac_fops = {
 	.llseek		= seq_lseek,
 };
 
+#ifdef CONFIG_DEBUG_FS
 static int cnss_utils_debugfs_create(struct cnss_utils_priv *priv)
 {
 	int ret = 0;
@@ -604,6 +593,7 @@ static int cnss_utils_debugfs_create(struct cnss_utils_priv *priv)
 out:
 	return ret;
 }
+#endif
 
 static int __init cnss_utils_init(void)
 {
@@ -617,7 +607,9 @@ static int __init cnss_utils_init(void)
 
 	mutex_init(&priv->unsafe_channel_list_lock);
 	spin_lock_init(&priv->dfs_nol_info_lock);
+	#ifdef CONFIG_DEBUG_FS
 	cnss_utils_debugfs_create(priv);
+	#endif
 	cnss_utils_priv = priv;
 
 	return 0;

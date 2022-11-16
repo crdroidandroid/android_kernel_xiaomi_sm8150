@@ -24,6 +24,7 @@
 #include <linux/delay.h>
 #include "vidc_hfi_api.h"
 #include "msm_vidc_clocks.h"
+#include "msm_vidc_res_parse.h"
 #include <linux/dma-buf.h>
 
 #define MAX_EVENTS 30
@@ -608,9 +609,13 @@ int msm_vidc_dqbuf(void *instance, struct v4l2_buffer *b)
 	tag_data.index = b->index;
 	tag_data.type = b->type;
 
-	msm_comm_fetch_tags(inst, &tag_data);
-	b->m.planes[0].reserved[5] = tag_data.input_tag;
-	b->m.planes[0].reserved[6] = tag_data.output_tag;
+	if (msm_comm_fetch_tags(inst, &tag_data)) {
+		b->m.planes[0].reserved[5] = tag_data.input_tag;
+		b->m.planes[0].reserved[6] = tag_data.output_tag;
+	} else {
+		b->m.planes[0].reserved[5] = 0;
+		b->m.planes[0].reserved[6] = 0;
+	}
 
 	return rc;
 }
@@ -1882,6 +1887,9 @@ void *msm_vidc_open(int core_id, int session_type)
 	struct msm_vidc_core *core = NULL;
 	int rc = 0;
 	int i = 0;
+	bool reconfig_core = false;
+	bool is_cma_enabled = false;
+	struct hfi_device *hdev = NULL;
 
 	if (core_id >= MSM_VIDC_CORES_MAX ||
 			session_type >= MSM_VIDC_MAX_DEVICES) {
@@ -1896,6 +1904,12 @@ void *msm_vidc_open(int core_id, int session_type)
 		goto err_invalid_core;
 	}
 
+	if ((session_type == MSM_VIDC_ENCODER_CMA)
+				&& !core->resources.cma_exist) {
+		dprintk(VIDC_ERR, "Failed cma not enabled\n");
+		goto err_invalid_core;
+	}
+
 	inst = kzalloc(sizeof(*inst), GFP_KERNEL);
 	if (!inst) {
 		dprintk(VIDC_ERR, "Failed to allocate memory\n");
@@ -1903,7 +1917,7 @@ void *msm_vidc_open(int core_id, int session_type)
 		goto err_invalid_core;
 	}
 
-	pr_info(VIDC_DBG_TAG "Opening video instance: %pK, %d\n",
+	pr_debug(VIDC_DBG_TAG "Opening video instance: %pK, %d\n",
 		"info", inst, session_type);
 	mutex_init(&inst->sync_lock);
 	mutex_init(&inst->bufq[CAPTURE_PORT].lock);
@@ -1925,6 +1939,19 @@ void *msm_vidc_open(int core_id, int session_type)
 	INIT_MSM_VIDC_LIST(&inst->fbd_data);
 
 	kref_init(&inst->kref);
+
+	is_cma_enabled = core->resources.cma_status;
+	reconfig_core = ((!is_cma_enabled &&
+			session_type == MSM_VIDC_ENCODER_CMA) ||
+			(is_cma_enabled && session_type
+				!= MSM_VIDC_ENCODER_CMA)) ?
+			true : false;
+
+	dprintk(VIDC_DBG, "reconfig_core %d , cma_status %d , session_type %d ",
+		reconfig_core, core->resources.cma_status, session_type);
+
+	if (session_type == MSM_VIDC_ENCODER_CMA)
+		session_type = MSM_VIDC_ENCODER;
 
 	inst->session_type = session_type;
 	inst->state = MSM_VIDC_CORE_UNINIT_DONE;
@@ -1980,6 +2007,47 @@ void *msm_vidc_open(int core_id, int session_type)
 	}
 
 	setup_event_queue(inst, &core->vdev[session_type].vdev);
+	if (reconfig_core) {
+		mutex_lock(&core->lock);
+		if (!list_empty(&core->instances)) {
+			dprintk(VIDC_ERR,
+				"Failed due to pending instances in core");
+
+			mutex_unlock(&core->lock);
+			goto fail_toggle_cma;
+		}
+		mutex_unlock(&core->lock);
+
+		rc = msm_comm_try_state(inst, MSM_VIDC_CORE_UNINIT);
+		if (rc)
+			dprintk(VIDC_ERR,
+				"MSM_VIDC_CORE_UNINIT failed\n");
+		cancel_delayed_work(&core->fw_unload_work);
+
+		mutex_lock(&core->lock);
+		hdev = core->device;
+		rc = call_hfi_op(hdev, core_release, hdev->hfi_device_data);
+		if (rc) {
+			dprintk(VIDC_ERR,
+				"Failed to release core, id = %d\n", core->id);
+			mutex_unlock(&core->lock);
+			goto fail_toggle_cma;
+		}
+		core->state = VIDC_CORE_UNINIT;
+		kfree(core->capabilities);
+		core->capabilities = NULL;
+		rc = msm_vidc_enable_cma(&core->resources, !is_cma_enabled);
+		if (rc) {
+			dprintk(VIDC_ERR,
+				"%s CMA failed\n", is_cma_enabled ?
+							"enable":"disable");
+			msm_vidc_enable_cma(&core->resources, is_cma_enabled);
+			mutex_unlock(&core->lock);
+			goto fail_toggle_cma;
+		}
+		core->resources.cma_status = !is_cma_enabled;
+		mutex_unlock(&core->lock);
+	}
 
 	mutex_lock(&core->lock);
 	list_add_tail(&inst->list, &core->instances);
@@ -2000,8 +2068,10 @@ void *msm_vidc_open(int core_id, int session_type)
 
 	msm_comm_scale_clocks_and_bus(inst);
 
+#ifdef CONFIG_DEBUG_FS
 	inst->debugfs_root =
 		msm_vidc_debugfs_init_inst(inst, core->debugfs_root);
+#endif
 
 	if (inst->session_type == MSM_VIDC_CVP) {
 		rc = msm_comm_try_state(inst, MSM_VIDC_OPEN_DONE);
@@ -2021,9 +2091,11 @@ fail_init:
 	mutex_lock(&core->lock);
 	list_del(&inst->list);
 	mutex_unlock(&core->lock);
-
+fail_toggle_cma:
+	mutex_lock(&core->lock);
 	v4l2_fh_del(&inst->event_handler);
 	v4l2_fh_exit(&inst->event_handler);
+	mutex_unlock(&core->lock);
 	vb2_queue_release(&inst->bufq[OUTPUT_PORT].vb2_bufq);
 fail_bufq_output:
 	vb2_queue_release(&inst->bufq[CAPTURE_PORT].vb2_bufq);
@@ -2189,7 +2261,7 @@ int msm_vidc_destroy(struct msm_vidc_inst *inst)
 
 	msm_vidc_debugfs_deinit_inst(inst);
 
-	pr_info(VIDC_DBG_TAG "Closed video instance: %pK\n",
+	pr_debug(VIDC_DBG_TAG "Closed video instance: %pK\n",
 			"info", inst);
 	kfree(inst);
 	return 0;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -98,6 +98,7 @@ struct npu_regulator {
 	char regulator_name[NPU_MAX_DT_NAME_LEN];
 };
 
+#ifdef CONFIG_DEBUG_FS
 struct npu_debugfs_ctx {
 	struct dentry *root;
 	uint32_t reg_off;
@@ -115,6 +116,7 @@ struct npu_debugfs_reg_ctx {
 	size_t buf_len;
 	struct npu_device *npu_dev;
 };
+#endif
 
 struct npu_mbox {
 	struct mbox_client client;
@@ -236,7 +238,9 @@ struct npu_device {
 
 	struct npu_host_ctx host_ctx;
 	struct npu_smmu_ctx smmu_ctx;
+#ifdef CONFIG_DEBUG_FS
 	struct npu_debugfs_ctx debugfs_ctx;
+#endif
 
 	struct npu_mbox mbox_aop;
 
@@ -251,18 +255,9 @@ struct npu_device {
 	uint32_t hw_version;
 };
 
-struct npu_kevent {
-	struct list_head list;
-	struct msm_npu_event evt;
-	uint64_t reserved[4];
-};
-
 struct npu_client {
 	struct npu_device *npu_dev;
-	wait_queue_head_t wait;
-
 	struct mutex list_lock;
-	struct list_head evt_list;
 	struct list_head mapped_buffer_list;
 };
 
@@ -270,8 +265,13 @@ struct npu_client {
  * Function Prototypes
  * -------------------------------------------------------------------------
  */
+#ifdef CONFIG_DEBUG_FS
 int npu_debugfs_init(struct npu_device *npu_dev);
 void npu_debugfs_deinit(struct npu_device *npu_dev);
+#else
+static inline int npu_debugfs_init(struct npu_device *npu_dev) { return 0; }
+static inline void npu_debugfs_deinit(struct npu_device *npu_dev) { }
+#endif
 
 int npu_enable_core_power(struct npu_device *npu_dev);
 void npu_disable_core_power(struct npu_device *npu_dev);

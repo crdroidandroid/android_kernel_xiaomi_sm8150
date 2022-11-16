@@ -3,7 +3,6 @@
  * Hardware interface layer of touchdriver architecture.
  *
  * Copyright (C) 2015 - 2016 Goodix, Inc.
- * Copyright (C) 2019 XiaoMi, Inc.
  * Authors:  Yulong Cai <caiyulong@goodix.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -154,7 +153,7 @@ static int goodix_parse_dt(struct device_node *node,
 	struct property *prop;
 	int r;
 
-	ts_err("enter::%s\n",__func__);
+	ts_err("enter::%s\n", __func__);
 	if (!board_data) {
 		ts_err("Invalid board data");
 		return -EINVAL;
@@ -558,10 +557,10 @@ int goodix_set_i2c_doze_mode(struct goodix_ts_device *dev, int enable)
 			usleep_range(1000, 1100);
 			for (i = 0; i < TS_DOZE_DISABLE_RETRY_TIMES; i++) {
 				goodix_i2c_read_trans(dev, TS_REG_DOZE_STAT, &r_data, 1);
-				if (TS_DOZE_CLOSE_OK_DATA == r_data) {
+				if (r_data == TS_DOZE_CLOSE_OK_DATA) {
 					result = 0;
 					goto exit;
-				} else if (0xAA != r_data) {
+				} else if (r_data != 0xAA) {
 					w_data = TS_DOZE_DISABLE_DATA;
 					goodix_i2c_write_trans(dev, TS_REG_DOZE_CTRL, &w_data, 1);
 				}
@@ -1015,6 +1014,7 @@ static int goodix_check_cfg_valid(struct goodix_ts_device *dev, u8 *cfg, u32 len
 	int i, j;
 	int bag_start = 0;
 	int bag_end = 0;
+
 	if (!cfg || length < TS_CFG_HEAD_LEN) {
 		ts_err("cfg is INVALID, len:%d", length);
 		ret = -EINVAL;
@@ -1450,7 +1450,7 @@ static int goodix_hw_init(struct goodix_ts_device *ts_dev)
 			ts_dev->chip_version.sensor_id);
 	if (r < 0)
 		ts_info("Cann't find customized parameters");
-	
+
 	ts_dev->normal_cfg->delay = 500;
 	/* send normal-cfg to firmware */
 	r = goodix_send_config(ts_dev, ts_dev->normal_cfg);
@@ -1536,7 +1536,7 @@ static int goodix_request_handler(struct goodix_ts_device *dev,
 	unsigned char buffer[1];
 	int r;
 
-	if (dev->reg.fw_request != 0x6F6D){
+	if (dev->reg.fw_request != 0x6F6D) {
 		ts_info("firmware reg is wrong!\n");
 		dev->reg.fw_request = 0x6F6D;
 	}
@@ -1582,6 +1582,7 @@ static void goodix_swap_coords(struct goodix_ts_device *dev,
 {
 	int i, temp;
 	struct goodix_ts_board_data *bdata = dev->board_data;
+
 	for (i = 0; i < touch_num; i++) {
 		if (bdata->swap_axis) {
 			temp = coords->x;
@@ -1692,7 +1693,7 @@ static int goodix_remap_trace_id(struct goodix_ts_device *dev,
 			}
 			offset += BYTES_PER_COORD;
 		}
-	
+
 	}
 
 	/*for (i = 0; i < touch_num; i++) {
@@ -1838,8 +1839,9 @@ static int goodix_touch_handler(struct goodix_ts_device *dev,
 							(buffer[i * BYTES_PER_COORD + 4] << 8);
 			coords->y = buffer[i * BYTES_PER_COORD + 5] |
 							(buffer[i * BYTES_PER_COORD + 6] << 8);
-			coords->w = buffer[i * BYTES_PER_COORD + 7];
-			coords->p = coords->w;
+			coords->w = coords->p / 16;
+			coords->p = buffer[i * BYTES_PER_COORD + 7] |
+			(buffer[i * BYTES_PER_COORD + 8] << 8);
 			coords->overlapping_area = buffer[8];
 			coords->area = buffer[i * BYTES_PER_COORD + 9];
 			coords++;
@@ -1859,8 +1861,10 @@ static int goodix_touch_handler(struct goodix_ts_device *dev,
 					(buffer[i * BYTES_PER_COORD + 4] << 8);
 				touch_data->pen_coords[0].y = buffer[i * BYTES_PER_COORD + 5] |
 					(buffer[i * BYTES_PER_COORD + 6] << 8);
-				touch_data->pen_coords[0].w = buffer[i * BYTES_PER_COORD + 7];
-				touch_data->pen_coords[0].p = touch_data->pen_coords[0].w;
+				touch_data->pen_coords[0].w = 6;
+				touch_data->pen_coords[0].p =
+					buffer[i * BYTES_PER_COORD + 7] |
+					(buffer[i * BYTES_PER_COORD + 8] << 8);
 				}
 			} else {/*it's a finger*/
 					coords->id = buffer[i * BYTES_PER_COORD + 2] & 0x0f;
@@ -1868,8 +1872,9 @@ static int goodix_touch_handler(struct goodix_ts_device *dev,
 									(buffer[i * BYTES_PER_COORD + 4] << 8);
 					coords->y = buffer[i * BYTES_PER_COORD + 5] |
 									(buffer[i * BYTES_PER_COORD + 6] << 8);
-					coords->w = buffer[i * BYTES_PER_COORD + 7];
-					coords->p = coords->w;
+					coords->w = coords->p / 16;
+					coords->p = buffer[i * BYTES_PER_COORD + 7] |
+							(buffer[i * BYTES_PER_COORD + 8] << 8);
 					coords->overlapping_area = buffer[8];
 					coords->area = buffer[i * BYTES_PER_COORD + 9];
 					/*ts_debug("EF:[%d](%d, %d)", coords->id, coords->x, coords->y);*/
@@ -2093,9 +2098,9 @@ static int goodix_i2c_probe(struct i2c_client *client,
 	struct goodix_ts_board_data *ts_bdata = NULL;
 	int r = 0;
 
-	ts_err("enter::%s\n",__func__);
+	ts_err("enter::%s\n", __func__);
 
-	r = i2c_check_functionality(client->adapter,I2C_FUNC_I2C);
+	r = i2c_check_functionality(client->adapter, I2C_FUNC_I2C);
 	if (!r)
 		return -EIO;
 
@@ -2112,11 +2117,11 @@ static int goodix_i2c_probe(struct i2c_client *client,
 			return r;
 	}
 #ifdef CONFIG_ACPI
-	 else if (ACPI_COMPANION(&client->dev)) {
+	else if (ACPI_COMPANION(&client->dev)) {
 		r = goodix_parse_acpi(&client->dev, ts_bdata);
 		if (r < 0)
 			return r;
-	 }
+	}
 #endif
 	else {
 		/* use platform data */
@@ -2137,7 +2142,7 @@ static int goodix_i2c_probe(struct i2c_client *client,
 	ts_device->dev = &client->dev;
 	ts_device->board_data = ts_bdata;
 	ts_device->hw_ops = &hw_i2c_ops;
-	
+
 
 	/* ts core device */
 	goodix_pdev = kzalloc(sizeof(struct platform_device), GFP_KERNEL);

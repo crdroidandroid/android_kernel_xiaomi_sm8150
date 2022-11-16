@@ -47,36 +47,21 @@
  * @fmt: Pointer to format string
  */
 #define SDE_DEBUG(fmt, ...)                                                \
-	do {                                                               \
-		if (unlikely(drm_debug & DRM_UT_KMS))                      \
-			DRM_DEBUG(fmt, ##__VA_ARGS__); \
-		else                                                       \
-			pr_debug(fmt, ##__VA_ARGS__);                      \
-	} while (0)
+	no_printk(fmt, ##__VA_ARGS__)
 
 /**
  * SDE_INFO - macro for kms/plane/crtc/encoder/connector logs
  * @fmt: Pointer to format string
  */
 #define SDE_INFO(fmt, ...)                                                \
-	do {                                                               \
-		if (unlikely(drm_debug & DRM_UT_KMS))                      \
-			DRM_INFO(fmt, ##__VA_ARGS__); \
-		else                                                       \
-			pr_info(fmt, ##__VA_ARGS__);                      \
-	} while (0)
+	no_printk(fmt, ##__VA_ARGS__)
 
 /**
  * SDE_DEBUG_DRIVER - macro for hardware driver logging
  * @fmt: Pointer to format string
  */
 #define SDE_DEBUG_DRIVER(fmt, ...)                                         \
-	do {                                                               \
-		if (unlikely(drm_debug & DRM_UT_DRIVER))                   \
-			DRM_ERROR(fmt, ##__VA_ARGS__); \
-		else                                                       \
-			pr_debug(fmt, ##__VA_ARGS__);                      \
-	} while (0)
+	no_printk(fmt, ##__VA_ARGS__)
 
 #define SDE_ERROR(fmt, ...) pr_err("[sde error]" fmt, ##__VA_ARGS__)
 
@@ -167,6 +152,20 @@ enum sde_kms_sui_misr_state {
 	SUI_MISR_NONE,
 	SUI_MISR_ENABLE_REQ,
 	SUI_MISR_DISABLE_REQ
+};
+
+/*
+ * @FRAME_DONE_WAIT_DEFAULT:	waits for frame N pp_done interrupt before
+ *                              triggering frame N+1.
+ * @FRAME_DONE_WAIT_SERIALIZE:	serialize pp_done and ctl_start irq for frame
+ *                              N without next frame trigger wait.
+ * @FRAME_DONE_WAIT_POSTED_START: Do not wait for pp_done interrupt for any
+ *                              frame. Wait will trigger only for error case.
+ */
+enum frame_trigger_mode_type {
+	FRAME_DONE_WAIT_DEFAULT,
+	FRAME_DONE_WAIT_SERIALIZE,
+	FRAME_DONE_WAIT_POSTED_START,
 };
 
 /**
@@ -275,6 +274,8 @@ struct sde_kms {
 
 	bool first_kickoff;
 	bool qdss_enabled;
+
+	struct pm_qos_request pm_qos_irq_req;
 };
 
 struct vsync_info {
@@ -680,5 +681,21 @@ int sde_kms_handle_recovery(struct drm_encoder *encoder);
  */
 void sde_kms_release_splash_resource(struct sde_kms *sde_kms,
 		struct drm_crtc *crtc);
+/**
+ * sde_kms_trigger_early_wakeup - trigger early wake up
+ * @sde_kms: pointer to sde_kms structure
+ * @crtc: pointer to drm_crtc structure
+ */
+void sde_kms_trigger_early_wakeup(struct sde_kms *sde_kms,
+		struct drm_crtc *crtc);
 
+/*
+ * sde_kms_update_pm_qos_irq_request - Update Qos vote for CPU receiving
+ *					display IRQ
+ * @sde_kms : pointer to sde_kms structure
+ * @enable : indicates request to be enabled or disabled
+ * @skip_lock : indicates if lock needs to be acquired
+ */
+void sde_kms_update_pm_qos_irq_request(struct sde_kms *sde_kms,
+	 bool enable, bool skip_lock);
 #endif /* __sde_kms_H__ */

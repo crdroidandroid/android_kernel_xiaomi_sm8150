@@ -1,16 +1,10 @@
 ifeq ($(CONFIG_MACH_XIAOMI_SM8150),y)
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
-ifeq ($(CONFIG_MACH_XIAOMI_CEPHEUS),y)
-dtbo-$(CONFIG_ARCH_SM8150) += \
-		cepheus-sm8150-overlay.dtbo
-
-cepheus-sm8150-overlay.dtbo-base := sm8150.dtb sm8150-v2.dtb sm8150p.dtb sm8150p-v2.dtb
-endif
 ifeq ($(CONFIG_MACH_XIAOMI_RAPHAEL),y)
-dtbo-$(CONFIG_ARCH_SM8150) += \
+dtbo-$(CONFIG_MACH_XIAOMI_RAPHAEL) += \
 		raphael-sm8150-overlay.dtbo
 
-raphael-sm8150-overlay.dtbo-base := sm8150.dtb sm8150-v2.dtb sm8150p.dtb sm8150p-v2.dtb
+raphael-sm8150-overlay.dtbo-base := sm8150-v2.dtb
 endif
 endif
 else
@@ -117,9 +111,7 @@ dtb-$(CONFIG_ARCH_QCS403) += qcs403-iot-sku1.dtb \
 		qcs401-iot-sku5.dtb \
 		qcs404-iot-sku3.dtb \
 		qcs404-iot-sku5.dtb \
-		qcs404-iot-sku6.dtb \
-		sa2145p-ccard-nand-dc.dtb \
-		sa2150p-ccard-nand-dc.dtb
+		qcs404-iot-sku6.dtb
 
 dtb-$(CONFIG_ARCH_QCS405) += qcs405-iot-sku1.dtb \
 		qcs407-iot-sku1.dtb \
@@ -132,18 +124,41 @@ dtb-$(CONFIG_ARCH_QCS405) += qcs405-iot-sku1.dtb \
 		qcs407-iot-sku9.dtb \
 		qcs405-iot-sku12.dtb \
 		qcs407-iot-sku12.dtb \
-		sa2150p-ccard-emmc.dtb \
-		sa2145p-ccard-nand-dc.dtb \
-		sa2150p-ccard-nand-dc.dtb \
-		sa2150p-ccard-nand.dtb \
-		sa2150p-ccard-emmc-eth-sw.dtb \
-		sa2150p-ccard-emmc-eth-phy.dtb \
 		qcs405-iot-sku13.dtb \
 		qcs407-iot-sku13.dtb \
 		qcs405-iot-robot-reference-board.dtb \
 		qcs404-iot-robot-reference-board.dtb \
 		qcs405-iot-robot-reference-dvt-board.dtb \
 		qcs404-iot-robot-reference-dvt-board.dtb
+
+dtb-$(CONFIG_ARCH_SA2150P) += sa2150p-ccard-emmc.dtb \
+		sa2150p-ccard-emmc-eth-sw.dtb \
+		sa2150p-ccard-emmc-eth-phy.dtb \
+		sa2150p-ccard-nand-sd.dtb \
+		sa2150p-ccard-nand-emmc.dtb \
+		sa2150p-ccard-nand-eth-sw-sd.dtb \
+		sa2150p-ccard-nand-eth-sw-emmc.dtb \
+		sa2150p-ccard-nand-eth-phy-sd.dtb \
+		sa2150p-ccard-nand-eth-phy-emmc.dtb \
+		sa2150p-ccard-nand-dc.dtb \
+		sa2150p-ccard-nand-dc-eth-sw.dtb \
+		sa2150p-ccard-nand-dc-eth-phy.dtb
+
+dtb-$(CONFIG_ARCH_SA2145P) += sa2145p-ccard-nand-sd.dtb \
+		sa2145p-ccard-nand-emmc.dtb \
+		sa2145p-ccard-nand-eth-sw-sd.dtb \
+		sa2145p-ccard-nand-eth-sw-emmc.dtb \
+		sa2145p-ccard-nand-eth-phy-sd.dtb \
+		sa2145p-ccard-nand-eth-phy-emmc.dtb \
+		sa2150p-ccard-nand-sd.dtb \
+		sa2150p-ccard-nand-emmc.dtb \
+		sa2150p-ccard-nand-eth-sw-sd.dtb \
+		sa2150p-ccard-nand-eth-sw-emmc.dtb \
+		sa2150p-ccard-nand-eth-phy-sd.dtb \
+		sa2150p-ccard-nand-eth-phy-emmc.dtb \
+		sa2150p-ccard-nand-dc.dtb \
+		sa2150p-ccard-nand-dc-eth-sw.dtb \
+		sa2150p-ccard-nand-dc-eth-phy.dtb
 
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
 	dtbo-$(CONFIG_ARCH_SM8150) += \
@@ -273,6 +288,7 @@ ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
 		qcs610-iot-overlay.dtbo \
 		qcs610-ipc-overlay.dtbo \
 		qcs410-iot-overlay.dtbo \
+		qcs410-ipc-overlay.dtbo \
 		prairie-iot-idp-overlay.dtbo \
 		prairie-iot-external-codec-idp-overlay.dtbo \
 		prairie-iot-usbc-idp-overlay.dtbo \
@@ -297,6 +313,7 @@ sa6155p-v2-adp-air-overlay.dtbo-base := sa6155p.dtb
 qcs610-iot-overlay.dtbo-base := qcs610.dtb
 qcs610-ipc-overlay.dtbo-base := qcs610.dtb
 qcs410-iot-overlay.dtbo-base := qcs410.dtb
+qcs410-ipc-overlay.dtbo-base := qcs410.dtb
 prairie-iot-idp-overlay.dtbo-base := qcs610.dtb
 prairie-iot-external-codec-idp-overlay.dtbo-base := qcs610.dtb
 prairie-iot-usbc-idp-overlay.dtbo-base := qcs610.dtb
@@ -321,6 +338,7 @@ dtb-$(CONFIG_ARCH_SM6150)	+= sm6150-rumi.dtb \
 	qcs610-iot.dtb \
 	qcs610-ipc.dtb \
 	qcs410-iot.dtb \
+	qcs410-ipc.dtb \
 	prairie-iot-idp.dtb \
 	prairie-iot-external-codec-idp.dtb \
 	prairie-iot-usbc-idp.dtb \
@@ -464,15 +482,7 @@ dtb-$(CONFIG_ARCH_ATOLL)	+= atoll-idp.dtb\
 	atoll-ab-qrd.dtb
 endif
 
-dtb-$(CONFIG_ARCH_SDXPRAIRIE) += sdxprairie-rumi.dtb \
-	sdxprairie-cdp.dtb \
-	sdxprairie-cdp-cpe.dtb \
-	sdxprairie-cdp-v1.1-cpe.dtb \
-	sdxprairie-cdp-256.dtb \
-	sdxprairie-dsda-cdp.dtb \
-	sdxprairie-v2-dsda-cdp.dtb \
-	sdxprairie-v2-cdp.dtb \
-	sdxprairie-mtp.dtb \
+dtb-$(CONFIG_ARCH_SDXPRAIRIE) += sdxprairie-mtp.dtb \
 	sdxprairie-mtp-aqc.dtb \
 	sdxprairie-mtp-cpe.dtb \
 	sdxprairie-mtp-v1.1.dtb \
@@ -484,22 +494,30 @@ dtb-$(CONFIG_ARCH_SDXPRAIRIE) += sdxprairie-rumi.dtb \
 	sdxprairie-v2-mtp.dtb \
 	sdxprairie-v2-mtp-cpe.dtb \
 	sdxprairie-v2-pcie-ep-mtp.dtb \
+	sdxprairie-v2-makena-pcie-ep-mtp.dtb \
 	sdxprairie-v2-mtp-v1.1-cpe.dtb \
 	sdxprairie-v2-mtp-v1.1.dtb \
 	sdxprairie-v2-mtp-le-cpe.dtb \
+	sdxprairie-v2-mtp-au-dsda.dtb
+
+dtb-$(CONFIG_ARCH_SA515) +=	sdxprairie-cdp.dtb \
+	sdxprairie-cdp-cpe.dtb \
+	sdxprairie-cdp-v1.1-cpe.dtb \
+	sdxprairie-cdp-256.dtb \
+	sdxprairie-dsda-cdp.dtb \
+	sdxprairie-v2-dsda-cdp.dtb \
+	sdxprairie-v2-cdp.dtb \
+	sdxprairie-dsda-mtp.dtb \
 	sdxprairie-v2-mtp-au-dsda.dtb \
 	sa515m-v2-ttp.dtb \
 	sa515m-v2-ttp-usb-ep.dtb \
 	sa515m-v2-ttp-pcie-ep.dtb \
-	sa515m-v2-ttp-flashless-usb-ep.dtb \
-	sa515m-v2-ttp-flashless-pcie-ep.dtb \
 	sa515m-v2-ttp-emmc.dtb \
 	sa515m-ccard.dtb \
 	sa515m-ccard-pcie-ep.dtb \
 	sa515m-ccard-usb-ep.dtb \
 	sa515m-ccard-eth-ep.dtb \
-	sa515m-v2-ccard-flashless-pcie-ep.dtb \
-	sa515m-v2-ccard-flashless-usb-ep.dtb \
+	sa515m-v2-cdp-usb-ep.dtb \
 	sa515m-v2-ccard.dtb \
 	sa515m-v2-ccard-pcie-ep.dtb \
 	sa515m-v2-ccard-usb-ep.dtb \
@@ -581,6 +599,8 @@ ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
         dtbo-$(CONFIG_ARCH_SDM429W) += sdm429-wtp-overlay.dtbo\
 		sdm429-wdp-overlay.dtbo\
 		sdm429-bg-dvt2-wtp-overlay.dtbo\
+		sdm429-spyro-qrd-newport-overlay.dtbo\
+		sdm429-spyro-qrd-newport-v2-overlay.dtbo\
 		sda429-wdp-overlay.dtbo\
 		sda429-wtp-overlay.dtbo\
 		sda429-bg-dvt2-wtp-overlay.dtbo
@@ -588,6 +608,8 @@ ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
 sdm429-wtp-overlay.dtbo-base := sdm429.dtb
 sdm429-wdp-overlay.dtbo-base := sdm429.dtb
 sdm429-bg-dvt2-wtp-overlay.dtbo-base := sdm429.dtb
+sdm429-spyro-qrd-newport-overlay.dtbo-base := sdm429-spyro.dtb
+sdm429-spyro-qrd-newport-v2-overlay.dtbo-base := sdm429-spyro-qrd-newport-v2.dtb
 sda429-wtp-overlay.dtbo-base := sda429.dtb
 sda429-wdp-overlay.dtbo-base := sda429.dtb
 sda429-bg-dvt2-wtp-overlay.dtbo-base := sda429.dtb
@@ -602,7 +624,7 @@ endif
 
 endif
 
-endif
+endif #ifeq ($(CONFIG_MACH_XIAOMI_SM8150),y)
 
 ifeq ($(CONFIG_ARM64),y)
 always		:= $(dtb-y)

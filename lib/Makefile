@@ -17,6 +17,11 @@ KCOV_INSTRUMENT_list_debug.o := n
 KCOV_INSTRUMENT_debugobjects.o := n
 KCOV_INSTRUMENT_dynamic_debug.o := n
 
+# string.o implements standard library functions like memset/memcpy etc.
+# Use -ffreestanding to ensure that the compiler does not try to "optimize"
+# them into calls to themselves.
+CFLAGS_string.o := -ffreestanding
+
 # Early boot use of cmdline, don't instrument it
 ifdef CONFIG_AMD_MEM_ENCRYPT
 KASAN_SANITIZE_string.o := n
@@ -25,18 +30,22 @@ ifdef CONFIG_FUNCTION_TRACER
 CFLAGS_REMOVE_string.o = -pg
 endif
 
-CFLAGS_string.o := $(call cc-option, -fno-stack-protector)
+CFLAGS_string.o += $(call cc-option, -fno-stack-protector)
 endif
+
+ccflags-y += -O3
 
 lib-y := ctype.o string.o vsprintf.o cmdline.o \
 	 rbtree.o radix-tree.o dump_stack.o timerqueue.o\
 	 idr.o int_sqrt.o extable.o \
-	 sha1.o chacha.o irq_regs.o argv_split.o \
+	 sha1.o irq_regs.o argv_split.o \
 	 flex_proportions.o ratelimit.o show_mem.o \
 	 is_single_threaded.o plist.o decompress.o kobject_uevent.o \
 	 earlycpio.o seq_buf.o siphash.o \
-	 nmi_backtrace.o nodemask.o win_minmax.o
+	 nodemask.o win_minmax.o
 
+CFLAGS_kobject_uevent.o += -Wframe-larger-than=3072
+lib-$(!CONFIG_ARM64) += nmi_backtrace.o
 lib-$(CONFIG_MMU) += ioremap.o
 lib-$(CONFIG_SMP) += cpumask.o
 lib-$(CONFIG_DMA_NOOP_OPS) += dma-noop.o
@@ -90,6 +99,8 @@ endif
 
 obj-$(CONFIG_DEBUG_INFO_REDUCED) += debug_info.o
 CFLAGS_debug_info.o += $(call cc-option, -femit-struct-debug-detailed=any)
+
+obj-y += crypto/
 
 obj-$(CONFIG_GENERIC_IOMAP) += iomap.o
 obj-$(CONFIG_GENERIC_PCI_IOMAP) += pci_iomap.o

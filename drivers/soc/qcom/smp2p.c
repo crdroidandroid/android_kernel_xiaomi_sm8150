@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015, Sony Mobile Communications AB.
- * Copyright (c) 2012-2013, 2018-2019 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, 2018-2020 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -173,10 +173,7 @@ struct qcom_smp2p {
 static void *ilc;
 #define SMP2P_LOG_PAGE_CNT 2
 #define SMP2P_INFO(x, ...)	\
-do {	\
-	if (ilc) \
-		ipc_log_string(ilc, "[%s]: "x, __func__, ##__VA_ARGS__); \
-} while (0)
+	ipc_log_string(ilc, "[%s]: "x, __func__, ##__VA_ARGS__)
 
 static void qcom_smp2p_kick(struct qcom_smp2p *smp2p)
 {
@@ -274,6 +271,9 @@ static void qcom_smp2p_notify_in(struct qcom_smp2p *smp2p)
 
 		status = val ^ entry->last_value;
 		entry->last_value = val;
+
+		/* Ensure irq_pending is read correctly */
+		mb();
 		status |= *entry->irq_pending;
 
 		/* No changes of this entry? */
@@ -288,11 +288,7 @@ static void qcom_smp2p_notify_in(struct qcom_smp2p *smp2p)
 			    (!(val & BIT(i)) && test_bit(i, entry->irq_falling))) {
 				irq_pin = irq_find_mapping(entry->domain, i);
 				handle_nested_irq(irq_pin);
-
-				if (test_bit(i, entry->irq_enabled))
-					clear_bit(i, entry->irq_pending);
-				else
-					set_bit(i, entry->irq_pending);
+				clear_bit(i, entry->irq_pending);
 			}
 		}
 	}
@@ -391,11 +387,28 @@ static int smp2p_set_irq_type(struct irq_data *irqd, unsigned int type)
 	return 0;
 }
 
+static int smp2p_retrigger_irq(struct irq_data *irqd)
+{
+	struct smp2p_entry *entry = irq_data_get_irq_chip_data(irqd);
+	irq_hw_number_t irq = irqd_to_hwirq(irqd);
+
+	SMP2P_INFO("%d: %s: %lu\n", entry->smp2p->remote_pid, entry->name, irq);
+	set_bit(irq, entry->irq_pending);
+
+	/* Ensure irq_pending is visible to all cpus that retried interrupt
+	 * can run on
+	 */
+	mb();
+
+	return 0;
+}
+
 static struct irq_chip smp2p_irq_chip = {
 	.name           = "smp2p",
 	.irq_mask       = smp2p_mask_irq,
 	.irq_unmask     = smp2p_unmask_irq,
 	.irq_set_type	= smp2p_set_irq_type,
+	.irq_retrigger	= smp2p_retrigger_irq,
 };
 
 static int smp2p_irq_map(struct irq_domain *d,
@@ -435,15 +448,16 @@ static int qcom_smp2p_inbound_entry(struct qcom_smp2p *smp2p,
 static int smp2p_update_bits(void *data, u32 mask, u32 value)
 {
 	struct smp2p_entry *entry = data;
+	unsigned long flags;
 	u32 orig;
 	u32 val;
 
-	spin_lock(&entry->lock);
+	spin_lock_irqsave(&entry->lock, flags);
 	val = orig = readl(entry->value);
 	val &= ~mask;
 	val |= value;
 	writel(val, entry->value);
-	spin_unlock(&entry->lock);
+	spin_unlock_irqrestore(&entry->lock, flags);
 	SMP2P_INFO("%d: %s: orig:0x%0x new:0x%0x\n",
 		   entry->smp2p->remote_pid, entry->name, orig, val);
 
@@ -677,7 +691,7 @@ static int qcom_smp2p_probe(struct platform_device *pdev)
 
 	ret = devm_request_threaded_irq(&pdev->dev, smp2p->irq,
 					qcom_smp2p_isr, qcom_smp2p_intr,
-					IRQF_NO_SUSPEND | IRQF_ONESHOT,
+					IRQF_ONESHOT,
 					"smp2p", (void *)smp2p);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to request interrupt\n");

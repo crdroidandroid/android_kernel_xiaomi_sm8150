@@ -652,10 +652,12 @@ enum sde_clk_ctrl_type {
 /* struct sde_clk_ctrl_reg : Clock control register
  * @reg_off:           register offset
  * @bit_off:           bit offset
+ * @val:               current bit value
  */
 struct sde_clk_ctrl_reg {
 	u32 reg_off;
 	u32 bit_off;
+	int val;
 };
 
 /* struct sde_mdp_cfg : MDP TOP-BLK instance info
@@ -1057,6 +1059,7 @@ struct sde_perf_cdp_cfg {
  * @cdp_cfg            cdp use case configurations
  * @cpu_mask:          pm_qos cpu mask value
  * @cpu_dma_latency:   pm_qos cpu dma latency value
+ * @cpu_irq_latency:   pm_qos cpu irq latency value
  * @axi_bus_width:     axi bus width value in bytes
  * @num_mnoc_ports:    number of mnoc ports
  */
@@ -1085,6 +1088,7 @@ struct sde_perf_cfg {
 	struct sde_perf_cdp_cfg cdp_cfg[SDE_PERF_CDP_USAGE_MAX];
 	u32 cpu_mask;
 	u32 cpu_dma_latency;
+	u32 cpu_irq_latency;
 	u32 axi_bus_width;
 	u32 num_mnoc_ports;
 };

@@ -53,11 +53,6 @@ enum dsi_backlight_type {
 	DSI_BACKLIGHT_MAX,
 };
 
-enum dsi_doze_mode_type {
-	DSI_DOZE_LPM = 0,
-	DSI_DOZE_HBM,
-};
-
 enum bl_update_flag {
 	BL_UPDATE_DELAY_UNTIL_FIRST_FRAME,
 	BL_UPDATE_NONE,
@@ -89,6 +84,13 @@ struct dsi_dfps_capabilities {
 	u32 *dfps_list;
 	u32 dfps_list_len;
 	bool dfps_support;
+};
+
+struct dsi_qsync_capabilities {
+	/* qsync disabled if qsync_min_fps = 0 */
+	u32 qsync_min_fps;
+	u32 *qsync_min_fps_list;
+	int qsync_min_fps_list_len;
 };
 
 struct dsi_dyn_clk_caps {
@@ -123,9 +125,9 @@ struct dsi_backlight_config {
 	u32 bl_level;
 	u32 bl_scale;
 	u32 bl_scale_ad;
+	bool bl_inverted_dbv;
 	u32 bl_doze_lpm;
 	u32 bl_doze_hbm;
-	bool bl_inverted_dbv;
 
 	int en_gpio;
 	bool dcs_type_ss;
@@ -216,6 +218,8 @@ struct dsi_panel {
 
 	struct dsi_parser_utils utils;
 
+	u32 init_delay_us;
+
 	bool lp11_init;
 	bool ulps_feature_enabled;
 	bool ulps_suspend_enabled;
@@ -224,7 +228,7 @@ struct dsi_panel {
 
 	bool panel_initialized;
 	bool te_using_watchdog_timer;
-	u32 qsync_min_fps;
+	struct dsi_qsync_capabilities qsync_caps;
 
 	char dsc_pps_cmd[DSI_CMD_PPS_SIZE];
 	enum dsi_dms_mode dms_mode;
@@ -233,10 +237,9 @@ struct dsi_panel {
 	int power_mode;
 	enum dsi_panel_physical_type panel_type;
 
-	bool doze_enabled;
-	enum dsi_doze_mode_type doze_mode;
-
 	int hbm_mode;
+	bool resend_ea;
+	bool resend_ea_hbm;
 
 	struct brightness_alpha_pair *fod_dim_lut;
 	u32 fod_dim_lut_count;
@@ -360,9 +363,8 @@ int dsi_panel_parse_esd_reg_read_configs(struct dsi_panel *panel);
 
 void dsi_panel_ext_bridge_put(struct dsi_panel *panel);
 
-int dsi_panel_set_doze_status(struct dsi_panel *panel, bool status);
-
-int dsi_panel_set_doze_mode(struct dsi_panel *panel, enum dsi_doze_mode_type mode);
+void dsi_panel_calc_dsi_transfer_time(struct dsi_host_common_cfg *config,
+		struct dsi_display_mode *mode, u32 frame_threshold_us);
 
 int dsi_panel_set_fod_hbm(struct dsi_panel *panel, bool status);
 

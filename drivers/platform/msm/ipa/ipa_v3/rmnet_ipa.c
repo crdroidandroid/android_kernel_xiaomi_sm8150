@@ -1235,9 +1235,9 @@ static int ipa3_wwan_change_mtu(struct net_device *dev, int new_mtu)
  * later
  * -EFAULT: Error while transmitting the skb
  */
-static int ipa3_wwan_xmit(struct sk_buff *skb, struct net_device *dev)
+static netdev_tx_t ipa3_wwan_xmit(struct sk_buff *skb, struct net_device *dev)
 {
-	int ret = 0;
+	netdev_tx_t ret = NETDEV_TX_OK;
 	bool qmap_check;
 	struct ipa3_wwan_private *wwan_ptr = netdev_priv(dev);
 	unsigned long flags;
@@ -2926,8 +2926,9 @@ static int ipa3_wwan_remove(struct platform_device *pdev)
 	if (ipa3_rmnet_res.ipa_napi_enable)
 		netif_napi_del(&(rmnet_ipa3_ctx->wwan_priv->napi));
 	mutex_unlock(&rmnet_ipa3_ctx->pipe_handle_guard);
-	IPAWANINFO("rmnet_ipa unregister_netdev\n");
+	IPAWANDBG("rmnet_ipa unregister_netdev started\n");
 	unregister_netdev(IPA_NETDEV());
+	IPAWANDBG("rmnet_ipa unregister_netdev completed\n");
 	if (ipa3_ctx->use_ipa_pm)
 		ipa3_wwan_deregister_netdev_pm_client();
 	else
@@ -4649,9 +4650,9 @@ int rmnet_ipa3_query_per_client_stats(
 		 */
 		if (data->disconnect_clnt &&
 			lan_client->inited) {
-			IPAWANERR("Client not inited. Try again.\n");
+			IPAWANERR("Client not inited.\n");
 			mutex_unlock(&rmnet_ipa3_ctx->per_client_stats_guard);
-			return -EAGAIN;
+			return -EALREADY;
 		}
 
 	} else {
@@ -4831,9 +4832,9 @@ int rmnet_ipa3_query_per_client_stats_v2(
 		 */
 		if (data->disconnect_clnt &&
 			rmnet_ipa3_check_any_client_inited(data->device_type)) {
-			IPAWANERR("CLient not inited. Try again.\n");
+			IPAWANERR("CLient not inited.\n");
 			mutex_unlock(&rmnet_ipa3_ctx->per_client_stats_guard);
-			return -EAGAIN;
+			return -EALREADY;
 		}
 		lan_clnt_idx = LAN_STATS_FOR_ALL_CLIENTS;
 	}

@@ -1182,6 +1182,28 @@ static int override_release(char __user *release, size_t len)
 	return ret;
 }
 
+static int override_version(struct new_utsname __user *name)
+{
+#ifdef CONFIG_F2FS_REPORT_FAKE_KERNEL_VERSION
+	int ret;
+
+	if (strcmp(current->comm, "fsck.f2fs"))
+		return 0;
+
+	ret = copy_to_user(name->release, CONFIG_F2FS_FAKE_KERNEL_RELEASE,
+			   strlen(CONFIG_F2FS_FAKE_KERNEL_RELEASE) + 1);
+	if (ret)
+		return ret;
+
+	ret = copy_to_user(name->version, CONFIG_F2FS_FAKE_KERNEL_VERSION,
+			   strlen(CONFIG_F2FS_FAKE_KERNEL_VERSION) + 1);
+
+	return ret;
+#else
+	return 0;
+#endif
+}
+
 SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
 {
 	struct new_utsname tmp;
@@ -1195,6 +1217,8 @@ SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
 	if (override_release(name->release, sizeof(name->release)))
 		return -EFAULT;
 	if (override_architecture(name))
+		return -EFAULT;
+	if (override_version(name))
 		return -EFAULT;
 	return 0;
 }
@@ -1225,10 +1249,12 @@ SYSCALL_DEFINE1(uname, struct old_utsname __user *, name)
 
 SYSCALL_DEFINE1(olduname, struct oldold_utsname __user *, name)
 {
-	struct oldold_utsname tmp = {};
+	struct oldold_utsname tmp;
 
 	if (!name)
 		return -EFAULT;
+
+	memset(&tmp, 0, sizeof(tmp));
 
 	down_read(&uts_sem);
 	memcpy(&tmp.sysname, &utsname()->sysname, __OLD_UTS_LEN);
@@ -1878,13 +1904,6 @@ static int validate_prctl_map(struct prctl_mm_map *prctl_map)
 #undef __prctl_check_order
 
 	error = -EINVAL;
-
-	/*
-	 * @brk should be after @end_data in traditional maps.
-	 */
-	if (prctl_map->start_brk <= prctl_map->end_data ||
-	    prctl_map->brk <= prctl_map->end_data)
-		goto out;
 
 	/*
 	 * Neither we should allow to override limits if they set.

@@ -71,6 +71,17 @@ static void dwmac4_dma_axi(void __iomem *ioaddr, struct stmmac_axi *axi)
 	writel(value, ioaddr + DMA_SYS_BUS_MODE);
 }
 
+static void dwmac4_dma_set_rx_bufsz(void __iomem *ioaddr, u32 buff_size,
+				    u32 chan)
+{
+	u32 value;
+
+	value = readl_relaxed(ioaddr + DMA_CHAN_RX_CONTROL(chan));
+	buff_size = buff_size >> DMA_BUS_MODE_RBSZ3_SHIFT;
+	value = value | (buff_size  << DMA_BUS_MODE_RBSZ4_SHIFT);
+	writel_relaxed(value, ioaddr + DMA_CHAN_RX_CONTROL(chan));
+}
+
 static void dwmac4_dma_init_rx_chan(void __iomem *ioaddr,
 				    struct stmmac_dma_cfg *dma_cfg,
 				    u32 dma_rx_phy, u32 chan)
@@ -112,6 +123,23 @@ static void dwmac4_dma_init_channel(void __iomem *ioaddr,
 
 	/* Mask interrupts by writing to CSR7 */
 	writel(DMA_CHAN_INTR_DEFAULT_MASK,
+	       ioaddr + DMA_CHAN_INTR_ENA(chan));
+}
+
+static void dwmac410_dma_init_channel(void __iomem *ioaddr,
+				      struct stmmac_dma_cfg *dma_cfg, u32 chan)
+{
+	u32 value;
+
+	/* common channel control register config */
+	value = readl(ioaddr + DMA_CHAN_CONTROL(chan));
+	if (dma_cfg->pblx8)
+		value = value | DMA_BUS_MODE_PBL;
+
+	writel(value, ioaddr + DMA_CHAN_CONTROL(chan));
+
+	/* Mask interrupts by writing to CSR7 */
+	writel(DMA_CHAN_INTR_DEFAULT_MASK_4_10,
 	       ioaddr + DMA_CHAN_INTR_ENA(chan));
 }
 
@@ -419,6 +447,7 @@ const struct stmmac_dma_ops dwmac4_dma_ops = {
 	.init_chan = dwmac4_dma_init_channel,
 	.init_rx_chan = dwmac4_dma_init_rx_chan,
 	.init_tx_chan = dwmac4_dma_init_tx_chan,
+	.set_rx_buff = dwmac4_dma_set_rx_bufsz,
 	.axi = dwmac4_dma_axi,
 	.dump_regs = dwmac4_dump_dma_regs,
 	.dma_rx_mode = dwmac4_dma_rx_chan_op_mode,
@@ -429,6 +458,10 @@ const struct stmmac_dma_ops dwmac4_dma_ops = {
 	.stop_tx = dwmac4_dma_stop_tx,
 	.start_rx = dwmac4_dma_start_rx,
 	.stop_rx = dwmac4_dma_stop_rx,
+	.start_tx_chan = dwmac4_dma_start_tx_chan,
+	.stop_tx_chan = dwmac4_dma_stop_tx_chan,
+	.start_rx_chan = dwmac4_dma_start_rx_chan,
+	.stop_rx_chan = dwmac4_dma_stop_rx_chan,
 	.dma_interrupt = dwmac4_dma_interrupt,
 	.get_hw_feature = dwmac4_get_hw_feature,
 	.rx_watchdog = dwmac4_rx_watchdog,
@@ -443,9 +476,10 @@ const struct stmmac_dma_ops dwmac4_dma_ops = {
 const struct stmmac_dma_ops dwmac410_dma_ops = {
 	.reset = dwmac4_dma_reset,
 	.init = dwmac4_dma_init,
-	.init_chan = dwmac4_dma_init_channel,
+	.init_chan = dwmac410_dma_init_channel,
 	.init_rx_chan = dwmac4_dma_init_rx_chan,
 	.init_tx_chan = dwmac4_dma_init_tx_chan,
+	.set_rx_buff = dwmac4_dma_set_rx_bufsz,
 	.axi = dwmac4_dma_axi,
 	.dump_regs = dwmac4_dump_dma_regs,
 	.dma_rx_mode = dwmac4_dma_rx_chan_op_mode,
@@ -456,6 +490,10 @@ const struct stmmac_dma_ops dwmac410_dma_ops = {
 	.stop_tx = dwmac4_dma_stop_tx,
 	.start_rx = dwmac4_dma_start_rx,
 	.stop_rx = dwmac4_dma_stop_rx,
+	.start_tx_chan = dwmac4_dma_start_tx_chan,
+	.stop_tx_chan = dwmac4_dma_stop_tx_chan,
+	.start_rx_chan = dwmac4_dma_start_rx_chan,
+	.stop_rx_chan = dwmac4_dma_stop_rx_chan,
 	.dma_interrupt = dwmac4_dma_interrupt,
 	.get_hw_feature = dwmac4_get_hw_feature,
 	.rx_watchdog = dwmac4_rx_watchdog,

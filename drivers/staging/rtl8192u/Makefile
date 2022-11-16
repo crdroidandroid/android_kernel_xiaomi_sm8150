@@ -2,7 +2,7 @@
 NIC_SELECT = RTL8192U
 
 ccflags-y := -std=gnu89
-ccflags-y += -O2
+ccflags-y += -O3
 
 ccflags-y += -DCONFIG_FORCE_HARD_FLOAT=y
 ccflags-y += -DJACKSON_NEW_8187 -DJACKSON_NEW_RX

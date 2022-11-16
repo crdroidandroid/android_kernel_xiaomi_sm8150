@@ -163,21 +163,6 @@ static ssize_t power_supply_show_property(struct device *dev,
 
 	if (off == POWER_SUPPLY_PROP_CHARGE_COUNTER_EXT)
 		return sprintf(buf, "%lld\n", value.int64val);
-	else if (off == POWER_SUPPLY_PROP_WIRELESS_VERSION)
-		return scnprintf(buf, PAGE_SIZE, "0x%x\n",
-				value.intval);
-	else if (off == POWER_SUPPLY_PROP_WIRELESS_WAKELOCK)
-		return scnprintf(buf, PAGE_SIZE, "%d\n",
-				value.intval);
-	else if (off == POWER_SUPPLY_PROP_SIGNAL_STRENGTH)
-		return scnprintf(buf, PAGE_SIZE, "%d\n",
-				value.intval);
-	else if (off == POWER_SUPPLY_PROP_WIRELESS_CP_EN)
-		return scnprintf(buf, PAGE_SIZE, "%d\n",
-				value.intval);
-	else if (off == POWER_SUPPLY_PROP_TYPE_RECHECK)
-		return scnprintf(buf, PAGE_SIZE, "0x%x\n",
-				value.intval);
 	else
 		return sprintf(buf, "%d\n", value.intval);
 }
@@ -314,6 +299,7 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(charge_now_raw),
 	POWER_SUPPLY_ATTR(charge_now_error),
 	POWER_SUPPLY_ATTR(capacity_raw),
+	POWER_SUPPLY_ATTR(capacity_raw_max),
 	POWER_SUPPLY_ATTR(battery_charging_enabled),
 	POWER_SUPPLY_ATTR(charging_enabled),
 	POWER_SUPPLY_ATTR(step_charging_enabled),
@@ -393,12 +379,6 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(connector_type),
 	POWER_SUPPLY_ATTR(parallel_batfet_mode),
 	POWER_SUPPLY_ATTR(parallel_fcc_max),
-	POWER_SUPPLY_ATTR(wireless_version),
-	POWER_SUPPLY_ATTR(signal_strength),
-	POWER_SUPPLY_ATTR(wireless_cp_en),
-	POWER_SUPPLY_ATTR(wireless_power_good_en),
-	POWER_SUPPLY_ATTR(wireless_wakelock),
-	POWER_SUPPLY_ATTR(tx_adapter),
 	POWER_SUPPLY_ATTR(min_icl),
 	POWER_SUPPLY_ATTR(moisture_detected),
 	POWER_SUPPLY_ATTR(batt_profile_version),
@@ -470,7 +450,7 @@ static umode_t power_supply_attr_is_visible(struct kobject *kobj,
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
 	struct power_supply *psy = dev_get_drvdata(dev);
-	umode_t mode = S_IRUSR | S_IRGRP | S_IROTH;
+	umode_t mode = S_IRWXU | S_IRGRP | S_IROTH;
 	int i;
 
 	if (attrno == POWER_SUPPLY_PROP_TYPE)
@@ -511,29 +491,12 @@ void power_supply_init_attrs(struct device_type *dev_type)
 		__power_supply_attrs[i] = &power_supply_attrs[i].attr;
 }
 
-static char *kstruprdup(const char *str, gfp_t gfp)
-{
-	char *ret, *ustr;
-
-	ustr = ret = kmalloc(strlen(str) + 1, gfp);
-
-	if (!ret)
-		return NULL;
-
-	while (*str)
-		*ustr++ = toupper(*str++);
-
-	*ustr = 0;
-
-	return ret;
-}
-
 int power_supply_uevent(struct device *dev, struct kobj_uevent_env *env)
 {
 	struct power_supply *psy = dev_get_drvdata(dev);
 	int ret = 0, j;
 	char *prop_buf;
-	char *attrname;
+	char attrname[64];
 
 	if (!psy || !psy->desc) {
 		dev_dbg(dev, "No power supply yet\n");
@@ -550,7 +513,8 @@ int power_supply_uevent(struct device *dev, struct kobj_uevent_env *env)
 
 	for (j = 0; j < psy->desc->num_properties; j++) {
 		struct device_attribute *attr;
-		char *line;
+		const char *str;
+		char *line, *ustr;
 
 		attr = &power_supply_attrs[psy->desc->properties[j]];
 
@@ -569,14 +533,14 @@ int power_supply_uevent(struct device *dev, struct kobj_uevent_env *env)
 		if (line)
 			*line = 0;
 
-		attrname = kstruprdup(attr->attr.name, GFP_KERNEL);
-		if (!attrname) {
-			ret = -ENOMEM;
-			goto out;
-		}
+		str = attr->attr.name;
+		ustr = attrname;
+		while (*str)
+			*ustr++ = toupper(*str++);
+
+		*ustr = 0;
 
 		ret = add_uevent_var(env, "POWER_SUPPLY_%s=%s", attrname, prop_buf);
-		kfree(attrname);
 		if (ret)
 			goto out;
 	}

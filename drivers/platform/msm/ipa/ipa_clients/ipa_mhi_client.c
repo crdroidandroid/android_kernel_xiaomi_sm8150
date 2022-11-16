@@ -137,7 +137,7 @@ struct ipa_mhi_channel_ctx {
 	u64 event_context_addr;
 	struct ipa_mhi_ev_ctx ev_ctx_host;
 	bool brstmode_enabled;
-	union __packed gsi_channel_scratch ch_scratch;
+	union gsi_channel_scratch ch_scratch;
 	unsigned long cached_gsi_evt_ring_hdl;
 };
 
@@ -1525,7 +1525,10 @@ static enum ipa_client_type ipa3_mhi_get_client_by_chid(u32 chid)
 
 	switch (chid) {
 	case IPA_MHI_CLIENT_ADPL_IN:
-		client = IPA_CLIENT_MHI_DPL_CONS;
+		if (!ipa3_ctx->ipa_in_cpe_cfg)
+			client = IPA_CLIENT_MHI_DPL_CONS;
+		else
+			client = IPA_CLIENT_MAX;
 		break;
 	case IPA_MHI_CLIENT_IP_HW_QDSS:
 		client = IPA_CLIENT_MHI_QDSS_CONS;
@@ -1716,9 +1719,9 @@ int ipa_mhi_connect_pipe(struct ipa_mhi_connect_params *in, u32 *clnt_hdl)
 
 	return 0;
 fail_connect_pipe:
-	mutex_unlock(&mhi_client_general_mutex);
 	ipa_mhi_reset_channel(channel, true);
 fail_start_channel:
+	mutex_unlock(&mhi_client_general_mutex);
 	IPA_ACTIVE_CLIENTS_DEC_EP(in->sys.client);
 	return -EPERM;
 }

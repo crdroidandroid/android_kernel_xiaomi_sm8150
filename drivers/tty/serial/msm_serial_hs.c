@@ -3,7 +3,7 @@
  * MSM 7k High speed uart driver
  *
  * Copyright (c) 2008 Google Inc.
- * Copyright (c) 2007-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2007-2018, 2021 The Linux Foundation. All rights reserved.
  * Modified: Nick Pelly <npelly@google.com>
  *
  * All source code in this file is licensed under the following license
@@ -1869,7 +1869,7 @@ static void msm_hs_sps_tx_callback(struct sps_event_notify *notify)
 		&addr, notify->data.transfer.iovec.size,
 		notify->data.transfer.iovec.flags);
 
-	del_timer(&msm_uport->tx.tx_timeout_timer);
+	del_timer_sync(&msm_uport->tx.tx_timeout_timer);
 	MSM_HS_DBG("%s(): Queue kthread work\n", __func__);
 	kthread_queue_work(&msm_uport->tx.kworker, &msm_uport->tx.kwork);
 }
@@ -2097,9 +2097,6 @@ static void msm_hs_config_port(struct uart_port *uport, int cfg_flags)
 /*  Handle CTS changes (Called from interrupt handler) */
 static void msm_hs_handle_delta_cts_locked(struct uart_port *uport)
 {
-	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
-
-	msm_hs_resource_vote(msm_uport);
 	/* clear interrupt */
 	msm_hs_write(uport, UART_DM_CR, RESET_CTS);
 	/* Calling CLOCK API. Hence mb() requires here. */
@@ -2108,7 +2105,6 @@ static void msm_hs_handle_delta_cts_locked(struct uart_port *uport)
 
 	/* clear the IOCTL TIOCMIWAIT if called */
 	wake_up_interruptible(&uport->state->port.delta_msr_wait);
-	msm_hs_resource_unvote(msm_uport);
 }
 
 static irqreturn_t msm_hs_isr(int irq, void *dev)

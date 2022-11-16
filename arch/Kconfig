@@ -339,6 +339,13 @@ config HAVE_RCU_TABLE_FREE
 config HAVE_RCU_TABLE_INVALIDATE
 	bool
 
+config ARCH_WANT_IRQS_OFF_ACTIVATE_MM
+	bool
+	help
+	  Temporary select until all architectures can be converted to have
+	  irqs disabled over activate_mm. Architectures that do IPI based TLB
+	  shootdowns should enable this.
+
 config ARCH_HAVE_NMI_SAFE_CMPXCHG
 	bool
 
@@ -596,6 +603,37 @@ config THIN_ARCHIVES
 	  Select this if the architecture wants to use thin archives
 	  instead of ld -r to create the built-in.o files.
 
+choice
+	prompt "Kernel linker"
+	default LD_BFD if !LTO_CLANG
+	default LD_GOLD if LTO_CLANG
+	help
+	  This selects the linker that will be used to link the kernel and
+	  its composite objects.
+
+	  Note that using either ld.gold or lld is required for Clang LTO.
+	  ld.bfd will not work.
+
+config LD_BFD
+	bool "bfd"
+	depends on !LTO_CLANG
+	help
+	  Use the standard ld.bfd linker from binutils, which is usually the
+	  default. This linker does not work with Clang LTO.
+
+config LD_GOLD
+	bool "gold"
+	depends on LTO_CLANG
+	help
+	  Use the alternative ld.gold linker from binutils.
+
+config LD_LLD
+	bool "lld"
+	help
+	  Use the alternative lld linker from LLVM.
+
+endchoice
+
 config LD_DEAD_CODE_DATA_ELIMINATION
 	bool
 	help
@@ -650,6 +688,8 @@ config LTO_CLANG
 	depends on !KASAN
 	select LTO
 	select THIN_ARCHIVES
+	select LD_DEAD_CODE_DATA_ELIMINATION
+	select LD_GOLD
 	help
           This option enables clang's Link Time Optimization (LTO), which allows
           the compiler to optimize the kernel globally at link time. If you
@@ -690,6 +730,15 @@ config CFI_CLANG_SHADOW
 	help
 	  If you select this option, the kernel builds a fast look-up table of
 	  CFI check functions in loaded modules to reduce overhead.
+
+config POLLY_CLANG
+	bool "Enable LLVM's polyhedral loop optimizer (Polly) (EXPERIMENTAL)"
+	default y
+	help
+	  This option enables LLVM's polyhedral loop optimizer. Polly is able
+	  to optimize various loops throughout the kernel for maximum cache
+	  locality. This requires an LLVM toolchain explicitly compiled with
+	  Polly support.
 
 config ARCH_SUPPORTS_SHADOW_CALL_STACK
 	bool
@@ -1107,6 +1156,9 @@ config HAVE_ARCH_COMPILER_H
 	  asm/compiler.h header that should be included after
 	  linux/compiler-*.h in order to override macro definitions that those
 	  headers generally provide.
+
+config ARCH_USE_MEMREMAP_PROT
+	bool
 
 # Select if the architecture has support for applying RELR relocations.
 config ARCH_HAS_RELR

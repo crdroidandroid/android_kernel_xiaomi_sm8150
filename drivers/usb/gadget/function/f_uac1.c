@@ -23,6 +23,9 @@
 #include "u_audio.h"
 #include "u_uac1.h"
 
+/* UAC1 spec: 3.7.2.3 Audio Channel Cluster Format */
+#define UAC1_CHANNEL_MASK 0x0FFF
+
 static int generic_set_cmd(struct usb_audio_control *con, u8 cmd, int value);
 static int generic_get_cmd(struct usb_audio_control *con, u8 cmd);
 
@@ -42,6 +45,11 @@ static inline struct f_uac1 *func_to_uac1(struct usb_function *f)
 	return container_of(f, struct f_uac1, g_audio.func);
 }
 
+static inline struct f_uac1_opts *g_audio_to_uac1_opts(struct g_audio *audio)
+{
+	return container_of(audio->func.fi, struct f_uac1_opts, func_inst);
+}
+
 /*
  * DESCRIPTORS ... most are static, but strings and full
  * configuration descriptors are built on demand.
@@ -59,6 +67,17 @@ static inline struct f_uac1 *func_to_uac1(struct usb_function *f)
 #define F_AUDIO_AS_IN_INTERFACE		2
 /* Number of streaming interfaces */
 #define F_AUDIO_NUM_INTERFACES		2
+
+static struct usb_interface_assoc_descriptor iad_desc = {
+	.bLength = sizeof(iad_desc),
+	.bDescriptorType = USB_DT_INTERFACE_ASSOCIATION,
+
+	.bFirstInterface = 0,
+	.bInterfaceCount = 3,
+	.bFunctionClass = USB_CLASS_AUDIO,
+	.bFunctionSubClass = USB_SUBCLASS_AUDIOSTREAMING,
+	.bFunctionProtocol = UAC_VERSION_1,
+};
 
 /* B.3.1  Standard AC Interface Descriptor */
 static struct usb_interface_descriptor ac_interface_desc = {
@@ -358,6 +377,7 @@ static struct uac_iso_endpoint_descriptor as_iso_in_desc = {
 };
 
 static struct usb_descriptor_header *f_audio_desc[] = {
+	(struct usb_descriptor_header *)&iad_desc,
 	(struct usb_descriptor_header *)&ac_interface_desc,
 	(struct usb_descriptor_header *)&ac_header_desc,
 
@@ -391,6 +411,7 @@ static struct usb_descriptor_header *f_audio_desc[] = {
 };
 
 static struct usb_descriptor_header *f_audio_ss_desc[] = {
+	(struct usb_descriptor_header *)&iad_desc,
 	(struct usb_descriptor_header *)&ac_interface_desc,
 	(struct usb_descriptor_header *)&ac_header_desc,
 
@@ -755,17 +776,49 @@ static void f_audio_disable(struct usb_function *f)
 	uac1->as_out_alt = 0;
 	uac1->as_in_alt = 0;
 
+	u_audio_stop_playback(&uac1->g_audio);
 	u_audio_stop_capture(&uac1->g_audio);
 	u_audio_stop_playback(&uac1->g_audio);
 }
 
 /*-------------------------------------------------------------------------*/
 
+static int f_audio_validate_opts(struct g_audio *audio, struct device *dev)
+{
+	struct f_uac1_opts *opts = g_audio_to_uac1_opts(audio);
+
+	if (!opts->p_chmask && !opts->c_chmask) {
+		dev_err(dev, "Error: no playback and capture channels\n");
+		return -EINVAL;
+	} else if (opts->p_chmask & ~UAC1_CHANNEL_MASK) {
+		dev_err(dev, "Error: unsupported playback channels mask\n");
+		return -EINVAL;
+	} else if (opts->c_chmask & ~UAC1_CHANNEL_MASK) {
+		dev_err(dev, "Error: unsupported capture channels mask\n");
+		return -EINVAL;
+	} else if ((opts->p_ssize < 1) || (opts->p_ssize > 4)) {
+		dev_err(dev, "Error: incorrect playback sample size\n");
+		return -EINVAL;
+	} else if ((opts->c_ssize < 1) || (opts->c_ssize > 4)) {
+		dev_err(dev, "Error: incorrect capture sample size\n");
+		return -EINVAL;
+	} else if (!opts->p_srate) {
+		dev_err(dev, "Error: incorrect playback sampling rate\n");
+		return -EINVAL;
+	} else if (!opts->c_srate) {
+		dev_err(dev, "Error: incorrect capture sampling rate\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /* audio function driver setup/binding */
 static int f_audio_bind(struct usb_configuration *c, struct usb_function *f)
 {
 	struct usb_composite_dev	*cdev = c->cdev;
 	struct usb_gadget		*gadget = cdev->gadget;
+	struct device			*dev = &gadget->dev;
 	struct f_uac1			*uac1 = func_to_uac1(f);
 	struct g_audio			*audio = func_to_g_audio(f);
 	struct f_uac1_opts		*audio_opts;
@@ -774,6 +827,10 @@ static int f_audio_bind(struct usb_configuration *c, struct usb_function *f)
 	u8				*sam_freq;
 	int				rate;
 	int				status;
+
+	status = f_audio_validate_opts(audio, dev);
+	if (status)
+		return status;
 
 	audio_opts = container_of(f->fi, struct f_uac1_opts, func_inst);
 
@@ -819,6 +876,7 @@ static int f_audio_bind(struct usb_configuration *c, struct usb_function *f)
 	if (status < 0)
 		goto fail;
 	ac_interface_desc.bInterfaceNumber = status;
+	iad_desc.bFirstInterface = status;
 	uac1->ac_intf = status;
 	uac1->ac_alt = 0;
 
@@ -1004,6 +1062,9 @@ static ssize_t f_uac1_opts_speaker_volume_show(struct config_item *item,
 	struct usb_audio_control *con;
 	int value;
 
+	if (!uac1)
+		return 0;
+
 	list_for_each_entry(cs, &uac1->cs, list) {
 		if (cs->id == FEATURE_UNIT_ID) {
 			list_for_each_entry(con, &cs->control, list) {
@@ -1029,6 +1090,9 @@ static ssize_t f_uac1_opts_mic_volume_show(struct config_item *item, char *page)
 	struct usb_audio_control_selector *cs;
 	struct usb_audio_control *con;
 	int value;
+
+	if (!uac1)
+		return 0;
 
 	list_for_each_entry(cs, &uac1->cs, list) {
 		if (cs->id == MIC_FEATURE_UNIT_ID) {
@@ -1057,6 +1121,9 @@ static ssize_t f_uac1_opts_speaker_mute_show(struct config_item *item,
 	struct usb_audio_control *con;
 	int value;
 
+	if (!uac1)
+		return 0;
+
 	list_for_each_entry(cs, &uac1->cs, list) {
 		if (cs->id == FEATURE_UNIT_ID) {
 			list_for_each_entry(con, &cs->control, list) {
@@ -1082,6 +1149,9 @@ static ssize_t f_uac1_opts_mic_mute_show(struct config_item *item, char *page)
 	struct usb_audio_control_selector *cs;
 	struct usb_audio_control *con;
 	int value;
+
+	if (!uac1)
+		return 0;
 
 	list_for_each_entry(cs, &uac1->cs, list) {
 		if (cs->id == MIC_FEATURE_UNIT_ID) {

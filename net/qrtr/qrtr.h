@@ -11,6 +11,7 @@ struct sk_buff;
 #define QRTR_EP_NET_ID_AUTO (1)
 
 #define QRTR_DEL_PROC_MAGIC	0xe111
+#define AID_VENDOR_QRTR	KGIDT_INIT(2906)
 
 /**
  * struct qrtr_endpoint - endpoint handle
@@ -34,4 +35,6 @@ void qrtr_endpoint_unregister(struct qrtr_endpoint *ep);
 int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len);
 
 int qrtr_peek_pkt_size(const void *data);
+
+int qrtr_get_header_size(const void *data);
 #endif

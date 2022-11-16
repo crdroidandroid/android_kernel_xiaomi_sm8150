@@ -1,19 +1,13 @@
 /*
- * Copyright 2015-2017 NXP Semiconductors
- * Copyright (C) 2019 XiaoMi, Inc.
+ * Copyright (C) 2014-2020 NXP Semiconductors, All Rights Reserved.
+ * Copyright 2021 GOODIX
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
  */
+
 
 #ifndef TFA_H_
 #define TFA_H_
@@ -27,30 +21,25 @@ extern struct tfa_device **devs;
  * tfa error return codes
  */
 enum tfa_error {
-        tfa_error_ok,       /**< no error */
-        tfa_error_device,   /**< no response from device */
-        tfa_error_bad_param,/**< parameter no accepted */
-        tfa_error_noclock,  /**< required clock not present */
-        tfa_error_timeout,  /**< a timeout occurred */
-        tfa_error_dsp,      /**< a DSP error was returned */
-        tfa_error_container,/**< no or wrong container file */
-        tfa_error_max       /**< impossible value, max enum */
+	tfa_error_ok,       /**< no error */
+	tfa_error_device,   /**< no response from device */
+	tfa_error_bad_param,/**< parameter no accepted */
+	tfa_error_noclock,  /**< required clock not present */
+	tfa_error_timeout,  /**< a timeout occurred */
+	tfa_error_dsp,      /**< a DSP error was returned */
+	tfa_error_container,/**< no or wrong container file */
+	tfa_error_max       /**< impossible value, max enum */
 };
 
 enum Tfa98xx_Error tfa_write_filters(struct tfa_device *tfa, int prof_idx);
 
-struct tfa_device ** tfa_devs_create(int count);
+struct tfa_device **tfa_devs_create(int count);
 void tfa_devs_destroy(int count);
 
-struct tfa_device ** tfa_get_device_struct(void);
+struct tfa_device **tfa_get_device_struct(void);
 
-/*[nxp34663] CR: support 16bit/24bit/32bit audio data. begin*/
-#ifdef __KERNEL__
-int tfa_plop_noise_interrupt(struct tfa_device *tfa, int profile, int vstep, u8 pcm_format);
-#else
 int tfa_plop_noise_interrupt(struct tfa_device *tfa, int profile, int vstep);
-#endif
-/*[nxp34663] CR: support 16bit/24bit/32bit audio data. end*/
 void tfa_lp_mode_interrupt(struct tfa_device *tfa);
+void tfa_adapt_noisemode(struct tfa_device *tfa);
 
 #endif /* TFA_H_ */

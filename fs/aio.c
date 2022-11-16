@@ -1470,23 +1470,7 @@ static int aio_prep_rw(struct kiocb *req, struct iocb *iocb)
 	req->ki_flags = iocb_flags(req->ki_filp);
 	if (iocb->aio_flags & IOCB_FLAG_RESFD)
 		req->ki_flags |= IOCB_EVENTFD;
-	req->ki_hint = ki_hint_validate(file_write_hint(req->ki_filp));
-	if (iocb->aio_flags & IOCB_FLAG_IOPRIO) {
-		/*
-		 * If the IOCB_FLAG_IOPRIO flag of aio_flags is set, then
-		 * aio_reqprio is interpreted as an I/O scheduling
-		 * class and priority.
-		 */
-		ret = ioprio_check_cap(iocb->aio_reqprio);
-		if (ret) {
-			pr_debug("aio ioprio check cap error\n");
-			return -EINVAL;
-		}
-
-		req->ki_ioprio = iocb->aio_reqprio;
-	} else
-		req->ki_ioprio = IOPRIO_PRIO_VALUE(IOPRIO_CLASS_NONE, 0);
-
+	req->ki_hint = file_write_hint(req->ki_filp);
 	ret = kiocb_set_rw_flags(req, iocb->aio_rw_flags);
 	if (unlikely(ret))
 		fput(req->ki_filp);
@@ -1705,7 +1689,6 @@ static long do_io_submit(aio_context_t ctx_id, long nr,
 	struct kioctx *ctx;
 	long ret = 0;
 	int i = 0;
-	struct blk_plug plug;
 
 	if (unlikely(nr < 0))
 		return -EINVAL;
@@ -1721,8 +1704,6 @@ static long do_io_submit(aio_context_t ctx_id, long nr,
 		pr_debug("EINVAL: invalid context id\n");
 		return -EINVAL;
 	}
-
-	blk_start_plug(&plug);
 
 	/*
 	 * AKPM: should this return a partial result if some of the IOs were
@@ -1746,7 +1727,6 @@ static long do_io_submit(aio_context_t ctx_id, long nr,
 		if (ret)
 			break;
 	}
-	blk_finish_plug(&plug);
 
 	percpu_ref_put(&ctx->users);
 	return i ? i : ret;

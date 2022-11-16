@@ -122,6 +122,10 @@ static int debug_mask;
 module_param(debug_mask, int, 0644);
 MODULE_PARM_DESC(debug_mask, "Control data packet IPC logging");
 
+static int usb0_rx_skb_threshold = 500;
+module_param(usb0_rx_skb_threshold, int, 0644);
+MODULE_PARM_DESC(usb0_rx_skb_threshold, "Throttle rx traffic in USB3");
+
 #define dbg_log_string(fmt, ...) do { \
 if ((dev->netdev_id == USBNET_RMNET_USB1 && debug_mask == 1) || \
 					debug_mask == 2) \
@@ -378,9 +382,11 @@ void usbnet_skb_return (struct usbnet *dev, struct sk_buff *skb)
 
 	flags = u64_stats_update_begin_irqsave(&stats64->syncp);
 	stats64->rx_packets++;
-	dev->net->stats.rx_packets++;
 	stats64->rx_bytes += skb->len;
-	dev->net->stats.rx_bytes += skb->len;
+	if (dev->net->netdev_ops->ndo_get_stats) {
+		dev->net->stats.rx_packets++;
+		dev->net->stats.rx_bytes += skb->len;
+	}
 	u64_stats_update_end_irqrestore(&stats64->syncp, flags);
 
 	netif_dbg(dev, rx_status, dev->net, "< rx, len %zu, type 0x%x\n",
@@ -727,9 +733,21 @@ block:
 	state = defer_bh(dev, skb, &dev->rxq, state);
 
 	if (urb) {
+		/* In high throughput ECM usecases (which does not support
+		 * aggregation) in USB3 and on systems with slower cores, the
+		 * huge number of DownLink packets can lead to a scenario where
+		 * the usbnet_bh tasklet stays suspended due to rx_complete
+		 * occupying most of the CPU cycles. That leads to OOM and WD
+		 * bark issues. Add mechanism to throttle the DL traffic based
+		 * on the size of pending SKB list. This will allow usbnet_bh
+		 * tasklet to resume execution.
+		 */
 		if (netif_running (dev->net) &&
 		    !test_bit (EVENT_RX_HALT, &dev->flags) &&
-		    state != unlink_start) {
+		    state != unlink_start &&
+		    ((dev->driver_info->flags & FLAG_THROTTLE_RX) &&
+		    (dev->udev->speed > USB_SPEED_HIGH) &&
+		    (dev->done.qlen < usb0_rx_skb_threshold))) {
 			rx_submit (dev, urb, GFP_ATOMIC);
 			usb_mark_last_busy(dev->udev);
 			return;
@@ -1337,9 +1355,11 @@ static void tx_complete (struct urb *urb)
 
 		flags = u64_stats_update_begin_irqsave(&stats64->syncp);
 		stats64->tx_packets += entry->packets;
-		dev->net->stats.tx_packets += entry->packets;
 		stats64->tx_bytes += entry->length;
-		dev->net->stats.tx_bytes += entry->length;
+		if (dev->net->netdev_ops->ndo_get_stats) {
+			dev->net->stats.tx_packets += entry->packets;
+			dev->net->stats.tx_bytes += entry->length;
+		}
 		u64_stats_update_end_irqrestore(&stats64->syncp, flags);
 	} else {
 		dev->net->stats.tx_errors++;
@@ -1874,6 +1894,11 @@ usbnet_probe (struct usb_interface *udev, const struct usb_device_id *prod)
 	if (!dev->rx_urb_size)
 		dev->rx_urb_size = dev->hard_mtu;
 	dev->maxpacket = usb_maxpacket (dev->udev, dev->out, 1);
+	if (dev->maxpacket == 0) {
+		/* that is a broken device */
+		status = -ENODEV;
+		goto out4;
+	}
 
 	/* let userspace know we have a random address */
 	if (ether_addr_equal(net->dev_addr, node_id))

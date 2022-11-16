@@ -2,7 +2,6 @@
  * Goodix GTX5 tools Dirver
  *
  * Copyright (C) 2015 - 2016 Goodix, Inc.
- * Copyright (C) 2019 XiaoMi, Inc.
  * Authors:  Wang Yafei <wangyafei@goodix.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -296,7 +295,7 @@ err_out:
 
 */
 
-int sync_read_rawdata (unsigned int reg,
+int sync_read_rawdata(unsigned int reg,
 		unsigned char *data, unsigned int len)
 
 {
@@ -601,6 +600,7 @@ static long goodix_tools_compat_ioctl(struct file *file, unsigned int cmd,
 static int goodix_tools_open(struct inode *inode, struct file *filp)
 {
 	int ret = 0;
+
 	filp->private_data = goodix_tools_dev;
 	ts_info("tools open");
 	/* Only the first time open device need to register module */

@@ -67,6 +67,27 @@ struct drm_device {
 	struct mutex filelist_mutex;
 	struct list_head filelist;
 
+	/**
+	 * @filelist_internal:
+	 *
+	 * List of open DRM files for in-kernel clients. Protected by @filelist_mutex.
+	 */
+	struct list_head filelist_internal;
+
+	/**
+	 * @clientlist_mutex:
+	 *
+	 * Protects @clientlist access.
+	 */
+	struct mutex clientlist_mutex;
+
+	/**
+	 * @clientlist:
+	 *
+	 * List of in-kernel clients. Protected by @clientlist_mutex.
+	 */
+	struct list_head clientlist;
+
 	/** \name Memory management */
 	/*@{ */
 	struct list_head maplist;	/**< Linked list of regions */
@@ -185,6 +206,8 @@ struct drm_device {
 	struct drm_vma_offset_manager *vma_offset_manager;
 	/*@} */
 	int switch_power_state;
+	int doze_state;
+	int pre_state;
 };
 
 #endif

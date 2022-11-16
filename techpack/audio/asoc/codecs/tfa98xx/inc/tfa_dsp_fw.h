@@ -1,18 +1,11 @@
 /*
- * Copyright 2014-2017 NXP Semiconductors
- * Copyright (C) 2019 XiaoMi, Inc.
+ * Copyright (C) 2014-2020 NXP Semiconductors, All Rights Reserved.
+ * Copyright 2021 GOODIX
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
  */
 
 #ifndef TFA98XX_INTERNALS_H
@@ -35,7 +28,7 @@ int tfadsp_fw_get_api_version(struct tfa_device *tfa, uint8_t *buffer);
 #define FW_MAXTAG 150
 int tfadsp_fw_get_tag(struct tfa_device *tfa, uint8_t *buffer);
 int tfadsp_fw_get_status_change(struct tfa_device *tfa, uint8_t *buffer);
-int tfadsp_fw_set_re25(struct tfa_device *tfa, int prim, int sec );
+int tfadsp_fw_set_re25(struct tfa_device *tfa, int prim, int sec);
 int tfadsp_fw_get_re25(struct tfa_device *tfa, uint8_t *buffer);
 
 /*
@@ -60,7 +53,7 @@ enum tfa_fw_event { /* not all available on each device */
 #define MODULE_SPEAKERBOOST     1
 #define MODULE_BIQUADFILTERBANK 2
 #define MODULE_TAPTRIGGER		5
-#define MODULE_SETRE 			9
+#define MODULE_SETRE			9
 
 /* RPC commands */
 /* SET */
@@ -81,7 +74,7 @@ enum tfa_fw_event { /* not all available on each device */
 #define FW_PAR_ID_GET_FEATURE_INFO      0x85
 #define FW_PAR_ID_GET_MEMTRACK          0x8B
 #define FW_PAR_ID_GET_TAG               0xFF
-#define FW_PAR_ID_GET_API_VERSION 		0xFE
+#define FW_PAR_ID_GET_API_VERSION		0xFE
 #define FW_PAR_ID_GET_STATUS_CHANGE		0x8D
 
 /* Load a full model into SpeakerBoost. */
@@ -132,8 +125,8 @@ enum tfa_fw_event { /* not all available on each device */
 #define BFB_PAR_ID_GET_CONFIG           0x81
 
 /* for compatibility */
-#define FW_PARAM_GET_STATE        	FW_PAR_ID_GLOBAL_GET_INFO
-#define FW_PARAM_GET_FEATURE_BITS 	FW_PAR_ID_GET_FEATURE_BITS
+#define FW_PARAM_GET_STATE		FW_PAR_ID_GLOBAL_GET_INFO
+#define FW_PARAM_GET_FEATURE_BITS	FW_PAR_ID_GET_FEATURE_BITS
 
 /* RPC Status results */
 #define STATUS_OK                  0
@@ -145,7 +138,7 @@ enum tfa_fw_event { /* not all available on each device */
 #define TFA2_MAX_PARAM_SIZE (507*3) /* TFA2 */
 #define TFA1_MAX_PARAM_SIZE (145*3) /* TFA1 */
 
-#define ROUND_DOWN(a,n) (((a)/(n))*(n))
+#define ROUND_DOWN(a, n) (((a)/(n))*(n))
 
 /* feature bits */
 #define FEATURE1_TCOEF 0x100 /* bit8 set means tCoefA expected */
@@ -159,9 +152,9 @@ enum tfa_fw_event { /* not all available on each device */
 #define TFA2_FW_XMEM_CMD_COUNT			520
 
 /* note that the following defs rely on the handle variable */
-#define TFA_FW_XMEM_CALIBRATION_DONE 	TFA_FAM_FW(tfa,XMEM_CALIBRATION_DONE)
-#define TFA_FW_XMEM_COUNT_BOOT 			TFA_FAM_FW(tfa,XMEM_COUNT_BOOT)
-#define TFA_FW_XMEM_CMD_COUNT 			TFA_FAM_FW(tfa,XMEM_CMD_COUNT)
+#define TFA_FW_XMEM_CALIBRATION_DONE 	TFA_FAM_FW(tfa, XMEM_CALIBRATION_DONE)
+#define TFA_FW_XMEM_COUNT_BOOT 			TFA_FAM_FW(tfa, XMEM_COUNT_BOOT)
+#define TFA_FW_XMEM_CMD_COUNT 			TFA_FAM_FW(tfa, XMEM_CMD_COUNT)
 
 #define TFA2_FW_ReZ_SCALE	65536
 #define TFA1_FW_ReZ_SCALE	16384

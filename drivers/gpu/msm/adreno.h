@@ -476,7 +476,7 @@ enum gpu_coresight_sources {
  * @dispatcher: Container for adreno GPU dispatcher
  * @pwron_fixup: Command buffer to run a post-power collapse shader workaround
  * @pwron_fixup_dwords: Number of dwords in the command buffer
- * @input_work: Work struct for turning on the GPU after a touch event
+ * @pwr_on_work: Work struct for turning on the GPU
  * @busy_data: Struct holding GPU VBIF busy stats
  * @ram_cycles_lo: Number of DDR clock cycles for the monitor session (Only
  * DDR channel 0 read cycles in case of GBIF)
@@ -556,7 +556,7 @@ struct adreno_device {
 	struct adreno_dispatcher dispatcher;
 	struct kgsl_memdesc pwron_fixup;
 	unsigned int pwron_fixup_dwords;
-	struct work_struct input_work;
+	struct work_struct pwr_on_work;
 	struct adreno_busy_data busy_data;
 	unsigned int ram_cycles_lo;
 	unsigned int ram_cycles_lo_ch1_read;
@@ -590,7 +590,6 @@ struct adreno_device {
 	unsigned int speed_bin;
 	unsigned int quirks;
 
-	struct coresight_device *csdev[GPU_CORESIGHT_MAX];
 	uint32_t gpmu_throttle_counters[ADRENO_GPMU_THROTTLE_COUNTERS];
 	struct work_struct irq_storm_work;
 
@@ -969,9 +968,6 @@ struct adreno_gpudev {
 
 	struct adreno_perfcounters *perfcounters;
 	const struct adreno_invalid_countables *invalid_countables;
-	struct adreno_snapshot_data *snapshot_data;
-
-	struct adreno_coresight *coresight[GPU_CORESIGHT_MAX];
 
 	struct adreno_irq *irq;
 	int num_prio_levels;
@@ -980,8 +976,6 @@ struct adreno_gpudev {
 	unsigned int gbif_arb_halt_mask;
 	unsigned int gbif_gx_halt_mask;
 	/* GPU specific function hooks */
-	void (*irq_trace)(struct adreno_device *, unsigned int status);
-	void (*snapshot)(struct adreno_device *, struct kgsl_snapshot *);
 	void (*platform_setup)(struct adreno_device *);
 	void (*init)(struct adreno_device *);
 	void (*remove)(struct adreno_device *);
@@ -1036,8 +1030,6 @@ struct adreno_gpudev {
 	int (*perfcounter_update)(struct adreno_device *adreno_dev,
 				struct adreno_perfcount_register *reg,
 				bool update_reg);
-	size_t (*snapshot_preemption)(struct kgsl_device *, u8 *,
-				 size_t, void *);
 	void (*zap_shader_unload)(struct adreno_device *);
 	int (*secure_pt_hibernate)(struct adreno_device *);
 	int (*secure_pt_restore)(struct adreno_device *);
@@ -1127,7 +1119,6 @@ extern struct adreno_gpudev adreno_a5xx_gpudev;
 extern struct adreno_gpudev adreno_a6xx_gpudev;
 
 extern int adreno_wake_nice;
-extern unsigned int adreno_wake_timeout;
 
 int adreno_start(struct kgsl_device *device, int priority);
 int adreno_soft_reset(struct kgsl_device *device);
@@ -1155,9 +1146,9 @@ void adreno_shadermem_regread(struct kgsl_device *device,
 						unsigned int offsetwords,
 						unsigned int *value);
 
-void adreno_snapshot(struct kgsl_device *device,
+static inline void adreno_snapshot(struct kgsl_device *device,
 		struct kgsl_snapshot *snapshot,
-		struct kgsl_context *context);
+		struct kgsl_context *context) {}
 
 int adreno_reset(struct kgsl_device *device, int fault);
 
@@ -1215,13 +1206,12 @@ u32 adreno_get_ucode_version(const u32 *data);
 #define ADRENO_TARGET(_name, _id) \
 static inline int adreno_is_##_name(struct adreno_device *adreno_dev) \
 { \
-	return (ADRENO_GPUREV(adreno_dev) == (_id)); \
+	return 0; \
 }
 
 static inline int adreno_is_a3xx(struct adreno_device *adreno_dev)
 {
-	return ((ADRENO_GPUREV(adreno_dev) >= 300) &&
-		(ADRENO_GPUREV(adreno_dev) < 400));
+	return 0;
 }
 
 ADRENO_TARGET(a304, ADRENO_REV_A304)
@@ -1236,28 +1226,24 @@ ADRENO_TARGET(a330, ADRENO_REV_A330)
 
 static inline int adreno_is_a330v2(struct adreno_device *adreno_dev)
 {
-	return ((ADRENO_GPUREV(adreno_dev) == ADRENO_REV_A330) &&
-		(ADRENO_CHIPID_PATCH(adreno_dev->chipid) > 0));
+	return 0;
 }
 
 static inline int adreno_is_a330v21(struct adreno_device *adreno_dev)
 {
-	return ((ADRENO_GPUREV(adreno_dev) == ADRENO_REV_A330) &&
-		(ADRENO_CHIPID_PATCH(adreno_dev->chipid) > 0xF));
+	return 0;
 }
 
 static inline int adreno_is_a4xx(struct adreno_device *adreno_dev)
 {
-	return ADRENO_GPUREV(adreno_dev) >= 400 &&
-		ADRENO_GPUREV(adreno_dev) < 500;
+	return 0;
 }
 
 ADRENO_TARGET(a405, ADRENO_REV_A405);
 
 static inline int adreno_is_a405v2(struct adreno_device *adreno_dev)
 {
-	return (ADRENO_GPUREV(adreno_dev) == ADRENO_REV_A405) &&
-		(ADRENO_CHIPID_PATCH(adreno_dev->chipid) == 0x10);
+	return 0;
 }
 
 ADRENO_TARGET(a418, ADRENO_REV_A418)
@@ -1266,14 +1252,12 @@ ADRENO_TARGET(a430, ADRENO_REV_A430)
 
 static inline int adreno_is_a430v2(struct adreno_device *adreno_dev)
 {
-	return ((ADRENO_GPUREV(adreno_dev) == ADRENO_REV_A430) &&
-		(ADRENO_CHIPID_PATCH(adreno_dev->chipid) == 1));
+	return 0;
 }
 
 static inline int adreno_is_a5xx(struct adreno_device *adreno_dev)
 {
-	return ADRENO_GPUREV(adreno_dev) >= 500 &&
-			ADRENO_GPUREV(adreno_dev) < 600;
+	return 0;
 }
 
 ADRENO_TARGET(a504, ADRENO_REV_A504)
@@ -1287,51 +1271,48 @@ ADRENO_TARGET(a540, ADRENO_REV_A540)
 
 static inline int adreno_is_a530v1(struct adreno_device *adreno_dev)
 {
-	return (ADRENO_GPUREV(adreno_dev) == ADRENO_REV_A530) &&
-		(ADRENO_CHIPID_PATCH(adreno_dev->chipid) == 0);
+	return 0;
 }
 
 static inline int adreno_is_a530v2(struct adreno_device *adreno_dev)
 {
-	return (ADRENO_GPUREV(adreno_dev) == ADRENO_REV_A530) &&
-		(ADRENO_CHIPID_PATCH(adreno_dev->chipid) == 1);
+	return 0;
 }
 
 static inline int adreno_is_a530v3(struct adreno_device *adreno_dev)
 {
-	return (ADRENO_GPUREV(adreno_dev) == ADRENO_REV_A530) &&
-		(ADRENO_CHIPID_PATCH(adreno_dev->chipid) == 2);
+	return 0;
 }
 
 static inline int adreno_is_a504_to_a506(struct adreno_device *adreno_dev)
 {
-	return ADRENO_GPUREV(adreno_dev) >= 504 &&
-			ADRENO_GPUREV(adreno_dev) <= 506;
+	return 0;
 }
 
 static inline int adreno_is_a540v1(struct adreno_device *adreno_dev)
 {
-	return (ADRENO_GPUREV(adreno_dev) == ADRENO_REV_A540) &&
-		(ADRENO_CHIPID_PATCH(adreno_dev->chipid) == 0);
+	return 0;
 }
 
 static inline int adreno_is_a540v2(struct adreno_device *adreno_dev)
 {
-	return (ADRENO_GPUREV(adreno_dev) == ADRENO_REV_A540) &&
-		(ADRENO_CHIPID_PATCH(adreno_dev->chipid) == 1);
+	return 0;
 }
 
 static inline int adreno_is_a6xx(struct adreno_device *adreno_dev)
 {
-	return ADRENO_GPUREV(adreno_dev) >= 600 &&
-			ADRENO_GPUREV(adreno_dev) < 700;
+	return 1;
+}
+
+static inline int adreno_is_a640(struct adreno_device *adreno_dev)
+{
+	return 1;
 }
 
 ADRENO_TARGET(a610, ADRENO_REV_A610)
 ADRENO_TARGET(a612, ADRENO_REV_A612)
 ADRENO_TARGET(a618, ADRENO_REV_A618)
 ADRENO_TARGET(a630, ADRENO_REV_A630)
-ADRENO_TARGET(a640, ADRENO_REV_A640)
 ADRENO_TARGET(a680, ADRENO_REV_A680)
 
 /*
@@ -1340,22 +1321,17 @@ ADRENO_TARGET(a680, ADRENO_REV_A680)
  */
 static inline int adreno_is_a615_family(struct adreno_device *adreno_dev)
 {
-	unsigned int rev = ADRENO_GPUREV(adreno_dev);
-
-	return (rev == ADRENO_REV_A615 || rev == ADRENO_REV_A616 ||
-			rev == ADRENO_REV_A618);
+	return 0;
 }
 
 static inline int adreno_is_a630v1(struct adreno_device *adreno_dev)
 {
-	return (ADRENO_GPUREV(adreno_dev) == ADRENO_REV_A630) &&
-		(ADRENO_CHIPID_PATCH(adreno_dev->chipid) == 0);
+	return 0;
 }
 
 static inline int adreno_is_a630v2(struct adreno_device *adreno_dev)
 {
-	return (ADRENO_GPUREV(adreno_dev) == ADRENO_REV_A630) &&
-		(ADRENO_CHIPID_PATCH(adreno_dev->chipid) == 1);
+	return 0;
 }
 
 static inline int adreno_is_a640v1(struct adreno_device *adreno_dev)
@@ -1372,14 +1348,12 @@ static inline int adreno_is_a640v2(struct adreno_device *adreno_dev)
 
 static inline int adreno_is_a680v1(struct adreno_device *adreno_dev)
 {
-	return (ADRENO_GPUREV(adreno_dev) == ADRENO_REV_A680) &&
-		(ADRENO_CHIPID_PATCH(adreno_dev->chipid) == 0);
+	return 0;
 }
 
 static inline int adreno_is_a680v2(struct adreno_device *adreno_dev)
 {
-	return (ADRENO_GPUREV(adreno_dev) == ADRENO_REV_A680) &&
-		(ADRENO_CHIPID_PATCH(adreno_dev->chipid) == 1);
+	return 0;
 }
 
 /*
@@ -1686,16 +1660,10 @@ static inline void adreno_set_protected_registers(
 	*index = *index + 1;
 }
 
-#ifdef CONFIG_DEBUG_FS
-void adreno_debugfs_init(struct adreno_device *adreno_dev);
-void adreno_context_debugfs_init(struct adreno_device *adreno_dev,
-				struct adreno_context *ctx);
-#else
 static inline void adreno_debugfs_init(struct adreno_device *adreno_dev) { }
 static inline void adreno_context_debugfs_init(struct adreno_device *device,
 						struct adreno_context *context)
 						{ }
-#endif
 
 /**
  * adreno_compare_pm4_version() - Compare the PM4 microcode version

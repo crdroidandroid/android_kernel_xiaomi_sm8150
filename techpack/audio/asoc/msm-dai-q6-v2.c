@@ -5257,9 +5257,9 @@ static int msm_dai_q6_mi2s_hw_params(struct snd_pcm_substream *substream,
 	    mi2s_dai_data->tx_dai.mi2s_dai_data.hwfree_status))) {
 #ifdef CONFIG_SND_SOC_TFA9874_FOR_DAVI
 		if (AFE_PORT_ID_TFADSP_RX == port_id ||
-		    AFE_PORT_ID_TFADSP_TX == port_id)
+		    AFE_PORT_ID_TFADSP_TX == port_id) {
 			dev_dbg(dai->dev, "%s, port_id = 0x%x\n", __func__, port_id);
-		else
+		} else
 #endif
 		if ((mi2s_dai_data->tx_dai.mi2s_dai_data.rate !=
 		    mi2s_dai_data->rx_dai.mi2s_dai_data.rate) ||
@@ -6344,6 +6344,7 @@ static struct platform_driver msm_dai_q6_dev = {
 		.name = "msm-dai-q6-dev",
 		.owner = THIS_MODULE,
 		.of_match_table = msm_dai_q6_dev_dt_match,
+		.probe_type = PROBE_FORCE_SYNCHRONOUS,
 	},
 };
 
@@ -6381,6 +6382,7 @@ static struct platform_driver msm_dai_q6 = {
 		.name = "msm-dai-q6",
 		.owner = THIS_MODULE,
 		.of_match_table = msm_dai_q6_dt_match,
+		.probe_type = PROBE_FORCE_SYNCHRONOUS,
 	},
 };
 
@@ -6708,6 +6710,7 @@ static struct platform_driver msm_dai_tdm_q6 = {
 		.name = "msm-dai-tdm",
 		.owner = THIS_MODULE,
 		.of_match_table = msm_dai_tdm_dt_match,
+		.probe_type = PROBE_FORCE_SYNCHRONOUS,
 	},
 };
 
@@ -10363,6 +10366,7 @@ static struct platform_driver msm_dai_q6_tdm_driver = {
 		.name = "msm-dai-q6-tdm",
 		.owner = THIS_MODULE,
 		.of_match_table = msm_dai_q6_tdm_dev_dt_match,
+		.probe_type = PROBE_FORCE_SYNCHRONOUS,
 	},
 };
 

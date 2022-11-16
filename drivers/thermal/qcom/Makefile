@@ -1,6 +1,6 @@
 obj-$(CONFIG_QCOM_TSENS)	+= qcom_tsens.o
 qcom_tsens-y			+= tsens.o tsens-common.o tsens-8916.o tsens-8974.o tsens-8960.o tsens-8996.o
-obj-$(CONFIG_QTI_THERMAL_LIMITS_DCVS) += msm_lmh_dcvs.o lmh_dbg.o
+obj-y += msm_lmh_dcvs.o lmh_dbg.o
 obj-$(CONFIG_QTI_VIRTUAL_SENSOR) += qti_virtual_sensor.o
 obj-$(CONFIG_QTI_AOP_REG_COOLING_DEVICE) += regulator_aop_cdev.o
 obj-$(CONFIG_REGULATOR_COOLING_DEVICE) += regulator_cdev.o
@@ -13,3 +13,4 @@ obj-$(CONFIG_QTI_ADC_TM) += adc-tm.o adc-tm-common.o adc-tm5.o
 obj-$(CONFIG_QTI_CX_IPEAK_COOLING_DEVICE) += cx_ipeak_cdev.o
 obj-$(CONFIG_QTI_RPM_SMD_COOLING_DEVICE) += rpm_smd_cooling_device.o
 obj-$(CONFIG_QTI_BUS_SCALING_COOLING_DEVICE) += qti_bus_scaling_cdev.o
+obj-$(CONFIG_MSM_THERMAL_SIMPLE) += msm_thermal_simple.o

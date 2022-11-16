@@ -222,11 +222,13 @@ struct sde_crtc_fps_info {
  * @sbuf_rot_id_old: inline rotator id for previous commit
  * @sbuf_rot_id_delta: inline rotator id for current delta state
  * @idle_notify_work: delayed worker to notify idle timeout to user space
+ * @early_wakeup_work: work to trigger early wakeup
  * @power_event   : registered power event handle
  * @cur_perf      : current performance committed to clock/bandwidth driver
  * @rp_lock       : serialization lock for resource pool
  * @rp_head       : list of active resource pool
  * @plane_mask_old: keeps track of the planes used in the previous commit
+ * @frame_trigger_mode: frame trigger mode
  */
 struct sde_crtc {
 	struct drm_crtc base;
@@ -292,6 +294,7 @@ struct sde_crtc {
 	u32 sbuf_rot_id_old;
 	u32 sbuf_rot_id_delta;
 	struct kthread_delayed_work idle_notify_work;
+	struct kthread_work early_wakeup_work;
 
 	struct sde_power_event *power_event;
 
@@ -305,6 +308,7 @@ struct sde_crtc {
 
 	/* blob for histogram data */
 	struct drm_property_blob *hist_blob;
+	enum frame_trigger_mode_type frame_trigger_mode;
 };
 
 #define to_sde_crtc(x) container_of(x, struct sde_crtc, base)
@@ -541,6 +545,30 @@ static inline int sde_crtc_frame_pending(struct drm_crtc *crtc)
 
 	sde_crtc = to_sde_crtc(crtc);
 	return atomic_read(&sde_crtc->frame_pending);
+}
+
+/**
+ * sde_crtc_reset_hw - attempt hardware reset on errors
+ * @crtc: Pointer to DRM crtc instance
+ * @old_state: Pointer to crtc state for previous commit
+ * @recovery_events: Whether or not recovery events are enabled
+ * Returns: Zero if current commit should still be attempted
+ */
+int sde_crtc_reset_hw(struct drm_crtc *crtc, struct drm_crtc_state *old_state,
+	bool recovery_events);
+
+/**
+ * sde_crtc_request_frame_reset - requests for next frame reset
+ * @crtc: Pointer to drm crtc object
+ */
+static inline int sde_crtc_request_frame_reset(struct drm_crtc *crtc)
+{
+	struct sde_crtc *sde_crtc = to_sde_crtc(crtc);
+
+	if (sde_crtc->frame_trigger_mode == FRAME_DONE_WAIT_POSTED_START)
+		sde_crtc_reset_hw(crtc, crtc->state, false);
+
+	return 0;
 }
 
 /**

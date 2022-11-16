@@ -1018,7 +1018,9 @@ static irqreturn_t qpnp_lcdb_sc_irq_handler(int irq, void *data)
 	int rc;
 	u8 val, val2[2] = {0};
 
+	mutex_lock(&lcdb->lcdb_mutex);
 	rc = qpnp_lcdb_read(lcdb, lcdb->base + INT_RT_STATUS_REG, &val, 1);
+	mutex_unlock(&lcdb->lcdb_mutex);
 	if (rc < 0)
 		goto irq_handled;
 
@@ -1058,8 +1060,15 @@ static irqreturn_t qpnp_lcdb_sc_irq_handler(int irq, void *data)
 			/* blanking time */
 			usleep_range(2000, 2100);
 			/* Read the SC status again to confirm true SC */
+			mutex_lock(&lcdb->lcdb_mutex);
+			/*
+			 * Wait for the completion of LCDB module enable,
+			 * which could be initiated in a previous SC event,
+			 * to avoid multiple module disable/enable calls.
+			 */
 			rc = qpnp_lcdb_read(lcdb,
 				lcdb->base + INT_RT_STATUS_REG, &val, 1);
+			mutex_unlock(&lcdb->lcdb_mutex);
 			if (rc < 0)
 				goto irq_handled;
 
@@ -1281,6 +1290,17 @@ static int qpnp_lcdb_get_voltage(struct qpnp_lcdb *lcdb,
 		pr_err("Failed to read %s volatge rc=%d\n",
 			(type == LDO) ? "LDO" : "NCP", rc);
 		return rc;
+	}
+
+	if ((val & 0x80) && (type == NCP))//NCP follow 0x71 LDO
+	{
+		offset = LCDB_LDO_OUTPUT_VOLTAGE_REG;
+
+		rc = qpnp_lcdb_read(lcdb, lcdb->base + offset, &val, 1);
+		if (rc < 0) {
+				 pr_err("Failed to read NCP volatge rc=%d\n", rc);
+				 return rc;
+		}
 	}
 
 	val &= SET_OUTPUT_VOLTAGE_MASK;

@@ -99,7 +99,7 @@ modorder-target := $(obj)/modules.order
 # We keep a list of all modules in $(MODVERDIR)
 
 __build: $(if $(KBUILD_BUILTIN),$(builtin-target) $(lib-target) $(extra-y)) \
-	 $(if $(KBUILD_MODULES),$(obj-m) $(modorder-target)) \
+	 $(if $(KBUILD_MODULES),$(obj-m)) \
 	 $(subdir-ym) $(always)
 	@:
 
@@ -247,6 +247,8 @@ endif
 endif
 
 ifdef CONFIG_FTRACE_MCOUNT_RECORD
+ifndef CC_USING_RECORD_MCOUNT
+# compiler will not generate __mcount_loc use recordmcount or recordmcount.pl
 ifdef BUILD_C_RECORDMCOUNT
 ifeq ("$(origin RECORDMCOUNT_WARN)", "command line")
   RECORDMCOUNT_FLAGS = -w
@@ -287,6 +289,7 @@ cmd_record_mcount =						\
 		$(sub_cmd_record_mcount)			\
 	fi;
 endif
+endif # CC_USING_RECORD_MCOUNT
 endif # CONFIG_FTRACE_MCOUNT_RECORD
 
 ifdef CONFIG_STACK_VALIDATION
@@ -500,11 +503,10 @@ ifdef CONFIG_LTO_CLANG
     # combine symversions for later processing
     update_lto_symversions =				\
 	rm -f $@.symversions; 				\
-	for i in $(filter-out FORCE,$^); do		\
-		if [ -f $$i.symversions ]; then		\
-			cat $$i.symversions 		\
-				>> $@.symversions;	\
-		fi;					\
+	for i in $(foreach n,						\
+			$(filter-out FORCE,$^),				\
+			$(if $(wildcard $(n).symversions),$(n))); do	\
+		cat $$i.symversions >> $@.symversions;			\
 	done;
   endif
   # rebuild the symbol table with llvm-ar to include IR files

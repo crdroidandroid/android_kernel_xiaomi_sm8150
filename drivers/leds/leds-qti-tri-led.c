@@ -83,7 +83,7 @@ struct qpnp_tri_led_chip {
 	u8			bitmap;
 };
 
-enum SYSFS_NODE{
+enum SYSFS_NODE {
 	BREATH = 0,
 	STEP_MS,
 	PAUSE_LO,
@@ -652,15 +652,15 @@ err_out:
 	for (j = 0; j <= i; j++) {
 		if (j < i) {
 			sysfs_remove_files(&chip->leds[j].cdev.dev->kobj,
-				breath_attrs);
+					breath_attrs);
 			sysfs_remove_files(&chip->leds[j].cdev.dev->kobj,
-				step_ms_attrs);
+					step_ms_attrs);
 			sysfs_remove_files(&chip->leds[j].cdev.dev->kobj,
-				pause_lo_count_attrs);
+					pause_lo_count_attrs);
 			sysfs_remove_files(&chip->leds[j].cdev.dev->kobj,
-				lut_pattern_attrs);
+					lut_pattern_attrs);
 			sysfs_remove_files(&chip->leds[j].cdev.dev->kobj,
-				lo_idx_attrs);
+					lo_idx_attrs);
 		} else {
 			switch (sysfs_index) {
 				case LO_IDX:
@@ -696,6 +696,7 @@ err_out:
 					break;
 			}
 		}
+
 
 		mutex_destroy(&chip->leds[j].lock);
 	}

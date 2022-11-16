@@ -202,6 +202,7 @@ struct dsi_display {
 	struct drm_connector *ext_conn;
 
 	const char *name;
+	bool is_prim_display;
 	const char *display_type;
 	const char *dsi_type;
 	struct list_head list;
@@ -392,6 +393,15 @@ int dsi_display_get_modes(struct dsi_display *display,
  */
 void dsi_display_put_mode(struct dsi_display *display,
 	struct dsi_display_mode *mode);
+
+/**
+ * dsi_display_get_qsync_min_fps() - get qsync min fps for given fps
+ * @display:            Handle to display.
+ * @mode_fps:           Fps value of current mode
+ *
+ * Return: error code.
+ */
+int dsi_display_get_qsync_min_fps(void *dsi_display, u32 mode_fps);
 
 /**
  * dsi_display_find_mode() - retrieve cached DSI mode given relevant params

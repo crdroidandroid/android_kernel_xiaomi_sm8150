@@ -62,9 +62,9 @@ uint32_t npu_bwmon_reg_read(struct npu_device *npu_dev, uint32_t off);
 void npu_bwmon_reg_write(struct npu_device *npu_dev, uint32_t off,
 	uint32_t val);
 void npu_mem_write(struct npu_device *npu_dev, void *dst, void *src,
-	uint32_t size);
+	size_t size);
 int32_t npu_mem_read(struct npu_device *npu_dev, void *src, void *dst,
-	uint32_t size);
+	size_t size);
 uint32_t npu_qfprom_reg_read(struct npu_device *npu_dev, uint32_t off);
 
 int npu_mem_map(struct npu_client *client, int buf_hdl, uint32_t size,
@@ -90,7 +90,12 @@ void npu_disable_sys_cache(struct npu_device *npu_dev);
 void *subsystem_get_local(char *sub_system);
 void subsystem_put_local(void *sub_system_handle);
 
+#ifdef CONFIG_DEBUG_FS
 void npu_process_log_message(struct npu_device *npu_dev, uint32_t *msg,
 	uint32_t size);
+#else
+static inline void npu_process_log_message(struct npu_device *npu_dev, uint32_t *msg,
+	uint32_t size) { }
+#endif
 
 #endif /* _NPU_HW_ACCESS_H*/

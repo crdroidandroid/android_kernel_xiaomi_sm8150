@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1541,14 +1541,11 @@ static int gmu_enable_gdsc(struct gmu_device *gmu)
 }
 
 #define CX_GDSC_TIMEOUT	5000	/* ms */
-static int gmu_disable_gdsc(struct kgsl_device *device)
+static int __gmu_disable_gdsc(struct kgsl_device *device)
 {
 	struct gmu_device *gmu = KGSL_GMU_DEVICE(device);
 	int ret;
 	unsigned long t;
-
-	if (IS_ERR_OR_NULL(gmu->cx_gdsc))
-		return 0;
 
 	ret = regulator_disable(gmu->cx_gdsc);
 	if (ret) {
@@ -1578,6 +1575,26 @@ static int gmu_disable_gdsc(struct kgsl_device *device)
 	return -ETIMEDOUT;
 }
 
+static int gmu_disable_gdsc(struct kgsl_device *device)
+{
+	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
+	struct gmu_device *gmu = KGSL_GMU_DEVICE(device);
+	int ret;
+
+	if (IS_ERR_OR_NULL(gmu->cx_gdsc))
+		return 0;
+
+	if (ADRENO_QUIRK(adreno_dev, ADRENO_QUIRK_CX_GDSC))
+		regulator_set_mode(gmu->cx_gdsc, REGULATOR_MODE_IDLE);
+
+	ret = __gmu_disable_gdsc(device);
+
+	if (ADRENO_QUIRK(adreno_dev, ADRENO_QUIRK_CX_GDSC))
+		regulator_set_mode(gmu->cx_gdsc, REGULATOR_MODE_NORMAL);
+
+	return ret;
+}
+
 static int gmu_suspend(struct kgsl_device *device)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
@@ -1595,14 +1612,7 @@ static int gmu_suspend(struct kgsl_device *device)
 		return -EINVAL;
 
 	gmu_disable_clks(device);
-
-	if (ADRENO_QUIRK(adreno_dev, ADRENO_QUIRK_CX_GDSC))
-		regulator_set_mode(gmu->cx_gdsc, REGULATOR_MODE_IDLE);
-
 	gmu_disable_gdsc(device);
-
-	if (ADRENO_QUIRK(adreno_dev, ADRENO_QUIRK_CX_GDSC))
-		regulator_set_mode(gmu->cx_gdsc, REGULATOR_MODE_NORMAL);
 
 	dev_err(&gmu->pdev->dev, "Suspended GMU\n");
 	return 0;
@@ -1650,7 +1660,7 @@ static int gmu_start(struct kgsl_device *device)
 
 		/* Vote for 300MHz DDR for GMU to init */
 		ret = msm_bus_scale_client_update_request(gmu->pcl,
-				pwr->pwrlevels[pwr->default_pwrlevel].bus_freq);
+				pwr->pwrlevels[pwr->num_pwrlevels - 1].bus_freq);
 		if (ret)
 			dev_err(&gmu->pdev->dev,
 				"Failed to allocate gmu b/w: %d\n", ret);
@@ -1820,6 +1830,8 @@ static void gmu_remove(struct kgsl_device *device)
 		release_firmware(gmu->fw_image);
 		gmu->fw_image = NULL;
 	}
+
+	vfree(gmu->itcm_shadow);
 
 	gmu_memory_close(gmu);
 

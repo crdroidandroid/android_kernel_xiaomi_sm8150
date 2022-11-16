@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -25,6 +25,7 @@
 &vendor {
 	bluetooth: bt_wcn3990 {
 		compatible = "qca,wcn3990";
+		qca,bt-sw-ctrl-gpio = <&tlmm 50 0>; /* SW_CTRL */
 		qca,bt-vdd-core-supply = <&pm8150_l7>;
 		qca,bt-vdd-pa-supply = <&pm8150l_l2>;
 		qca,bt-vdd-ldo-supply = <&pm8150l_l11>;
@@ -85,6 +86,19 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&key_home_default>;
 		qcom,finger-detect-gpio = <&pm8150_gpios 1 0>;
+	};
+
+	display_panel_avdd_eldo: display-gpio-regulator@0 {
+		compatible = "regulator-fixed";
+		regulator-name = "display_panel_avdd_eldo";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-enable-ramp-delay = <233>;
+		gpio = <&tlmm 130 0>;
+		enable-active-high;
+		regulator-boot-on;
+		pinctrl-names = "default";
+		pintctrl-0 = <&display_panel_avdd_eldo_default>;
 	};
 };
 
@@ -179,6 +193,21 @@
 
 &dsi_sw43404_amoled_cmd_display {
 	qcom,dsi-display-active;
+};
+
+&tlmm {
+	display_panel_avdd_eldo_default: display_panel_avdd_eldo_default {
+		mux {
+			pins = "gpio130";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio130";
+			drive-strength = <8>;
+			bias-disable = <0>;
+			output-high;
+		};
+	};
 };
 
 &sde_dsi {
@@ -457,6 +486,12 @@
 		wake-capable-sensor;
 		trips {
 			active-config0 {
+				temperature = <125000>;
+				hysteresis = <1000>;
+				type = "passive";
+			};
+
+			active-config1 {
 				temperature = <125000>;
 				hysteresis = <1000>;
 				type = "passive";

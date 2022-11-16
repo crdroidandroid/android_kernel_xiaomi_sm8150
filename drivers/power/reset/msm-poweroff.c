@@ -313,7 +313,7 @@ static void msm_restart_prepare(const char *cmd)
 		pr_info("Forcing a warm reset of the system\n");
 
 	/* Hard reset the PMIC unless memory contents must be maintained. */
-	if (force_warm_reboot || need_warm_reset)
+	if (force_warm_reboot || need_warm_reset || in_panic)
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
 	else
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
@@ -602,7 +602,7 @@ static int msm_restart_probe(struct platform_device *pdev)
 	atomic_notifier_chain_register(&panic_notifier_list, &panic_blk);
 	np = of_find_compatible_node(NULL, NULL, DL_MODE_PROP);
 	if (!np) {
-		pr_err("unable to find DT imem DLOAD mode node\n");
+		pr_debug("unable to find DT imem DLOAD mode node\n");
 	} else {
 		dload_mode_addr = of_iomap(np, 0);
 		if (!dload_mode_addr)
@@ -611,7 +611,7 @@ static int msm_restart_probe(struct platform_device *pdev)
 
 	np = of_find_compatible_node(NULL, NULL, EDL_MODE_PROP);
 	if (!np) {
-		pr_err("unable to find DT imem EDLOAD mode node\n");
+		pr_debug("unable to find DT imem EDLOAD mode node\n");
 	} else {
 		emergency_dload_mode_addr = of_iomap(np, 0);
 		if (!emergency_dload_mode_addr)

@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, 2014-2018, 2020, The Linux Foundation. All rights
+/* Copyright (c) 2010-2012, 2014-2018, 2020-2021, The Linux Foundation. All rights
  * reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -29,8 +29,6 @@
 #include <linux/msm_bus_rules.h>
 #include "msm_bus_core.h"
 #include "msm_bus_adhoc.h"
-
-#include <trace/events/trace_msm_bus.h>
 
 #define MAX_BUFF_SIZE 4096
 #define FILL_LIMIT 128
@@ -409,9 +407,6 @@ int msm_bus_dbg_rec_transaction(const struct msm_bus_client_handle *pdata,
 	cldata->size = i;
 	rt_mutex_unlock(&msm_bus_dbg_cllist_lock);
 
-	trace_bus_update_request((int)ts.tv_sec, (int)ts.tv_nsec,
-		pdata->name, pdata->mas, pdata->slv, ab, ib);
-
 	return i;
 }
 
@@ -436,11 +431,12 @@ static int msm_bus_dbg_record_client(const struct msm_bus_scale_pdata *pdata,
 {
 	struct msm_bus_cldata *cldata;
 
-	cldata = kmalloc(sizeof(struct msm_bus_cldata), GFP_KERNEL);
+	cldata = kzalloc(sizeof(struct msm_bus_cldata), GFP_KERNEL);
 	if (!cldata) {
 		MSM_BUS_DBG("Failed to allocate memory for client data\n");
 		return -ENOMEM;
 	}
+	memset(cldata, 0, sizeof(struct msm_bus_cldata));
 	cldata->pdata = pdata;
 	cldata->index = index;
 	cldata->clid = clid;
@@ -530,14 +526,6 @@ static int msm_bus_dbg_fill_cl_buffer(const struct msm_bus_scale_pdata *pdata,
 			pdata->usecase[index].vectors[j].ib);
 	i += scnprintf(buf + i, MAX_BUFF_SIZE - i, "\n");
 
-	for (j = 0; j < pdata->usecase->num_paths; j++)
-		trace_bus_update_request((int)ts.tv_sec, (int)ts.tv_nsec,
-		pdata->name,
-		pdata->usecase[index].vectors[j].src,
-		pdata->usecase[index].vectors[j].dst,
-		pdata->usecase[index].vectors[j].ab,
-		pdata->usecase[index].vectors[j].ib);
-
 	cldata->index = index;
 	cldata->size = i;
 	rt_mutex_unlock(&msm_bus_dbg_cllist_lock);
@@ -552,7 +540,7 @@ static ssize_t  msm_bus_dbg_update_request_write(struct file *file,
 	unsigned long index = 0;
 	int ret = 0;
 	char *chid;
-	char *buf = kmalloc((sizeof(char) * (cnt + 1)), GFP_KERNEL);
+	char *buf = kzalloc((sizeof(char) * (cnt + 1)), GFP_KERNEL);
 	int found = 0;
 	uint32_t clid;
 	ssize_t res = cnt;
@@ -678,7 +666,7 @@ static int msm_bus_dbg_record_fabric(const char *fabname, struct dentry *file)
 	int ret = 0;
 
 	mutex_lock(&msm_bus_dbg_fablist_lock);
-	fablist = kmalloc(sizeof(struct msm_bus_fab_list), GFP_KERNEL);
+	fablist = kzalloc(sizeof(struct msm_bus_fab_list), GFP_KERNEL);
 	if (!fablist) {
 		MSM_BUS_DBG("Failed to allocate memory for commit data\n");
 		ret =  -ENOMEM;
@@ -781,22 +769,6 @@ static ssize_t msm_bus_dbg_dump_clients_read(struct file *file,
 	if (*ppos)
 		goto exit_dump_clients_read;
 
-	rt_mutex_lock(&msm_bus_dbg_cllist_lock);
-	list_for_each_entry(cldata, &cl_list, list) {
-		if (IS_ERR_OR_NULL(cldata->pdata))
-			continue;
-		for (j = 0; j < cldata->pdata->usecase->num_paths; j++) {
-			if (cldata->index == -1)
-				continue;
-			trace_bus_client_status(
-			cldata->pdata->name,
-			cldata->pdata->usecase[cldata->index].vectors[j].src,
-			cldata->pdata->usecase[cldata->index].vectors[j].dst,
-			cldata->pdata->usecase[cldata->index].vectors[j].ab,
-			cldata->pdata->usecase[cldata->index].vectors[j].ib,
-			cldata->pdata->active_only);
-		}
-	}
 	rt_mutex_unlock(&msm_bus_dbg_cllist_lock);
 exit_dump_clients_read:
 	return simple_read_from_buffer(buf, count, ppos, msg, cnt);

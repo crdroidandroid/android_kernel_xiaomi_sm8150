@@ -18,7 +18,6 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/err.h>
-
 #include <linux/msm_drm_notify.h>
 
 #include "msm_drv.h"
@@ -1062,40 +1061,51 @@ int dsi_display_set_power(struct drm_connector *connector,
 		int power_mode, void *disp)
 {
 	struct dsi_display *display = disp;
-	struct msm_drm_notifier notify_data;
 	int rc = 0;
+	struct msm_drm_notifier notify_data;
+	struct drm_device *dev = NULL;
+	int event = 0;
 
 	if (!display || !display->panel) {
 		pr_err("invalid display/panel\n");
 		return -EINVAL;
 	}
 
-	notify_data.data = &power_mode;
-	notify_data.id = MSM_DRM_PRIMARY_DISPLAY;
+        if (!connector || !connector->dev) {
+                pr_err("invalid connector/dev\n");
+                return -EINVAL;
+        } else {
+                dev = connector->dev;
+                event = dev->doze_state;
+        }
+
+	notify_data.data = &event;
 
 	switch (power_mode) {
 	case SDE_MODE_DPMS_LP1:
-		msm_drm_notifier_call_chain(MSM_DRM_EARLY_EVENT_BLANK, &notify_data);
 		rc = dsi_panel_set_lp1(display->panel);
-		msm_drm_notifier_call_chain(MSM_DRM_EVENT_BLANK, &notify_data);
 		break;
 	case SDE_MODE_DPMS_LP2:
-		msm_drm_notifier_call_chain(MSM_DRM_EARLY_EVENT_BLANK, &notify_data);
 		rc = dsi_panel_set_lp2(display->panel);
-		msm_drm_notifier_call_chain(MSM_DRM_EVENT_BLANK, &notify_data);
 		break;
 	case SDE_MODE_DPMS_ON:
 		if (display->panel->power_mode == SDE_MODE_DPMS_LP1 ||
-			display->panel->power_mode == SDE_MODE_DPMS_LP2) {
-			msm_drm_notifier_call_chain(MSM_DRM_EARLY_EVENT_BLANK, &notify_data);
+			display->panel->power_mode == SDE_MODE_DPMS_LP2)
 			rc = dsi_panel_set_nolp(display->panel);
-			msm_drm_notifier_call_chain(MSM_DRM_EVENT_BLANK, &notify_data);
-		}
 		break;
 	case SDE_MODE_DPMS_OFF:
 	default:
+		if (dev->pre_state != SDE_MODE_DPMS_LP1 &&
+                                        dev->pre_state != SDE_MODE_DPMS_LP2)
+			break;
+
+		msm_drm_notifier_call_chain(MSM_DRM_EARLY_EVENT_BLANK, &notify_data);
+		rc = dsi_panel_set_nolp(display->panel);
+		msm_drm_notifier_call_chain(MSM_DRM_EVENT_BLANK, &notify_data);
 		return rc;
 	}
+
+	dev->pre_state = power_mode;
 
 	pr_debug("Power mode transition from %d to %d %s",
 		 display->panel->power_mode, power_mode,
@@ -4596,7 +4606,7 @@ static int dsi_display_set_mode_sub(struct dsi_display *display,
 		display_for_each_ctrl(i, display) {
 			ctrl = &display->ctrl[i];
 			rc = dsi_ctrl_update_host_config(ctrl->ctrl,
-				&display->config, mode->dsi_mode_flags,
+				&display->config, mode, mode->dsi_mode_flags,
 				display->dsi_clk_handle);
 			if (rc) {
 				pr_err("failed to update ctrl config\n");
@@ -4644,7 +4654,8 @@ static int dsi_display_set_mode_sub(struct dsi_display *display,
 	display_for_each_ctrl(i, display) {
 		ctrl = &display->ctrl[i];
 		rc = dsi_ctrl_update_host_config(ctrl->ctrl, &display->config,
-				mode->dsi_mode_flags, display->dsi_clk_handle);
+				mode, mode->dsi_mode_flags,
+				display->dsi_clk_handle);
 		if (rc) {
 			pr_err("[%s] failed to update ctrl config, rc=%d\n",
 			       display->name, rc);
@@ -5046,113 +5057,6 @@ error:
 	return rc;
 }
 
-static ssize_t sysfs_doze_status_read(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct dsi_display *display;
-	struct dsi_panel *panel;
-	bool status;
-
-	display = dev_get_drvdata(dev);
-	if (!display) {
-		pr_err("Invalid display\n");
-		return -EINVAL;
-	}
-
-	panel = display->panel;
-
-	mutex_lock(&panel->panel_lock);
-	status = panel->doze_enabled;
-	mutex_unlock(&panel->panel_lock);
-
-	return snprintf(buf, PAGE_SIZE, "%d\n", status);
-}
-
-static ssize_t sysfs_doze_status_write(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct dsi_display *display;
-	struct dsi_panel *panel;
-	bool status;
-	int rc = 0;
-
-	display = dev_get_drvdata(dev);
-	if (!display) {
-		pr_err("Invalid display\n");
-		return -EINVAL;
-	}
-
-	rc = kstrtobool(buf, &status);
-	if (rc) {
-		pr_err("%s: kstrtobool failed. rc=%d\n", __func__, rc);
-		return rc;
-	}
-
-	panel = display->panel;
-
-	mutex_lock(&panel->panel_lock);
-	dsi_panel_set_doze_status(panel, status);
-	mutex_unlock(&panel->panel_lock);
-
-	return count;
-}
-
-static ssize_t sysfs_doze_mode_read(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	enum dsi_doze_mode_type doze_mode;
-	struct dsi_display *display;
-	struct dsi_panel *panel;
-
-	display = dev_get_drvdata(dev);
-	if (!display) {
-		pr_err("Invalid display\n");
-		return -EINVAL;
-	}
-
-	panel = display->panel;
-
-	mutex_lock(&panel->panel_lock);
-	doze_mode = panel->doze_mode;
-	mutex_unlock(&panel->panel_lock);
-
-	return snprintf(buf, PAGE_SIZE, "%d\n", doze_mode);
-}
-
-static ssize_t sysfs_doze_mode_write(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct dsi_display *display;
-	struct dsi_panel *panel;
-	int rc = 0;
-	int mode;
-
-	display = dev_get_drvdata(dev);
-	if (!display) {
-		pr_err("Invalid display\n");
-		return -EINVAL;
-	}
-
-	rc = kstrtoint(buf, 10, &mode);
-	if (rc) {
-		pr_err("%s: kstrtoint failed. rc=%d\n", __func__, rc);
-		return rc;
-	}
-
-	if (mode < DSI_DOZE_LPM || mode > DSI_DOZE_HBM) {
-		pr_err("%s: invalid value for doze mode\n", __func__);
-		return -EINVAL;
-	}
-
-	panel = display->panel;
-
-	mutex_lock(&panel->panel_lock);
-	dsi_panel_set_doze_mode(panel, (enum dsi_doze_mode_type) mode);
-	mutex_unlock(&panel->panel_lock);
-
-	return count;
-}
-
 static ssize_t sysfs_fod_ui_read(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -5225,14 +5129,6 @@ error:
 	return ret == 0 ? count : ret;
 }
 
-static DEVICE_ATTR(doze_status, 0644,
-			sysfs_doze_status_read,
-			sysfs_doze_status_write);
-
-static DEVICE_ATTR(doze_mode, 0644,
-			sysfs_doze_mode_read,
-			sysfs_doze_mode_write);
-
 static DEVICE_ATTR(fod_ui, 0444,
 			sysfs_fod_ui_read,
 			NULL);
@@ -5242,8 +5138,6 @@ static DEVICE_ATTR(hbm, 0644,
 			sysfs_hbm_write);
 
 static struct attribute *display_fs_attrs[] = {
-	&dev_attr_doze_status.attr,
-	&dev_attr_doze_mode.attr,
 	&dev_attr_fod_ui.attr,
 	&dev_attr_hbm.attr,
 	NULL,
@@ -5721,6 +5615,7 @@ int dsi_display_dev_probe(struct platform_device *pdev)
 	display->pdev = pdev;
 	display->boot_disp = boot_disp;
 	display->dsi_type = dsi_type;
+	display->is_prim_display = true;
 
 	dsi_display_parse_cmdline_topology(display, index);
 
@@ -6309,7 +6204,10 @@ int dsi_display_get_info(struct drm_connector *connector,
 	info->max_width = 1920;
 	info->max_height = 1080;
 	info->qsync_min_fps =
-		display->panel->qsync_min_fps;
+		display->panel->qsync_caps.qsync_min_fps;
+	info->has_qsync_min_fps_list =
+		(display->panel->qsync_caps.qsync_min_fps_list_len > 0) ?
+		true : false;
 
 	switch (display->panel->panel_mode) {
 	case DSI_OP_VIDEO_MODE:
@@ -6510,6 +6408,7 @@ int dsi_display_get_modes(struct dsi_display *display,
 			  struct dsi_display_mode **out_modes)
 {
 	struct dsi_dfps_capabilities dfps_caps;
+	struct dsi_display_ctrl *ctrl;
 	struct dsi_host_common_cfg *host = &display->panel->host_config;
 	bool is_split_link, is_cmd_mode;
 	u32 num_dfps_rates, timing_mode_count, display_mode_count;
@@ -6523,6 +6422,7 @@ int dsi_display_get_modes(struct dsi_display *display,
 	}
 
 	*out_modes = NULL;
+	ctrl = &display->ctrl[0];
 
 	mutex_lock(&display->display_lock);
 
@@ -6552,6 +6452,7 @@ int dsi_display_get_modes(struct dsi_display *display,
 	for (mode_idx = 0; mode_idx < timing_mode_count; mode_idx++) {
 		struct dsi_display_mode display_mode;
 		int topology_override = NO_OVERRIDE;
+		u32 frame_threshold_us = ctrl->ctrl->frame_threshold_time_us;
 
 		if (display->cmdline_timing == mode_idx)
 			topology_override = display->cmdline_topology;
@@ -6571,6 +6472,22 @@ int dsi_display_get_modes(struct dsi_display *display,
 
 		num_dfps_rates = ((!dfps_caps.dfps_support ||
 				is_cmd_mode) ? 1 : dfps_caps.dfps_list_len);
+
+		/* Calculate dsi frame transfer time */
+		if (is_cmd_mode) {
+			dsi_panel_calc_dsi_transfer_time(
+				&display->panel->host_config,
+				&display_mode, frame_threshold_us);
+			display_mode.priv_info->dsi_transfer_time_us =
+				display_mode.timing.dsi_transfer_time_us;
+			display_mode.priv_info->min_dsi_clk_hz =
+				display_mode.timing.min_dsi_clk_hz;
+
+			display_mode.priv_info->mdp_transfer_time_us =
+				display_mode.priv_info->dsi_transfer_time_us;
+			display_mode.timing.mdp_transfer_time_us =
+				display_mode.timing.dsi_transfer_time_us;
+		}
 
 		is_split_link = host->split_link.split_link_enabled;
 		sublinks_count = host->split_link.num_sublinks;
@@ -6697,6 +6614,24 @@ int dsi_display_get_panel_vfp(void *dsi_display,
 	mutex_unlock(&display->display_lock);
 
 	return rc;
+}
+
+int dsi_display_get_qsync_min_fps(void *display_dsi, u32 mode_fps)
+{
+	struct dsi_display *display = (struct dsi_display *)display_dsi;
+	struct dsi_panel *panel;
+	u32 i;
+
+	if (display == NULL || display->panel == NULL)
+		return -EINVAL;
+
+	panel = display->panel;
+	for (i = 0; i < panel->dfps_caps.dfps_list_len; i++) {
+		if (panel->dfps_caps.dfps_list[i] == mode_fps)
+			return panel->qsync_caps.qsync_min_fps_list[i];
+	}
+	SDE_EVT32(mode_fps);
+	return -EINVAL;
 }
 
 int dsi_display_find_mode(struct dsi_display *display,
@@ -6908,6 +6843,7 @@ int dsi_display_set_mode(struct dsi_display *display,
 {
 	int rc = 0;
 	struct dsi_display_mode adj_mode;
+	struct dsi_mode_info timing;
 
 	if (!display || !mode || !display->panel) {
 		pr_err("Invalid params\n");
@@ -6917,6 +6853,7 @@ int dsi_display_set_mode(struct dsi_display *display,
 	mutex_lock(&display->display_lock);
 
 	adj_mode = *mode;
+	timing = adj_mode.timing;
 	adjust_timing_by_ctrl_count(display, &adj_mode);
 
 	/*For dynamic DSI setting, use specified clock rate */
@@ -6943,6 +6880,11 @@ int dsi_display_set_mode(struct dsi_display *display,
 			goto error;
 		}
 	}
+
+	pr_info("mdp_transfer_time_us=%d us\n",
+			adj_mode.priv_info->mdp_transfer_time_us);
+	pr_info("hactive= %d, vactive= %d, fps=%d", timing.h_active,
+			timing.v_active, timing.refresh_rate);
 
 	memcpy(display->panel->cur_mode, &adj_mode, sizeof(adj_mode));
 error:
@@ -7521,7 +7463,7 @@ static int dsi_display_qsync(struct dsi_display *display, bool enable)
 	int i;
 	int rc = 0;
 
-	if (!display->panel->qsync_min_fps) {
+	if (!display->panel->qsync_caps.qsync_min_fps) {
 		pr_err("%s:ERROR: qsync set, but no fps\n", __func__);
 		return 0;
 	}
@@ -7550,7 +7492,7 @@ static int dsi_display_qsync(struct dsi_display *display, bool enable)
 	}
 
 exit:
-	SDE_EVT32(enable, display->panel->qsync_min_fps, rc);
+	SDE_EVT32(enable, display->panel->qsync_caps.qsync_min_fps, rc);
 	mutex_unlock(&display->display_lock);
 	return rc;
 }
@@ -7766,7 +7708,7 @@ int dsi_display_enable(struct dsi_display *display)
 	mode = display->panel->cur_mode;
 
 	if (mode->dsi_mode_flags & DSI_MODE_FLAG_DMS) {
-		rc = dsi_panel_post_switch(display->panel);
+		rc = dsi_panel_switch(display->panel);
 		if (rc) {
 			pr_err("[%s] failed to switch DSI panel mode, rc=%d\n",
 				   display->name, rc);
@@ -7793,7 +7735,7 @@ int dsi_display_enable(struct dsi_display *display)
 	}
 
 	if (mode->dsi_mode_flags & DSI_MODE_FLAG_DMS) {
-		rc = dsi_panel_switch(display->panel);
+		rc = dsi_panel_post_switch(display->panel);
 		if (rc)
 			pr_err("[%s] failed to switch DSI panel mode, rc=%d\n",
 				   display->name, rc);

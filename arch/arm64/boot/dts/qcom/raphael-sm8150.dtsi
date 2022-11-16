@@ -120,7 +120,7 @@ And public attribution of xiaomi platforms(like F1 and so and)
 &qupv3_se1_i2c {
 	status = "ok";
 	tfa98xx@34 {
-		compatible = "nxp,tfa98xx";
+		compatible = "tfa,tfa98xx";
 		reset-gpio = <&tlmm 59 0>;
 		irq-gpio = <&tlmm 141 0>;
 		interrupt-parent = <&tlmm>;
@@ -343,7 +343,7 @@ And public attribution of xiaomi platforms(like F1 and so and)
 		goodix,panel-max-p = <127>;
 		goodix,panel-max-fod = <127>;
 	/*	goodix,panel-key-map = <158 172 217>; */ /*KEY_BACK, KEY_HOMEPAGE, KEY_SEARCH*/
-		goodix,power-on-delay-us = <300000>; /*300ms*/
+		goodix,power-on-delay-us = <20000>; /*20ms*/
 		goodix,power-off-delay-us = <5000>;
 		goodix,cfg-name = "goodix_gt9886_cfg_f11.bin";
 		normal-cfg = [
@@ -661,54 +661,6 @@ And public attribution of xiaomi platforms(like F1 and so and)
 
 &pm8150b_haptics {
 	qcom,actuator-type = "erm";
-	qcom,vmax-mv = <3000>;
-
-	wf_0 {
-		/* CLICK */
-		qcom,effect-id = <0>;
-		qcom,wf-vmax-mv = <3000>;
-		qcom,wf-pattern = [3e 3e 3e];
-		qcom,wf-brake-pattern = [01 00 00 00];
-		qcom,lra-auto-resonance-disable;
-	};
-	wf_1 {
-		/* DOUBLE CLICK */
-		qcom,effect-id = <1>;
-		qcom,wf-vmax-mv = <3000>;
-		qcom,wf-pattern = [7e 7e 02 02 02 02 02 02];
-		qcom,wf-repeat-count = <2>;
-		qcom,wf-s-repeat-count = <1>;
-		qcom,lra-auto-resonance-disable;
-	};
-	wf_2 {
-		/* TICK */
-		qcom,effect-id = <2>;
-		qcom,wf-vmax-mv = <3000>;
-		qcom,wf-pattern = [7e 7e];
-		qcom,lra-auto-resonance-disable;
-	};
-	wf_3 {
-		/* THUD */
-		qcom,effect-id = <3>;
-		qcom,wf-vmax-mv = <3000>;
-		qcom,wf-pattern = [7e 7e 7e];
-		qcom,lra-auto-resonance-disable;
-	};
-	wf_4 {
-		/* POP */
-		qcom,effect-id = <4>;
-		qcom,wf-vmax-mv = <3000>;
-		qcom,wf-pattern = [7e 7e];
-		qcom,lra-auto-resonance-disable;
-	};
-	wf_5 {
-		/* HEAVY CLICK */
-		qcom,effect-id = <5>;
-		qcom,wf-vmax-mv = <3000>;
-		qcom,wf-pattern = [7e 7e 7e];
-		qcom,wf-brake-pattern = [03 00 00 00];
-		qcom,lra-auto-resonance-disable;
-	};
 };
 
 &pm8150l_lpg {

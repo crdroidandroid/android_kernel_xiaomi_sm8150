@@ -488,13 +488,8 @@ struct smb_charger {
 	struct power_supply		*usb_main_psy;
 	struct power_supply		*usb_port_psy;
 	struct power_supply		*wls_psy;
-	struct power_supply		*idtp_psy;
-	struct power_supply		*wip_psy;
-	struct power_supply		*wireless_psy;
-	struct power_supply		*wls_chip_psy;
 	struct power_supply		*cp_psy;
 	enum power_supply_type		real_charger_type;
-	enum power_supply_type          wireless_charger_type;
 
 	/* dual role class */
 	struct dual_role_phy_instance	*dual_role;
@@ -874,8 +869,6 @@ int smblib_get_prop_voltage_wls_output(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_set_prop_voltage_wls_output(struct smb_charger *chg,
 				const union power_supply_propval *val);
-int smblib_get_prop_wireless_version(struct smb_charger *chg,
-				union power_supply_propval *val);
 int smblib_set_prop_dc_reset(struct smb_charger *chg);
 int smblib_get_prop_usb_present(struct smb_charger *chg,
 				union power_supply_propval *val);
@@ -914,8 +907,6 @@ int smblib_get_prop_charger_temp(struct smb_charger *chg,
 int smblib_get_prop_die_health(struct smb_charger *chg);
 int smblib_get_prop_smb_health(struct smb_charger *chg);
 int smblib_get_prop_connector_health(struct smb_charger *chg);
-int smblib_get_prop_input_current_max(struct smb_charger *chg,
-				  union power_supply_propval *val);
 int smblib_set_prop_thermal_overheat(struct smb_charger *chg,
 			       int therm_overheat);
 int smblib_get_skin_temp_status(struct smb_charger *chg);
@@ -969,8 +960,6 @@ int smblib_configure_hvdcp_apsd(struct smb_charger *chg, bool enable);
 int smblib_icl_override(struct smb_charger *chg, enum icl_override_mode mode);
 enum alarmtimer_restart smblib_lpd_recheck_timer(struct alarm *alarm,
 				ktime_t time);
-int smblib_set_prop_wireless_wakelock(struct smb_charger *chg,
-				const union power_supply_propval *val);
 
 int smblib_set_prop_type_recheck(struct smb_charger *chg,
 				 const union power_supply_propval *val);

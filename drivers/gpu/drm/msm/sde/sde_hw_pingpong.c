@@ -183,6 +183,7 @@ static int sde_hw_pp_setup_te_config(struct sde_hw_pingpong *pp,
 	SDE_REG_WRITE(c, PP_SYNC_CONFIG_HEIGHT, te->sync_cfg_height);
 	SDE_REG_WRITE(c, PP_VSYNC_INIT_VAL, te->vsync_init_val);
 	SDE_REG_WRITE(c, PP_RD_PTR_IRQ, te->rd_ptr_irq);
+	SDE_REG_WRITE(c, PP_WR_PTR_IRQ, te->wr_ptr_irq);
 	SDE_REG_WRITE(c, PP_START_POS, te->start_pos);
 	SDE_REG_WRITE(c, PP_SYNC_THRESH,
 			((te->sync_threshold_continue << 16) |
@@ -404,7 +405,7 @@ static int sde_hw_pp_connect_external_te(struct sde_hw_pingpong *pp,
 }
 
 static int sde_hw_pp_get_vsync_info(struct sde_hw_pingpong *pp,
-		struct sde_hw_pp_vsync_info *info)
+		struct sde_hw_pp_vsync_info *info, bool wr_ptr_only)
 {
 	struct sde_hw_blk_reg_map *c;
 	u32 val;
@@ -413,12 +414,14 @@ static int sde_hw_pp_get_vsync_info(struct sde_hw_pingpong *pp,
 		return -EINVAL;
 	c = &pp->hw;
 
-	val = SDE_REG_READ(c, PP_VSYNC_INIT_VAL);
-	info->rd_ptr_init_val = val & 0xffff;
+	if (!wr_ptr_only) {
+		val = SDE_REG_READ(c, PP_VSYNC_INIT_VAL);
+		info->rd_ptr_init_val = val & 0xffff;
 
-	val = SDE_REG_READ(c, PP_INT_COUNT_VAL);
-	info->rd_ptr_frame_count = (val & 0xffff0000) >> 16;
-	info->rd_ptr_line_count = val & 0xffff;
+		val = SDE_REG_READ(c, PP_INT_COUNT_VAL);
+		info->rd_ptr_frame_count = (val & 0xffff0000) >> 16;
+		info->rd_ptr_line_count = val & 0xffff;
+	}
 
 	val = SDE_REG_READ(c, PP_LINE_COUNT);
 	info->wr_ptr_line_count = val & 0xffff;

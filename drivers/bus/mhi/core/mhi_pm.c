@@ -540,7 +540,11 @@ static int mhi_pm_mission_mode_transition(struct mhi_controller *mhi_cntrl)
 	mhi_special_events_pending(mhi_cntrl);
 
 	/* setup sysfs nodes for userspace votes */
-	mhi_create_sysfs(mhi_cntrl);
+	ret = mhi_create_sysfs(mhi_cntrl);
+	if (ret) {
+		MHI_ERR("Failed to create sysfs nodes with ret:%d\n", ret);
+		goto error_sysfs_create;
+	}
 
 	mhi_special_events_pending(mhi_cntrl);
 
@@ -549,6 +553,7 @@ static int mhi_pm_mission_mode_transition(struct mhi_controller *mhi_cntrl)
 	/* add supported devices */
 	mhi_create_devices(mhi_cntrl);
 
+error_sysfs_create:
 	read_lock_bh(&mhi_cntrl->pm_lock);
 
 error_mission_mode:
@@ -1036,8 +1041,7 @@ void mhi_control_error(struct mhi_controller *mhi_cntrl)
 	/* copy subsystem failure reason string if supported */
 	if (sfr_info && sfr_info->buf_addr) {
 		memcpy(sfr_info->str, sfr_info->buf_addr, sfr_info->len);
-		MHI_CNTRL_ERR("mhi:%s sfr: %s\n", mhi_cntrl->name,
-				sfr_info->buf_addr);
+		MHI_CNTRL_ERR("mhi: %s sfr: %s\n", mhi_cntrl->name, sfr_info->str);
 	}
 
 	/* link is not down if device is in RDDM */

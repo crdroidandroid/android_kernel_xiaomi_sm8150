@@ -938,7 +938,7 @@ error:
 	vfree(e_ctrl->cal_data.map);
 	e_ctrl->cal_data.num_data = 0;
 	e_ctrl->cal_data.num_map = 0;
-	e_ctrl->cam_eeprom_state = CAM_EEPROM_INIT;
+	e_ctrl->cam_eeprom_state = CAM_EEPROM_ACQUIRE;
 release_buf:
 	if (cam_mem_put_cpu_buf(dev_config.packet_handle))
 		CAM_WARN(CAM_EEPROM, "Put cpu buffer failed : 0x%x",
@@ -1063,7 +1063,7 @@ int32_t cam_eeprom_driver_cmd(struct cam_eeprom_ctrl_t *e_ctrl, void *arg)
 	case CAM_CONFIG_DEV:
 		rc = cam_eeprom_pkt_parse(e_ctrl, arg);
 		if (rc) {
-			CAM_ERR(CAM_EEPROM, "Failed in eeprom pkt Parsing");
+			CAM_ERR(CAM_EEPROM, "Failed in eeprom pkt Parsing, rc %d", rc);
 			goto release_mutex;
 		}
 		break;

@@ -76,6 +76,7 @@ modules.builtin
 !.gitignore
 !.mailmap
 !.cocciconfig
+!.clang-format
 
 #
 # Generated include files
@@ -130,3 +131,14 @@ kernel/configs/android-*.cfg
 #Ignoring Android.bp link file
 #
 Android.bp
+
+# Personal
+/build/
+/out/
+/net/wireguard/
+builder.sh
+c.sh
+Buildlog-CLANG.txt
+Zip-out/
+build.sh
+qcacld-3.0.sh

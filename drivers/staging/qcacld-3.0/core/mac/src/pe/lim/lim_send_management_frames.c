@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2021 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2448,9 +2448,9 @@ lim_send_assoc_req_mgmt_frame(struct mac_context *mac_ctx,
 	MTRACE(qdf_trace(QDF_MODULE_ID_PE, TRACE_CODE_TX_MGMT,
 			 pe_session->peSessionId, mac_hdr->fc.subType));
 
-	pe_nofl_info("Assoc req TX: vdev %d to "QDF_MAC_ADDR_FMT" seq num %d", pe_session->vdev_id,
-		     QDF_MAC_ADDR_REF(pe_session->bssId),
-		     mac_ctx->mgmtSeqNum);
+	pe_nofl_rl_info("Assoc req TX: vdev %d to "QDF_MAC_ADDR_FMT" seq num %d", pe_session->vdev_id,
+			QDF_MAC_ADDR_REF(pe_session->bssId),
+			mac_ctx->mgmtSeqNum);
 	QDF_TRACE_HEX_DUMP(QDF_MODULE_ID_PE, QDF_TRACE_LEVEL_DEBUG,
 			  frame, (uint16_t)(sizeof(tSirMacMgmtHdr) + payload));
 
@@ -2604,9 +2604,9 @@ static QDF_STATUS lim_auth_tx_complete_cnf(void *context,
 	uint16_t reason_code;
 	bool sae_auth_acked;
 
-	pe_nofl_info("Auth TX: %s",
-		     (tx_complete == WMI_MGMT_TX_COMP_TYPE_COMPLETE_OK) ?
-		     "success" : "fail");
+	pe_nofl_rl_info("Auth TX: %s",
+			(tx_complete == WMI_MGMT_TX_COMP_TYPE_COMPLETE_OK) ?
+			"success" : "fail");
 	if (tx_complete == WMI_MGMT_TX_COMP_TYPE_COMPLETE_OK) {
 		mac_ctx->auth_ack_status = LIM_ACK_RCD_SUCCESS;
 		auth_ack_status = ACKED;
@@ -3572,10 +3572,10 @@ lim_send_deauth_mgmt_frame(struct mac_context *mac,
 				&nPayload, discon_ie);
 	mlme_free_self_disconnect_ies(pe_session->vdev);
 
-	pe_nofl_info("Deauth TX: vdev %d seq_num %d reason %u waitForAck %d to " QDF_MAC_ADDR_FMT " from " QDF_MAC_ADDR_FMT,
-		     pe_session->vdev_id, mac->mgmtSeqNum, nReason, waitForAck,
-		     QDF_MAC_ADDR_REF(pMacHdr->da),
-		     QDF_MAC_ADDR_REF(pe_session->self_mac_addr));
+	pe_nofl_rl_info("Deauth TX: vdev %d seq_num %d reason %u waitForAck %d to " QDF_MAC_ADDR_FMT " from " QDF_MAC_ADDR_FMT,
+			pe_session->vdev_id, mac->mgmtSeqNum, nReason,
+			waitForAck, QDF_MAC_ADDR_REF(pMacHdr->da),
+			QDF_MAC_ADDR_REF(pe_session->self_mac_addr));
 
 	if (!wlan_reg_is_24ghz_ch_freq(pe_session->curr_op_freq) ||
 	    pe_session->opmode == QDF_P2P_CLIENT_MODE ||
@@ -5413,7 +5413,9 @@ error_delba:
 static void lim_tx_mgmt_frame(struct mac_context *mac_ctx, uint8_t vdev_id,
 			      uint32_t msg_len, void *packet, uint8_t *frame)
 {
+#ifdef WLAN_DEBUG
 	tpSirMacFrameCtl fc = (tpSirMacFrameCtl)frame;
+#endif
 	QDF_STATUS qdf_status;
 	struct pe_session *session;
 	uint16_t auth_ack_status;
@@ -5427,8 +5429,10 @@ static void lim_tx_mgmt_frame(struct mac_context *mac_ctx, uint8_t vdev_id,
 		return;
 	}
 
+#ifdef WLAN_DEBUG
 	qdf_mtrace(QDF_MODULE_ID_PE, QDF_MODULE_ID_WMA, TRACE_CODE_TX_MGMT,
 		   session->peSessionId, 0);
+#endif
 
 	mac_ctx->auth_ack_status = LIM_ACK_NOT_RCD;
 	min_rid = lim_get_min_session_txrate(session);
@@ -5442,8 +5446,10 @@ static void lim_tx_mgmt_frame(struct mac_context *mac_ctx, uint8_t vdev_id,
 	MTRACE(qdf_trace(QDF_MODULE_ID_PE, TRACE_CODE_TX_COMPLETE,
 		session->peSessionId, qdf_status));
 	if (!QDF_IS_STATUS_SUCCESS(qdf_status)) {
+#ifdef WLAN_DEBUG
 		pe_err("*** Could not send Auth frame (subType: %d), retCode=%X ***",
 			fc->subType, qdf_status);
+#endif
 		mac_ctx->auth_ack_status = LIM_TX_FAILED;
 		auth_ack_status = SENT_FAIL;
 		lim_diag_event_report(mac_ctx, WLAN_PE_DIAG_AUTH_ACK_EVENT,
@@ -5521,11 +5527,15 @@ void lim_send_frame(struct mac_context *mac_ctx, uint8_t vdev_id, uint8_t *buf,
 	QDF_STATUS qdf_status;
 	uint8_t *frame;
 	void *packet;
+#ifdef WLAN_DEBUG
 	tpSirMacFrameCtl fc = (tpSirMacFrameCtl)buf;
+#endif
 	tpSirMacMgmtHdr mac_hdr = (tpSirMacMgmtHdr)buf;
 
+#ifdef WLAN_DEBUG
 	pe_debug("sending fc->type: %d fc->subType: %d",
 		 fc->type, fc->subType);
+#endif
 
 	lim_add_mgmt_seq_num(mac_ctx, mac_hdr);
 	qdf_status = cds_packet_alloc(buf_len, (void **)&frame,

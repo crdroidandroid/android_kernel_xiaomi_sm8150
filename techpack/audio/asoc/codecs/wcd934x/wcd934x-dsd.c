@@ -681,20 +681,11 @@ struct tavil_dsd_config *tavil_dsd_init(struct snd_soc_codec *codec)
 {
 	struct snd_soc_dapm_context *dapm;
 	struct tavil_dsd_config *dsd_conf;
-	u8 val;
 
 	if (!codec)
 		return NULL;
 
 	dapm = snd_soc_codec_get_dapm(codec);
-
-	/* Read efuse register to check if DSD is supported */
-	val = snd_soc_read(codec, WCD934X_CHIP_TIER_CTRL_EFUSE_VAL_OUT14);
-	if (val & 0x80) {
-		dev_info(codec->dev, "%s: DSD unsupported for this codec version\n",
-			 __func__);
-		return NULL;
-	}
 
 	dsd_conf = devm_kzalloc(codec->dev, sizeof(struct tavil_dsd_config),
 				GFP_KERNEL);

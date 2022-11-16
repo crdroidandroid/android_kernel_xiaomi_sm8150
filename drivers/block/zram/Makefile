@@ -1,4 +1,4 @@
-zram-y				:=	zcomp.o zram_drv.o
-zram-$(CONFIG_ZRAM_DEDUP)	+=	zram_dedup.o
+ccflags-y += -O3
+zram-y	:=	zcomp.o zram_drv.o
 
 obj-$(CONFIG_ZRAM)	+=	zram.o

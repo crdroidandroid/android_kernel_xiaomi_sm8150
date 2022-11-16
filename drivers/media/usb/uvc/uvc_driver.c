@@ -904,7 +904,10 @@ static struct uvc_entity *uvc_alloc_entity(u16 type, u8 id,
 	unsigned int i;
 
 	extra_size = roundup(extra_size, sizeof(*entity->pads));
-	num_inputs = (type & UVC_TERM_OUTPUT) ? num_pads : num_pads - 1;
+	if (num_pads)
+		num_inputs = type & UVC_TERM_OUTPUT ? num_pads : num_pads - 1;
+	else
+		num_inputs = 0;
 	size = sizeof(*entity) + extra_size + sizeof(*entity->pads) * num_pads
 	     + num_inputs;
 	entity = kzalloc(size, GFP_KERNEL);
@@ -920,7 +923,7 @@ static struct uvc_entity *uvc_alloc_entity(u16 type, u8 id,
 
 	for (i = 0; i < num_inputs; ++i)
 		entity->pads[i].flags = MEDIA_PAD_FL_SINK;
-	if (!UVC_ENTITY_IS_OTERM(entity))
+	if (!UVC_ENTITY_IS_OTERM(entity) && num_pads)
 		entity->pads[num_pads-1].flags = MEDIA_PAD_FL_SOURCE;
 
 	entity->bNrInPins = num_inputs;
@@ -1891,7 +1894,9 @@ static void uvc_unregister_video(struct uvc_device *dev)
 
 		video_unregister_device(&stream->vdev);
 
+#ifdef CONFIG_DEBUG_FS
 		uvc_debugfs_cleanup_stream(stream);
+#endif
 	}
 }
 
@@ -1916,8 +1921,9 @@ static int uvc_register_video(struct uvc_device *dev,
 		return ret;
 	}
 
+#ifdef CONFIG_DEBUG_FS
 	uvc_debugfs_init_stream(stream);
-
+#endif
 	/* Register the device with V4L. */
 
 	/* We already hold a reference to dev->udev. The video device will be
@@ -2774,11 +2780,15 @@ static int __init uvc_init(void)
 {
 	int ret;
 
+#ifdef CONFIG_DEBUG_FS
 	uvc_debugfs_init();
+#endif
 
 	ret = usb_register(&uvc_driver.driver);
 	if (ret < 0) {
+#ifdef CONFIG_DEBUG_FS
 		uvc_debugfs_cleanup();
+#endif
 		return ret;
 	}
 
@@ -2789,7 +2799,9 @@ static int __init uvc_init(void)
 static void __exit uvc_cleanup(void)
 {
 	usb_deregister(&uvc_driver.driver);
+#ifdef CONFIG_DEBUG_FS
 	uvc_debugfs_cleanup();
+#endif
 }
 
 module_init(uvc_init);

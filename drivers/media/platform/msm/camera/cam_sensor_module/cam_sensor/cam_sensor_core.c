@@ -646,7 +646,7 @@ int cam_sensor_match_id(struct cam_sensor_ctrl_t *s_ctrl)
 	return rc;
 }
 
-uint32_t g_operation_mode = 0;
+uint32_t operation_mode = 0;
 int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 	void *arg)
 {
@@ -774,8 +774,8 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 			goto release_mutex;
 		}
 
-		g_operation_mode = sensor_acq_dev.operation_mode;
-		CAM_DBG(CAM_SENSOR, "operation mode :%d", g_operation_mode);
+		operation_mode = sensor_acq_dev.operation_mode;
+		CAM_DBG(CAM_SENSOR, "operation mode :%d", operation_mode);
 
 		bridge_params.session_hdl = sensor_acq_dev.session_handle;
 		bridge_params.ops = &s_ctrl->bridge_intf.ops;
@@ -1131,9 +1131,9 @@ int cam_sensor_publish_dev_info(struct cam_req_mgr_device_info *info)
 		info->p_delay = 2;
 	info->trigger = CAM_TRIGGER_POINT_SOF;
 
-	if (g_operation_mode == 0x8006)
+	if (operation_mode == 0x8006)
 		info->p_delay = 0;
-	if (g_operation_mode == 0x8002)
+	if (operation_mode == 0x8002)
 		info->p_delay = 1;
 
 	return rc;

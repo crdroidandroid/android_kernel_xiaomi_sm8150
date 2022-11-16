@@ -1,18 +1,11 @@
 /*
- * Copyright 2014-2017 NXP Semiconductors
- * Copyright (C) 2019 XiaoMi, Inc.
+ * Copyright (C) 2014-2020 NXP Semiconductors, All Rights Reserved.
+ * Copyright 2021 GOODIX
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
  */
 
 #ifndef __TFA98XX_INC__
@@ -41,6 +34,7 @@
 #define TFA98XX_FLAG_REMOVE_PLOP_NOISE	(1 << 6)
 #define TFA98XX_FLAG_LP_MODES	        (1 << 7)
 #define TFA98XX_FLAG_TDM_DEVICE         (1 << 8)
+#define TFA98XX_FLAG_ADAPT_NOISE_MODE   (1 << 9)
 
 #define TFA98XX_NUM_RATES		9
 
@@ -75,14 +69,14 @@ struct tfa98xx_miscdevice_info {
 	struct file_operations operations;
 };
 
-enum TFA_DEVICE_TYPE{
+enum TFA_DEVICE_TYPE {
 	TFA_DEVICE_TYPE_9894,
 	TFA_DEVICE_TYPE_9874_PRIMARY,
 	TFA_DEVICE_TYPE_9874_SECONDARY,
 	TFA_DEVICE_TYPE_MAX
 };
 
-enum TFA_DEVICE_MUTE{
+enum TFA_DEVICE_MUTE {
 	TFA98XX_DEVICE_MUTE_OFF = 0,
 	TFA98XX_DEVICE_MUTE_ON,
 };
@@ -105,7 +99,6 @@ struct livedata_cfg {
 	int scaler;
 };
 
-
 struct tfa98xx_firmware {
 	void			*base;
 	struct tfa98xx_device	*dev;
@@ -119,17 +112,25 @@ struct tfa98xx_baseprofile {
 	int sr_rate_sup[TFA98XX_NUM_RATES]; /* sample rates supported by this profile */
 	struct list_head list;              /* list of all profiles */
 };
-
+enum tfa_reset_polarity {
+	LOW = 0,
+	HIGH = 1
+};
 struct tfa98xx {
 	struct regmap *regmap;
 	struct i2c_client *i2c;
 	struct regulator *vdd;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
+	struct snd_soc_component *codec;
+#else
 	struct snd_soc_codec *codec;
+#endif
 	struct workqueue_struct *tfa98xx_wq;
 	struct delayed_work init_work;
 	struct delayed_work monitor_work;
 	struct delayed_work interrupt_work;
 	struct delayed_work tapdet_work;
+	struct delayed_work nmodeupdate_work;
 	struct mutex dsp_lock;
 	int dsp_init;
 	int dsp_fw_state;
@@ -140,9 +141,6 @@ struct tfa98xx {
 	struct tfa98xx_firmware fw;
 	char *fw_name;
 	int rate;
-	/*[nxp34663] CR: support 16bit/24bit/32bit audio data. begin*/
-	u8 pcm_format;
-	/*[nxp34663] CR: support 16bit/24bit/32bit audio data. end*/
 	wait_queue_head_t wq;
 	struct device *dev;
 	unsigned int init_count;
@@ -160,7 +158,7 @@ struct tfa98xx {
 	int reset_gpio;
 	int power_gpio;
 	int irq_gpio;
-
+	enum tfa_reset_polarity reset_polarity;
 	struct list_head list;
 	struct tfa_device *tfa;
 	int vstep;
@@ -180,11 +178,10 @@ struct tfa98xx {
 
 	struct miscdevice tfa98xx_reg;
 	struct miscdevice tfa98xx_rw;
-	struct miscdevice tfa98xx_rpc;	
+	struct miscdevice tfa98xx_rpc;
 	struct miscdevice tfa98xx_profile;
 	struct miscdevice tfa98xx_control;
 };
 
 
 #endif /* __TFA98XX_INC__ */
-

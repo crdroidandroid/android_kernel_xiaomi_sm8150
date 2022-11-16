@@ -1010,7 +1010,7 @@ ccio_unmap_sg(struct device *dev, struct scatterlist *sglist, int nents,
 	ioc->usg_calls++;
 #endif
 
-	while(sg_dma_len(sglist) && nents--) {
+	while (nents && sg_dma_len(sglist)) {
 
 #ifdef CCIO_COLLECT_STATS
 		ioc->usg_pages += sg_dma_len(sglist) >> PAGE_SHIFT;
@@ -1018,6 +1018,7 @@ ccio_unmap_sg(struct device *dev, struct scatterlist *sglist, int nents,
 		ccio_unmap_page(dev, sg_dma_address(sglist),
 				  sg_dma_len(sglist), direction, 0);
 		++sglist;
+		nents--;
 	}
 
 	DBG_RUN_SG("%s() DONE (nents %d)\n", __func__, nents);
@@ -1279,7 +1280,7 @@ ccio_ioc_init(struct ioc *ioc)
 	** Hot-Plug/Removal of PCI cards. (aka PCI OLARD).
 	*/
 
-	iova_space_size = (u32) (totalram_pages / count_parisc_driver(&ccio_driver));
+	iova_space_size = (u32) (totalram_pages() / count_parisc_driver(&ccio_driver));
 
 	/* limit IOVA space size to 1MB-1GB */
 
@@ -1318,7 +1319,7 @@ ccio_ioc_init(struct ioc *ioc)
 
 	DBG_INIT("%s() hpa 0x%p mem %luMB IOV %dMB (%d bits)\n",
 			__func__, ioc->ioc_regs,
-			(unsigned long) totalram_pages >> (20 - PAGE_SHIFT),
+			(unsigned long) totalram_pages() >> (20 - PAGE_SHIFT),
 			iova_space_size>>20,
 			iov_order + PAGE_SHIFT);
 

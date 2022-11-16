@@ -68,6 +68,10 @@
  * structure.
  */
 
+#if defined(CONFIG_ANDROID) && !defined(CONFIG_DEBUG_FS)
+#define CONFIG_DEBUG_FS
+#endif
+
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/init.h>
@@ -564,11 +568,10 @@ static struct kmemleak_object *create_object(unsigned long ptr, size_t size,
 	struct kmemleak_object *object, *parent;
 	struct rb_node **link, *rb_parent;
 
-	object = kmem_cache_alloc(object_cache, gfp_kmemleak_mask(gfp));
-	if (!object) {
-		pr_warn("Cannot allocate a kmemleak_object structure\n");
-		kmemleak_disable();
-		return NULL;
+	while (1) {
+		object = kmem_cache_alloc(object_cache, gfp_kmemleak_mask(gfp));
+		if (object)
+			break;
 	}
 
 	INIT_LIST_HEAD(&object->object_list);
@@ -1532,7 +1535,7 @@ static void kmemleak_scan(void)
 			if (page_count(page) == 0)
 				continue;
 			scan_block(page, page + 1, NULL);
-			if (!(pfn % (MAX_SCAN_SIZE / sizeof(*page))))
+			if (!(pfn & 63))
 				cond_resched();
 		}
 	}
@@ -2042,7 +2045,7 @@ void __init kmemleak_init(void)
 	create_object((unsigned long)__bss_start, __bss_stop - __bss_start,
 		      KMEMLEAK_GREY, GFP_ATOMIC);
 	/* only register .data..ro_after_init if not within .data */
-	if (__start_ro_after_init < _sdata || __end_ro_after_init > _edata)
+	if (&__start_ro_after_init < &_sdata || &__end_ro_after_init > &_edata)
 		create_object((unsigned long)__start_ro_after_init,
 			      __end_ro_after_init - __start_ro_after_init,
 			      KMEMLEAK_GREY, GFP_ATOMIC);

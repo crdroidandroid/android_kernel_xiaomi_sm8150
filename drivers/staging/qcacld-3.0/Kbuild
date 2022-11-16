@@ -5,10 +5,6 @@ ifeq ($(MODNAME),)
 else
 	KERNEL_BUILD := n
 endif
-
-# Force user build
-TARGET_BUILD_VARIANT := user
-
 ifeq ($(KERNEL_BUILD), y)
 	# These are provided in external module based builds
 	# Need to explicitly define for Kernel-based builds
@@ -25,6 +21,9 @@ WLAN_COMMON_INC ?= $(WLAN_ROOT)/$(WLAN_COMMON_ROOT)
 WLAN_FW_API ?= $(WLAN_ROOT)/../fw-api/
 WLAN_PROFILE ?= default
 CONFIG_QCA_CLD_WLAN_PROFILE ?= $(WLAN_PROFILE)
+
+# Force user build
+TARGET_BUILD_VARIANT := user
 
 ifeq ($(KERNEL_BUILD), n)
 ifneq ($(ANDROID_BUILD_TOP),)
@@ -55,7 +54,7 @@ include $(WLAN_CFG_OVERRIDE_FILE)
 $(warning "Overriding WLAN config with: $(shell cat $(WLAN_CFG_OVERRIDE_FILE))")
 endif
 
-include $(WLAN_ROOT)/configs/$(patsubst "%",%,$(CONFIG_QCA_CLD_WLAN_PROFILE))_defconfig
+include $(WLAN_ROOT)/configs/default_defconfig
 
 ############ UAPI ############
 UAPI_DIR :=	uapi
@@ -2226,7 +2225,9 @@ OBJS +=		$(TDLS_OBJS)
 OBJS +=		$(PMO_OBJS)
 OBJS +=		$(P2P_OBJS)
 OBJS +=		$(POLICY_MGR_OBJS)
+ifeq ($(BUILD_DEBUG_VERSION), y)
 OBJS +=		$(WLAN_LOGGING_OBJS)
+endif
 OBJS +=		$(NLINK_OBJS)
 OBJS +=		$(PTT_OBJS)
 OBJS +=		$(UMAC_SER_OBJS)
@@ -2300,7 +2301,6 @@ ccflags-y += $(INCS)
 
 cppflags-y +=	-DANI_OS_TYPE_ANDROID=6 \
 		-Wall\
-		-Werror\
 		-D__linux__
 
 cppflags-$(CONFIG_PTT_SOCK_SVC_ENABLE) += -DPTT_SOCK_SVC_ENABLE

@@ -1202,7 +1202,7 @@ static void sdhci_msm_set_mmc_drv_type(struct sdhci_host *host, u32 opcode,
 int sdhci_msm_execute_tuning(struct sdhci_host *host, u32 opcode)
 {
 	unsigned long flags;
-	int tuning_seq_cnt = 3;
+	int tuning_seq_cnt = 10;
 	u8 phase, *data_buf, tuned_phases[NUM_TUNING_PHASES], tuned_phase_cnt;
 	const u32 *tuning_block_pattern = tuning_block_64;
 	int size = sizeof(tuning_block_64); /* Tuning pattern size in bytes */
@@ -1226,12 +1226,6 @@ int sdhci_msm_execute_tuning(struct sdhci_host *host, u32 opcode)
 		(ios.timing == MMC_TIMING_MMC_HS200) ||
 		(ios.timing == MMC_TIMING_UHS_SDR104)))
 		return 0;
-
-	/*
-	 * Clear tuning_done flag before tuning to ensure proper
-	 * HS400 settings.
-	 */
-	msm_host->tuning_done = 0;
 
 	/*
 	 * Don't allow re-tuning for CRC errors observed for any commands
@@ -1404,6 +1398,22 @@ retry:
 		sdhci_msm_set_mmc_drv_type(host, opcode, 0);
 
 	if (tuned_phase_cnt) {
+		if (tuned_phase_cnt == ARRAY_SIZE(tuned_phases)) {
+			/*
+			 * All phases valid is _almost_ as bad as no phases
+			 * valid.  Probably all phases are not really reliable
+			 * but we didn't detect where the unreliable place is.
+			 * That means we'll essentially be guessing and hoping
+			 * we get a good phase.  Better to try a few times.
+			 */
+			dev_dbg(mmc_dev(mmc), "%s: All phases valid; try again\n",
+				mmc_hostname(mmc));
+			if (--tuning_seq_cnt) {
+				tuned_phase_cnt = 0;
+				goto retry;
+			}
+		}
+
 		rc = msm_find_most_appropriate_phase(host, tuned_phases,
 							tuned_phase_cnt);
 		if (rc < 0)
@@ -2474,7 +2484,7 @@ static int sdhci_msm_vreg_enable(struct sdhci_msm_reg_data *vreg)
 
 	if (!vreg->is_enabled) {
 		/* Set voltage level */
-		ret = sdhci_msm_vreg_set_voltage(vreg, vreg->high_vol_level,
+		ret = sdhci_msm_vreg_set_voltage(vreg, vreg->low_vol_level,
 						vreg->high_vol_level);
 		if (ret)
 			return ret;
@@ -4146,8 +4156,8 @@ void sdhci_msm_pm_qos_irq_init(struct sdhci_host *host)
 		(msm_host->pm_qos_irq.req.type != PM_QOS_REQ_ALL_CORES))
 		set_affine_irq(msm_host, host);
 	else
-		cpumask_copy(&msm_host->pm_qos_irq.req.cpus_affine,
-			cpumask_of(msm_host->pdata->pm_qos_data.irq_cpu));
+		atomic_set(&msm_host->pm_qos_irq.req.cpus_affine,
+			*cpumask_bits(cpumask_of(msm_host->pdata->pm_qos_data.irq_cpu)));
 
 	sdhci_msm_pm_qos_wq_init(msm_host);
 
@@ -4201,8 +4211,8 @@ static ssize_t sdhci_msm_pm_qos_group_show(struct device *dev,
 	for (i = 0; i < nr_groups; i++) {
 		group = &msm_host->pm_qos[i];
 		offset += snprintf(&buf[offset], PAGE_SIZE,
-			"Group #%d (mask=0x%lx) PM QoS: enabled=%d, counter=%d, latency=%d\n",
-			i, group->req.cpus_affine.bits[0],
+			"Group #%d PM QoS: enabled=%d, counter=%d, latency=%d\n",
+			i,
 			msm_host->pm_qos_group_enable,
 			atomic_read(&group->counter),
 			group->latency);
@@ -4361,15 +4371,14 @@ void sdhci_msm_pm_qos_cpu_init(struct sdhci_host *host,
 			sdhci_msm_pm_qos_cpu_unvote_work);
 		atomic_set(&group->counter, 0);
 		group->req.type = PM_QOS_REQ_AFFINE_CORES;
-		cpumask_copy(&group->req.cpus_affine,
-			&msm_host->pdata->pm_qos_data.cpu_group_map.mask[i]);
+		atomic_set(&group->req.cpus_affine,
+			*cpumask_bits(&msm_host->pdata->pm_qos_data.cpu_group_map.mask[i]));
 		/* We set default latency here for all pm_qos cpu groups. */
 		group->latency = PM_QOS_DEFAULT_VALUE;
 		pm_qos_add_request(&group->req, PM_QOS_CPU_DMA_LATENCY,
 			group->latency);
-		pr_info("%s (): voted for group #%d (mask=0x%lx) latency=%d\n",
+		pr_info("%s (): voted for group #%d latency=%d\n",
 			__func__, i,
-			group->req.cpus_affine.bits[0],
 			group->latency);
 	}
 	msm_host->pm_qos_prev_cpu = -1;

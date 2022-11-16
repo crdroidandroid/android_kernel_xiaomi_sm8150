@@ -816,6 +816,12 @@ static ssize_t devkmsg_write(struct kiocb *iocb, struct iov_iter *from)
 		}
 	}
 
+	if (strncmp("healthd", line, 7) == 0 ||
+		strncmp("init: DM_DEV_STATUS failed", line, 26) == 0) {
+		kfree(buf);
+		return len;
+	}
+
 	printk_emit(facility, level, NULL, 0, "%s", line);
 	kfree(buf);
 	return ret;
@@ -1300,13 +1306,11 @@ static size_t msg_print_text(const struct printk_log *msg, bool syslog, char *bu
 
 static int syslog_print(char __user *buf, int size)
 {
-	char *text;
+	char text[LOG_LINE_MAX + PREFIX_MAX];
 	struct printk_log *msg;
 	int len = 0;
 
-	text = kmalloc(LOG_LINE_MAX + PREFIX_MAX, GFP_KERNEL);
-	if (!text)
-		return -ENOMEM;
+	memset(&text, 0, LOG_LINE_MAX + PREFIX_MAX);
 
 	while (size > 0) {
 		size_t n;
@@ -1355,18 +1359,15 @@ static int syslog_print(char __user *buf, int size)
 		buf += n;
 	}
 
-	kfree(text);
 	return len;
 }
 
 static int syslog_print_all(char __user *buf, int size, bool clear)
 {
-	char *text;
+	char text[LOG_LINE_MAX + PREFIX_MAX];
 	int len = 0;
 
-	text = kmalloc(LOG_LINE_MAX + PREFIX_MAX, GFP_KERNEL);
-	if (!text)
-		return -ENOMEM;
+	memset(&text, 0, LOG_LINE_MAX + PREFIX_MAX);
 
 	logbuf_lock_irq();
 	if (buf) {
@@ -1437,7 +1438,6 @@ static int syslog_print_all(char __user *buf, int size, bool clear)
 	}
 	logbuf_unlock_irq();
 
-	kfree(text);
 	return len;
 }
 
@@ -2100,6 +2100,16 @@ static int __init console_setup(char *str)
 	char *s, *options, *brl_options = NULL;
 	int idx;
 
+	/*
+	 * console="" or console=null have been suggested as a way to
+	 * disable console output. Use ttynull that has been created
+	 * for exacly this purpose.
+	 */
+	if (str[0] == 0 || strcmp(str, "null") == 0) {
+		__add_preferred_console("ttynull", 0, NULL, NULL);
+		return 1;
+	}
+
 	if (_braille_console_setup(&str, &brl_options))
 		return 1;
 
@@ -2175,7 +2185,6 @@ void suspend_console(void)
 {
 	if (!console_suspend_enabled)
 		return;
-	printk("Suspending console(s) (use no_console_suspend to debug)\n");
 	console_lock();
 	console_suspended = 1;
 	up_console_sem();

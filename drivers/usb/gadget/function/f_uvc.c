@@ -625,7 +625,12 @@ uvc_function_bind(struct usb_configuration *c, struct usb_function *f)
 
 	uvc_hs_streaming_ep.wMaxPacketSize =
 		cpu_to_le16(max_packet_size | ((max_packet_mult - 1) << 11));
-	uvc_hs_streaming_ep.bInterval = opts->streaming_interval;
+
+	/* A high-bandwidth endpoint must specify a bInterval value of 1 */
+	if (max_packet_mult > 1)
+		uvc_hs_streaming_ep.bInterval = 1;
+	else
+		uvc_hs_streaming_ep.bInterval = opts->streaming_interval;
 
 	uvc_ss_streaming_ep.wMaxPacketSize = cpu_to_le16(max_packet_size);
 	uvc_ss_streaming_ep.bInterval = opts->streaming_interval;
@@ -791,9 +796,9 @@ static struct usb_function_instance *uvc_alloc_inst(void)
 	cd->wObjectiveFocalLengthMax	= cpu_to_le16(0);
 	cd->wOcularFocalLength		= cpu_to_le16(0);
 	cd->bControlSize		= 3;
-	cd->bmControls[0]		= 2;
-	cd->bmControls[1]		= 0;
-	cd->bmControls[2]		= 0;
+	cd->bmControls[0]		= 46;
+	cd->bmControls[1]		= 2;
+	cd->bmControls[2]		= 10;
 
 	pd = &opts->uvc_processing;
 	pd->bLength			= UVC_DT_PROCESSING_UNIT_SIZE(3);
@@ -803,9 +808,9 @@ static struct usb_function_instance *uvc_alloc_inst(void)
 	pd->bSourceID			= 1;
 	pd->wMaxMultiplier		= cpu_to_le16(16*1024);
 	pd->bControlSize		= 3;
-	pd->bmControls[0]		= 64;
-	pd->bmControls[1]		= 16;
-	pd->bmControls[2]		= 1;
+	pd->bmControls[0]		= 90;
+	pd->bmControls[1]		= 20;
+	pd->bmControls[2]		= 4;
 	pd->iProcessing			= 0;
 	pd->bmVideoStandards		= 0;
 

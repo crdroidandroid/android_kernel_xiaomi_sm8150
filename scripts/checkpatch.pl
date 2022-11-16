@@ -2566,8 +2566,8 @@ sub process {
 
 # Check if the commit log has what seems like a diff which can confuse patch
 		if ($in_commit_log && !$commit_log_has_diff &&
-		    (($line =~ m@^\s+diff\b.*a/[\w/]+@ &&
-		      $line =~ m@^\s+diff\b.*a/([\w/]+)\s+b/$1\b@) ||
+		    (($line =~ m@^\s+diff\b.*a/([\w/]+)@ &&
+		      $line =~ m@^\s+diff\b.*a/[\w/]+\s+b/$1\b@) ||
 		     $line =~ m@^\s*(?:\-\-\-\s+a/|\+\+\+\s+b/)@ ||
 		     $line =~ m/^\s*\@\@ \-\d+,\d+ \+\d+,\d+ \@\@/)) {
 			ERROR("DIFF_IN_COMMIT_MSG",
@@ -2654,7 +2654,7 @@ sub process {
 					     "email address '$email' might be better as '$suggested_email$comment'\n" . $herecurr);
 				}
 			}
-			if ($chk_author && $line =~ /^\s*signed-off-by:.*(quicinc|qualcomm)\.com/i) {
+			if ($chk_author && $line =~ /^\s*signed-off-by:.*(qualcomm)\.com/i) {
 				WARN("BAD_SIGN_OFF",
 				     "invalid Signed-off-by identity\n" . $line );
 			}			
@@ -2787,7 +2787,7 @@ sub process {
 		}
 
 #check the patch for invalid author credentials
-		if ($chk_author && $line =~ /^From:.*(quicinc|qualcomm)\.com/) {
+		if ($chk_author && $line =~ /^From:.*(qualcomm)\.com/) {
 			WARN("BAD_AUTHOR", "invalid author identity\n" . $line );
 		}
 
@@ -4042,7 +4042,7 @@ sub process {
 			    $fix) {
 				fix_delete_line($fixlinenr, $rawline);
 				my $fixed_line = $rawline;
-				$fixed_line =~ /(^..*$Type\s*$Ident\(.*\)\s*){(.*)$/;
+				$fixed_line =~ /(^..*$Type\s*$Ident\(.*\)\s*)\{(.*)$/;
 				my $line1 = $1;
 				my $line2 = $2;
 				fix_insert_line($fixlinenr, ltrim($line1));

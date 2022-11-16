@@ -175,14 +175,6 @@ __memblock_find_range_top_down(phys_addr_t start, phys_addr_t end,
  *
  * Find @size free area aligned to @align in the specified range and node.
  *
- * When allocation direction is bottom-up, the @start should be greater
- * than the end of the kernel image. Otherwise, it will be trimmed. The
- * reason is that we want the bottom-up allocation just near the kernel
- * image so it is highly likely that the allocated memory and the kernel
- * will reside in the same node.
- *
- * If bottom-up allocation failed, will try to allocate memory top-down.
- *
  * RETURNS:
  * Found address on success, 0 on failure.
  */
@@ -190,8 +182,6 @@ phys_addr_t __init_memblock memblock_find_in_range_node(phys_addr_t size,
 					phys_addr_t align, phys_addr_t start,
 					phys_addr_t end, int nid, ulong flags)
 {
-	phys_addr_t kernel_end, ret;
-
 	/* pump up @end */
 	if (end == MEMBLOCK_ALLOC_ACCESSIBLE ||
 	    end == MEMBLOCK_ALLOC_KASAN)
@@ -200,39 +190,13 @@ phys_addr_t __init_memblock memblock_find_in_range_node(phys_addr_t size,
 	/* avoid allocating the first page */
 	start = max_t(phys_addr_t, start, PAGE_SIZE);
 	end = max(start, end);
-	kernel_end = __pa_symbol(_end);
 
-	/*
-	 * try bottom-up allocation only when bottom-up mode
-	 * is set and @end is above the kernel image.
-	 */
-	if (memblock_bottom_up() && end > kernel_end) {
-		phys_addr_t bottom_up_start;
-
-		/* make sure we will allocate above the kernel */
-		bottom_up_start = max(start, kernel_end);
-
-		/* ok, try bottom-up allocation first */
-		ret = __memblock_find_range_bottom_up(bottom_up_start, end,
-						      size, align, nid, flags);
-		if (ret)
-			return ret;
-
-		/*
-		 * we always limit bottom-up allocation above the kernel,
-		 * but top-down allocation doesn't have the limit, so
-		 * retrying top-down allocation may succeed when bottom-up
-		 * allocation failed.
-		 *
-		 * bottom-up allocation is expected to be fail very rarely,
-		 * so we use WARN_ONCE() here to see the stack trace if
-		 * fail happens.
-		 */
-		WARN_ONCE(1, "memblock: bottom-up allocation failed, memory hotunplug may be affected\n");
-	}
-
-	return __memblock_find_range_top_down(start, end, size, align, nid,
-					      flags);
+	if (memblock_bottom_up())
+		return __memblock_find_range_bottom_up(start, end, size, align,
+						       nid, flags);
+	else
+		return __memblock_find_range_top_down(start, end, size, align,
+						      nid, flags);
 }
 
 /**
@@ -1432,7 +1396,7 @@ void __init __memblock_free_late(phys_addr_t base, phys_addr_t size)
 
 	for (; cursor < end; cursor++) {
 		__free_pages_bootmem(pfn_to_page(cursor), cursor, 0);
-		totalram_pages++;
+		totalram_pages_inc();
 	}
 }
 
@@ -1782,8 +1746,10 @@ static int __init early_memblock(char *p)
 early_param("memblock", early_memblock);
 
 #ifdef CONFIG_MEMORY_HOTPLUG
-static phys_addr_t no_hotplug_area[8];
-static phys_addr_t aligned_blocks[32];
+#define NUM_NOHP 8
+#define NUM_ALIGN_BLK 64
+static phys_addr_t no_hotplug_area[NUM_NOHP];
+static phys_addr_t aligned_blocks[NUM_ALIGN_BLK];
 
 static int __init early_no_hotplug_area(char *p)
 {
@@ -1793,16 +1759,20 @@ static int __init early_no_hotplug_area(char *p)
 
 	while (1) {
 		base = memparse(endp, &endp);
-		if (base && (*endp == ',')) {
+		if (base && *endp == ',') {
 			size = memparse(endp + 1, &endp);
 			if (size) {
 				no_hotplug_area[idx++] = base;
 				no_hotplug_area[idx++] = base+size;
 
-				if ((*endp == ';') && (idx <= 6))
+				if (*endp == ';' && idx <= NUM_NOHP-2) {
 					endp++;
-				else
+				} else {
+					if (*endp == ';' && idx == NUM_NOHP-1)
+						pr_err("%s: nohp overflows\n",
+							__func__);
 					break;
+				}
 			} else
 				break;
 		} else
@@ -1816,7 +1786,7 @@ static bool __init memblock_in_no_hotplug_area(phys_addr_t addr)
 {
 	int idx = 0;
 
-	while (idx < 8) {
+	while (idx < NUM_NOHP) {
 		if (!no_hotplug_area[idx])
 			break;
 
@@ -1844,8 +1814,16 @@ static int __init early_dyn_memhotplug(char *p)
 		rgn = &memblock.memory.regions[idx++];
 		addr = ALIGN(rgn->base, MIN_MEMORY_BLOCK_SIZE);
 		rgn_end = rgn->base + rgn->size;
+		if (idx == memblock.memory.cnt)
+			rgn_end--;
 		while (addr + MIN_MEMORY_BLOCK_SIZE <= rgn_end) {
 			if (!memblock_in_no_hotplug_area(addr)) {
+				if (blk == NUM_ALIGN_BLK-1) {
+					pr_err("%s: aligned_blocks overflows\n",
+						__func__);
+					return 0;
+				}
+
 				aligned_blocks[blk++] = addr;
 				memblock_remove(addr, MIN_MEMORY_BLOCK_SIZE);
 			}

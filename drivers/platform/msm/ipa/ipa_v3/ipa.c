@@ -381,6 +381,7 @@ static void ipa3_active_clients_log_destroy(void)
 	kfree(active_clients_table_buf);
 	active_clients_table_buf = NULL;
 	kfree(ipa3_ctx->ipa3_active_clients_logging.log_buffer[0]);
+	ipa3_ctx->ipa3_active_clients_logging.log_buffer[0] = NULL;
 	ipa3_ctx->ipa3_active_clients_logging.log_head = 0;
 	ipa3_ctx->ipa3_active_clients_logging.log_tail =
 			IPA3_ACTIVE_CLIENTS_LOG_BUFFER_SIZE_LINES - 1;
@@ -413,19 +414,35 @@ struct iommu_domain *ipa3_get_uc_smmu_domain(void)
 struct iommu_domain *ipa3_get_wlan_smmu_domain(void)
 {
 	if (smmu_cb[IPA_SMMU_CB_WLAN].valid)
-		return smmu_cb[IPA_SMMU_CB_WLAN].iommu;
+		return ipa3_ctx->ipa_wlan_cb_iova_map ?
+			smmu_cb[IPA_SMMU_CB_WLAN].mapping->domain :
+			smmu_cb[IPA_SMMU_CB_WLAN].iommu;
 
 	IPAERR("CB not valid\n");
 
 	return NULL;
 }
 
+struct device *ipa3_get_wlan_device(void)
+{
+	if (ipa3_ctx->ipa_hw_type == IPA_HW_v4_5 &&
+		ipa3_get_wdi_version() == IPA_WDI_1) {
+
+		if (smmu_cb[IPA_SMMU_CB_WLAN].valid)
+			return smmu_cb[IPA_SMMU_CB_WLAN].dev;
+
+		IPAERR("CB not valid\n");
+		return NULL;
+	}
+	return ipa3_ctx->pdev;
+}
+
 struct iommu_domain *ipa3_get_smmu_domain_by_type(enum ipa_smmu_cb_type cb_type)
 {
-
 	if (cb_type == IPA_SMMU_CB_WLAN && smmu_cb[IPA_SMMU_CB_WLAN].valid)
-		return smmu_cb[IPA_SMMU_CB_WLAN].iommu;
-
+		return ipa3_ctx->ipa_wlan_cb_iova_map ?
+			smmu_cb[IPA_SMMU_CB_WLAN].mapping->domain :
+			smmu_cb[IPA_SMMU_CB_WLAN].iommu;
 	if (smmu_cb[cb_type].valid)
 		return smmu_cb[cb_type].mapping->domain;
 
@@ -3462,16 +3479,16 @@ static void ipa3_q6_avoid_holb(void)
 			 * setting HOLB on Q6 pipes, and from APPS perspective
 			 * they are not valid, therefore, the above function
 			 * will fail.
+			 * Also don't reset the HOLB timer to 0 for Q6 pipes.
 			 */
-			ipahal_write_reg_n_fields(
-				IPA_ENDP_INIT_HOL_BLOCK_TIMER_n,
-				ep_idx, &ep_holb);
 			ipahal_write_reg_n_fields(
 				IPA_ENDP_INIT_HOL_BLOCK_EN_n,
 				ep_idx, &ep_holb);
 
-			/* IPA4.5 issue requires HOLB_EN to be written twice */
-			if (ipa3_ctx->ipa_hw_type >= IPA_HW_v4_5)
+			/* For targets > IPA_4.0 issue requires HOLB_EN to be
+			 * written twice.
+			 */
+			if (ipa3_ctx->ipa_hw_type >= IPA_HW_v4_0)
 				ipahal_write_reg_n_fields(
 					IPA_ENDP_INIT_HOL_BLOCK_EN_n,
 					ep_idx, &ep_holb);
@@ -5599,6 +5616,7 @@ void ipa3_dec_client_disable_clks_no_block(
 		&ipa_dec_clients_disable_clks_on_wq_work, 0);
 }
 
+#ifdef IPA_WAKELOCKS
 /**
  * ipa3_inc_acquire_wakelock() - Increase active clients counter, and
  * acquire wakelock if necessary
@@ -5639,6 +5657,7 @@ void ipa3_dec_release_wakelock(void)
 		__pm_relax(&ipa3_ctx->w_lock);
 	spin_unlock_irqrestore(&ipa3_ctx->wakelock_ref_cnt.spinlock, flags);
 }
+#endif
 
 int ipa3_set_clock_plan_from_pm(int idx)
 {
@@ -5836,11 +5855,13 @@ void ipa3_suspend_handler(enum ipa_irq_type interrupt,
 					atomic_set(
 					&ipa3_ctx->transport_pm.dec_clients,
 					1);
+				#ifdef IPA_WAKELOCKS
 					/*
 					 * acquire wake lock as long as suspend
 					 * vote is held
 					 */
 					ipa3_inc_acquire_wakelock();
+				#endif
 					ipa3_process_irq_schedule_rel();
 				}
 				mutex_unlock(pm_mutex_ptr);
@@ -5917,7 +5938,9 @@ static void ipa3_transport_release_resource(struct work_struct *work)
 			ipa3_process_irq_schedule_rel();
 		} else {
 			atomic_set(&ipa3_ctx->transport_pm.dec_clients, 0);
+		#ifdef IPA_WAKELOCKS
 			ipa3_dec_release_wakelock();
+		#endif
 			IPA_ACTIVE_CLIENTS_DEC_SPECIAL("TRANSPORT_RESOURCE");
 		}
 	}
@@ -6497,9 +6520,17 @@ static int ipa3_post_init(const struct ipa3_plat_drv_res *resource_p,
 	else
 		IPADBG(":stats init ok\n");
 
+	result = ipa_drop_stats_init();
+	if (result)
+		IPAERR("fail to init stats %d\n", result);
+	else
+		IPADBG(":stats init ok\n");
+
 	ipa3_register_panic_hdlr();
 
+#ifdef CONFIG_DEBUGFS
 	ipa3_debugfs_post_init();
+#endif
 
 	mutex_lock(&ipa3_ctx->lock);
 	ipa3_ctx->ipa_initialization_complete = true;
@@ -6758,6 +6789,8 @@ static ssize_t ipa3_write(struct file *file, const char __user *buf,
 		 */
 		if (!strcasecmp(dbg_buff, "MHI")) {
 			ipa3_ctx->ipa_config_is_mhi = true;
+		} else if (!strcmp(dbg_buff, "DBS")) {
+			ipa3_ctx->is_wdi3_tx1_needed = true;
 		} else if (strcmp(dbg_buff, "1")) {
 			IPAERR("got invalid string %s not loading FW\n",
 				dbg_buff);
@@ -7000,6 +7033,9 @@ static int ipa3_pre_init(const struct ipa3_plat_drv_res *resource_p,
 	ipa3_ctx->use_64_bit_dma_mask = resource_p->use_64_bit_dma_mask;
 	ipa3_ctx->wan_rx_ring_size = resource_p->wan_rx_ring_size;
 	ipa3_ctx->lan_rx_ring_size = resource_p->lan_rx_ring_size;
+	ipa3_ctx->wan_aggr_time_limit = resource_p->wan_aggr_time_limit;
+	ipa3_ctx->lan_aggr_time_limit = resource_p->lan_aggr_time_limit;
+	ipa3_ctx->rndis_aggr_time_limit = resource_p->rndis_aggr_time_limit;
 	ipa3_ctx->ipa_wan_skb_page = resource_p->ipa_wan_skb_page;
 	ipa3_ctx->stats.page_recycle_stats[0].total_replenished = 0;
 	ipa3_ctx->stats.page_recycle_stats[0].tmp_alloc = 0;
@@ -7032,7 +7068,15 @@ static int ipa3_pre_init(const struct ipa3_plat_drv_res *resource_p,
 	ipa3_ctx->uc_act_tbl_total = 0;
 	ipa3_ctx->uc_act_tbl_next_index = 0;
 	ipa3_ctx->ipa_config_is_auto = resource_p->ipa_config_is_auto;
+	ipa3_ctx->ipa_config_is_sa = resource_p->ipa_config_is_sa;
+	ipa3_ctx->ipa_wlan_cb_iova_map = false;
 	ipa3_ctx->manual_fw_load = resource_p->manual_fw_load;
+	ipa3_ctx->ipa_wdi3_2g_holb_timeout =
+		resource_p->ipa_wdi3_2g_holb_timeout;
+	ipa3_ctx->ipa_wdi3_5g_holb_timeout =
+		resource_p->ipa_wdi3_5g_holb_timeout;
+	ipa3_ctx->is_wdi3_tx1_needed = false;
+	ipa3_ctx->ipa_in_cpe_cfg = resource_p->ipa_in_cpe_cfg;
 
 	if (ipa3_ctx->secure_debug_check_action == USE_SCM) {
 		if (ipa_is_mem_dump_allowed())
@@ -7389,12 +7433,16 @@ static int ipa3_pre_init(const struct ipa3_plat_drv_res *resource_p,
 		goto fail_device_create;
 	}
 
+#ifdef CONFIG_DEBUGFS
 	ipa3_debugfs_pre_init();
 
+#ifdef IPA_WAKELOCKS
 	/* Create a wakeup source. */
 	wakeup_source_init(&ipa3_ctx->w_lock, "IPA_WS");
 	spin_lock_init(&ipa3_ctx->wakelock_ref_cnt.spinlock);
-
+	
+#endif /* IPA_WAKELOCKS */
+#endif /* CONFIG_DEBUGFS */
 	/* Initialize Power Management framework */
 	if (ipa3_ctx->use_ipa_pm) {
 		result = ipa_pm_init(&ipa3_res.pm_init);
@@ -7574,8 +7622,10 @@ fail_bus_reg:
 fail_init_mem_partition:
 fail_bind:
 	kfree(ipa3_ctx->ctrl);
+	ipa3_ctx->ctrl = NULL;
 fail_mem_ctrl:
 	kfree(ipa3_ctx->ipa_tz_unlock_reg);
+	ipa3_ctx->ipa_tz_unlock_reg = NULL;
 fail_tz_unlock_reg:
 	if (ipa3_ctx->logbuf)
 		ipc_log_context_destroy(ipa3_ctx->logbuf);
@@ -7686,6 +7736,8 @@ static int get_ipa_dts_configuration(struct platform_device *pdev,
 	u32 mhi_evid_limits[2];
 
 	/* initialize ipa3_res */
+	ipa_drv_res->ipa_wdi3_2g_holb_timeout = 0;
+	ipa_drv_res->ipa_wdi3_5g_holb_timeout = 0;
 	ipa_drv_res->ipa_pipe_mem_start_ofst = IPA_PIPE_MEM_START_OFST;
 	ipa_drv_res->ipa_pipe_mem_size = IPA_PIPE_MEM_SIZE;
 	ipa_drv_res->ipa_hw_type = 0;
@@ -7711,7 +7763,12 @@ static int get_ipa_dts_configuration(struct platform_device *pdev,
 	ipa_drv_res->ipa_fltrt_not_hashable = false;
 	ipa_drv_res->ipa_endp_delay_wa = false;
 	ipa_drv_res->ipa_config_is_auto = false;
+	ipa_drv_res->ipa_config_is_sa = false;
 	ipa_drv_res->manual_fw_load = false;
+	ipa_drv_res->wan_aggr_time_limit = IPA_GENERIC_AGGR_TIME_LIMIT;
+	ipa_drv_res->lan_aggr_time_limit = IPA_GENERIC_AGGR_TIME_LIMIT;
+	ipa_drv_res->rndis_aggr_time_limit = IPA_RNDIS_DEFAULT_AGGR_TIME_LIMIT;
+	ipa_drv_res->ipa_in_cpe_cfg = false;
 
 	/* Get IPA HW Version */
 	result = of_property_read_u32(pdev->dev.of_node, "qcom,ipa-hw-ver",
@@ -7771,6 +7828,37 @@ static int get_ipa_dts_configuration(struct platform_device *pdev,
 		IPADBG(": found ipa_drv_res->lan-rx-ring-size = %u",
 			ipa_drv_res->lan_rx_ring_size);
 
+	/* Get IPA WAN / LAN / RNDIS Aggregation timeout value in ms */
+	result = of_property_read_u32(pdev->dev.of_node,
+			"qcom,wan-aggr-time-limit",
+			&ipa_drv_res->wan_aggr_time_limit);
+	if (result)
+		IPADBG("using default for wan-aggr-time-limit = %u\n",
+				ipa_drv_res->wan_aggr_time_limit);
+	else
+		IPADBG(": found ipa_drv_res->wan_aggr_time_limit = %u",
+				ipa_drv_res->wan_aggr_time_limit);
+
+	result = of_property_read_u32(pdev->dev.of_node,
+			"qcom,lan-aggr-time-limit",
+			&ipa_drv_res->lan_aggr_time_limit);
+	if (result)
+		IPADBG("using default for lan-aggr-time-limit = %u\n",
+				ipa_drv_res->lan_aggr_time_limit);
+	else
+		IPADBG(": found ipa_drv_res->lan_aggr_time_limit = %u",
+				ipa_drv_res->lan_aggr_time_limit);
+
+	result = of_property_read_u32(pdev->dev.of_node,
+			"qcom,rndis-aggr-time-limit",
+			&ipa_drv_res->rndis_aggr_time_limit);
+	if (result)
+		IPADBG("using default for rndis-aggr-time-limit = %u\n",
+				ipa_drv_res->rndis_aggr_time_limit);
+	else
+		IPADBG(": found ipa_drv_res->rndis_aggr_time_limit = %u",
+				ipa_drv_res->rndis_aggr_time_limit);
+
 	ipa_drv_res->use_ipa_teth_bridge =
 			of_property_read_bool(pdev->dev.of_node,
 			"qcom,use-ipa-tethering-bridge");
@@ -7823,6 +7911,13 @@ static int get_ipa_dts_configuration(struct platform_device *pdev,
 		"qcom,ipa-config-is-auto");
 	IPADBG(": ipa-config-is-auto = %s\n",
 		ipa_drv_res->ipa_config_is_auto
+		? "True" : "False");
+
+	ipa_drv_res->ipa_config_is_sa =
+		of_property_read_bool(pdev->dev.of_node,
+		"qcom,ipa-config-is-sa");
+	IPADBG(": ipa-config-is-sa = %s\n",
+		ipa_drv_res->ipa_config_is_sa
 		? "True" : "False");
 
 	ipa_drv_res->ipa_wan_skb_page =
@@ -8015,6 +8110,7 @@ static int get_ipa_dts_configuration(struct platform_device *pdev,
 			IPAERR("failed to read register addresses\n");
 			kfree(ipa_tz_unlock_reg);
 			kfree(ipa_drv_res->ipa_tz_unlock_reg);
+			ipa_drv_res->ipa_tz_unlock_reg = NULL;
 			return -EFAULT;
 		}
 
@@ -8030,6 +8126,28 @@ static int get_ipa_dts_configuration(struct platform_device *pdev,
 		}
 		kfree(ipa_tz_unlock_reg);
 	}
+
+	/* get HOLB_TO numbers for wdi3 tx pipe */
+	result = of_property_read_u32(pdev->dev.of_node,
+			"qcom,ipa-wdi3-holb-2g",
+			&ipa_drv_res->ipa_wdi3_2g_holb_timeout);
+	if (result)
+		IPADBG("Not able to get the holb for 2g pipe = %u\n",
+			ipa_drv_res->ipa_wdi3_2g_holb_timeout);
+	else
+		IPADBG(": found ipa_drv_res->ipa_wdi3_2g_holb_timeout = %u",
+			ipa_drv_res->ipa_wdi3_2g_holb_timeout);
+
+	/* get HOLB_TO numbers for wdi3 tx1 pipe */
+	result = of_property_read_u32(pdev->dev.of_node,
+			"qcom,ipa-wdi3-holb-5g",
+			&ipa_drv_res->ipa_wdi3_5g_holb_timeout);
+	if (result)
+		IPADBG("Not able to get the holb for 5g pipe = %u\n",
+			ipa_drv_res->ipa_wdi3_5g_holb_timeout);
+	else
+		IPADBG(": found ipa_drv_res->ipa_wdi3_5g_holb_timeout = %u",
+			ipa_drv_res->ipa_wdi3_5g_holb_timeout);
 
 	/* get IPA PM related information */
 	result = get_ipa_dts_pm_info(pdev, ipa_drv_res);
@@ -8127,6 +8245,11 @@ static int get_ipa_dts_configuration(struct platform_device *pdev,
 	IPADBG(": manual-fw-load (%s)\n",
 		ipa_drv_res->manual_fw_load
 		? "True" : "False");
+	ipa_drv_res->ipa_in_cpe_cfg =
+		of_property_read_bool(pdev->dev.of_node,
+				"qcom,use-ipa-in-cpe-config");
+	IPADBG(": qcom,use-ipa-in-cpe-config = %s\n",
+		ipa_drv_res->ipa_in_cpe_cfg ? "True":"False");
 
 	return 0;
 }
@@ -8139,7 +8262,9 @@ static int ipa_smmu_wlan_cb_probe(struct device *dev)
 	int bypass = 1;
 	int ret;
 	u32 add_map_size;
+	u32 iova_ap_mapping[2];
 	const u32 *add_map;
+	struct iommu_domain *iommu;
 	int i;
 
 	IPADBG("sub pdev=%pK\n", dev);
@@ -8149,16 +8274,62 @@ static int ipa_smmu_wlan_cb_probe(struct device *dev)
 		return 0;
 	}
 
+	/* support wlan_cb no domain/mapping modes */
+	ipa3_ctx->ipa_wlan_cb_iova_map = of_property_read_bool(dev->of_node,
+										"qcom,iova-mapping");
 	cb->dev = dev;
-	cb->iommu = iommu_domain_alloc(dev->bus);
-	if (!cb->iommu) {
-		IPAERR("could not alloc iommu domain\n");
-		/* assume this failure is because iommu driver is not ready */
-		return -EPROBE_DEFER;
+	if (ipa3_ctx->ipa_wlan_cb_iova_map) {
+		ret = of_property_read_u32_array(dev->of_node,
+			"qcom,iova-mapping", iova_ap_mapping, 2);
+		if (ret) {
+			IPAERR("Fail to read UC start/size iova addresses\n");
+			return ret;
+		}
+		cb->va_start = iova_ap_mapping[0];
+		cb->va_size = iova_ap_mapping[1];
+		cb->va_end = cb->va_start + cb->va_size;
+		IPADBG("WLAN va_start=0x%x va_sise=0x%x\n", cb->va_start,
+			cb->va_size);
+		if (smmu_info.use_64_bit_dma_mask) {
+			if (dma_set_mask(dev, DMA_BIT_MASK(64)) ||
+				dma_set_coherent_mask(dev, DMA_BIT_MASK(64))) {
+				IPAERR("DMA set 64bit mask failed\n");
+				return -EOPNOTSUPP;
+			}
+		} else {
+			if (dma_set_mask(dev, DMA_BIT_MASK(32)) ||
+				dma_set_coherent_mask(dev, DMA_BIT_MASK(32))) {
+				IPAERR("DMA set 32bit mask failed\n");
+				return -EOPNOTSUPP;
+			}
+		}
+		cb->mapping = arm_iommu_create_mapping(dev->bus,
+				cb->va_start, cb->va_size);
+		if (IS_ERR_OR_NULL(cb->mapping)) {
+			IPADBG("Fail to create mapping\n");
+			/* assume this failure is because
+			 * iommu driver is not ready
+			 */
+			return -EPROBE_DEFER;
+		}
+		iommu = cb->mapping->domain;
+	} else {
+		cb->iommu = iommu_domain_alloc(dev->bus);
+		if (!cb->iommu) {
+			IPAERR("could not alloc iommu domain\n");
+			/* assume this failure is because
+			 * iommu driver is not ready
+			 */
+			return -EPROBE_DEFER;
+		}
+		iommu = cb->iommu;
 	}
+
+	IPADBG("WLAN CB PROBE=%pK create IOMMU mapping\n", dev);
 
 	cb->is_cache_coherent = of_property_read_bool(dev->of_node,
 							"dma-coherent");
+	IPADBG("SMMU mapping created\n");
 	cb->valid = true;
 
 	if (of_property_read_bool(dev->of_node,
@@ -8170,35 +8341,32 @@ static int ipa_smmu_wlan_cb_probe(struct device *dev)
 		ipa3_ctx->s1_bypass_arr[IPA_SMMU_CB_WLAN] = true;
 		cb->is_cache_coherent = false;
 
-		if (iommu_domain_set_attr(cb->iommu,
+		if (iommu_domain_set_attr(iommu,
 					DOMAIN_ATTR_S1_BYPASS,
 					&bypass)) {
 			IPAERR("couldn't set bypass\n");
-			cb->valid = false;
-			return -EIO;
+			goto release_mapping;
 		}
 		IPADBG("WLAN SMMU S1 BYPASS\n");
 	} else {
 		smmu_info.s1_bypass_arr[IPA_SMMU_CB_WLAN] = false;
 		ipa3_ctx->s1_bypass_arr[IPA_SMMU_CB_WLAN] = false;
 
-		if (iommu_domain_set_attr(cb->iommu,
+		if (iommu_domain_set_attr(iommu,
 					DOMAIN_ATTR_ATOMIC,
 					&atomic_ctx)) {
 			IPAERR("couldn't disable coherent HTW\n");
-			cb->valid = false;
-			return -EIO;
+			goto release_mapping;
 		}
 		IPADBG(" WLAN SMMU ATTR ATOMIC\n");
 
 		if (smmu_info.fast_map_arr[IPA_SMMU_CB_WLAN] ||
 						smmu_info.fast_map) {
-			if (iommu_domain_set_attr(cb->iommu,
+			if (iommu_domain_set_attr(iommu,
 						DOMAIN_ATTR_FAST,
 						&fast)) {
 				IPAERR("couldn't set fast map\n");
-				cb->valid = false;
-				return -EIO;
+				goto release_mapping;
 			}
 			IPADBG("SMMU fast map set\n");
 		}
@@ -8208,12 +8376,14 @@ static int ipa_smmu_wlan_cb_probe(struct device *dev)
 		smmu_info.s1_bypass_arr[IPA_SMMU_CB_WLAN],
 				smmu_info.fast_map_arr[IPA_SMMU_CB_WLAN]);
 
-	ret = iommu_attach_device(cb->iommu, dev);
+	ret = ipa3_ctx->ipa_wlan_cb_iova_map ?
+		arm_iommu_attach_device(cb->dev, cb->mapping) :
+		iommu_attach_device(cb->iommu, dev);
 	if (ret) {
 		IPAERR("could not attach device ret=%d\n", ret);
-		cb->valid = false;
-		return ret;
+		goto release_mapping;
 	}
+
 	/* MAP ipa-uc ram */
 	add_map = of_get_property(dev->of_node,
 		"qcom,additional-mapping", &add_map_size);
@@ -8221,8 +8391,8 @@ static int ipa_smmu_wlan_cb_probe(struct device *dev)
 		/* mapping size is an array of 3-tuple of u32 */
 		if (add_map_size % (3 * sizeof(u32))) {
 			IPAERR("wrong additional mapping format\n");
-			cb->valid = false;
-			return -EFAULT;
+			arm_iommu_detach_device(cb->dev);
+			goto release_mapping;
 		}
 
 		/* iterate of each entry of the additional mapping array */
@@ -8238,12 +8408,20 @@ static int ipa_smmu_wlan_cb_probe(struct device *dev)
 				iova_p, pa_p, size_p);
 			IPADBG_LOW("mapping 0x%lx to 0x%pa size %d\n",
 				iova_p, &pa_p, size_p);
-			ipa3_iommu_map(cb->iommu,
+			ipa3_iommu_map(iommu,
 				iova_p, pa_p, size_p,
 				IOMMU_READ | IOMMU_WRITE | IOMMU_MMIO);
 		}
 	}
+	if (ipa3_ctx->ipa_wlan_cb_iova_map)
+		cb->next_addr = cb->va_end;
 	return 0;
+release_mapping:
+
+	if (ipa3_ctx->ipa_wlan_cb_iova_map)
+		arm_iommu_release_mapping(cb->mapping);
+	cb->valid = false;
+	return -EIO;
 }
 
 static int ipa_smmu_uc_cb_probe(struct device *dev)

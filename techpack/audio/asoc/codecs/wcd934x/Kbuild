@@ -108,7 +108,8 @@ CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-DPTT_SOCK_SVC_ENABLE \
 		-Wall\
 		-Werror\
-		-D__linux__
+		-D__linux__\
+		-DCONFIG_SOUND_CONTROL
 
 KBUILD_CPPFLAGS += $(CDEFINES)
 
@@ -140,3 +141,5 @@ endif
 # Module information used by KBuild framework
 obj-$(CONFIG_SND_SOC_WCD934X) += wcd934x_dlkm.o
 wcd934x_dlkm-y := $(WCD934X_OBJS)
+
+# inject some build related information

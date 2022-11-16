@@ -24,6 +24,10 @@
 #include "dsi_ctrl_hw.h"
 #include "dsi_parser.h"
 
+#ifdef CONFIG_EXPOSURE_ADJUSTMENT
+#include "exposure_adjustment.h"
+#endif
+
 /**
  * topology is currently defined by a set of following 3 values:
  * 1. num of layer mixers
@@ -34,8 +38,6 @@
 #define MAX_TOPOLOGY 5
 
 #define DSI_PANEL_DEFAULT_LABEL  "Default dsi panel"
-
-#define DEFAULT_MDP_TRANSFER_TIME 14000
 
 #define DEFAULT_PANEL_JITTER_NUMERATOR		2
 #define DEFAULT_PANEL_JITTER_DENOMINATOR	1
@@ -435,12 +437,6 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 {
 	int rc = 0;
 
-	rc = dsi_pwr_enable_regulator(&panel->power_info, true);
-	if (rc) {
-		pr_err("[%s] failed to enable vregs, rc=%d\n", panel->name, rc);
-		goto exit;
-	}
-
 	rc = dsi_panel_set_pinctrl_state(panel, true);
 	if (rc) {
 		pr_err("[%s] failed to set pinctrl, rc=%d\n", panel->name, rc);
@@ -616,6 +612,7 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 {
 	int rc = 0;
 	struct mipi_dsi_device *dsi;
+	size_t num_params;
 
 	if (!panel || (bl_lvl > 0xffff)) {
 		pr_err("invalid params\n");
@@ -627,11 +624,11 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 	if (panel->bl_config.bl_inverted_dbv)
 		bl_lvl = (((bl_lvl & 0xff) << 8) | (bl_lvl >> 8));
 
+	num_params = panel->bl_config.bl_max_level > 0xFF ? 2 : 1;
 	if (panel->bl_config.dcs_type_ss)
-		rc = mipi_dsi_dcs_set_display_brightness_ss(dsi, bl_lvl);
+		rc = mipi_dsi_dcs_set_display_brightness_ss(dsi, bl_lvl, num_params);
 	else
-		rc = mipi_dsi_dcs_set_display_brightness(dsi, bl_lvl);
-
+		rc = mipi_dsi_dcs_set_display_brightness(dsi, bl_lvl, num_params);
 	if (rc < 0)
 		pr_err("failed to update dcs backlight:%d\n", bl_lvl);
 
@@ -692,14 +689,7 @@ error:
 static u32 dsi_panel_get_backlight(struct dsi_panel *panel)
 {
 	u32 bl_level;
-
-	if (panel->doze_enabled && panel->doze_mode == DSI_DOZE_HBM)
-		bl_level = panel->bl_config.bl_doze_hbm;
-	else if (panel->doze_enabled && panel->doze_mode == DSI_DOZE_LPM)
-		bl_level = panel->bl_config.bl_doze_lpm;
-	else if (!panel->doze_enabled)
 		bl_level = panel->bl_config.bl_level;
-
 	return bl_level;
 }
 
@@ -710,8 +700,11 @@ static u32 interpolate(uint32_t x, uint32_t xa, uint32_t xb, uint32_t ya, uint32
 
 u32 dsi_panel_get_fod_dim_alpha(struct dsi_panel *panel)
 {
-	u32 brightness = dsi_panel_get_backlight(panel);
 	int i;
+	u32 brightness;
+	brightness= dsi_panel_get_backlight(panel);
+	if (panel->hbm_mode)
+		return 0;
 
 	if (!panel->fod_dim_lut)
 		return 0;
@@ -731,66 +724,35 @@ u32 dsi_panel_get_fod_dim_alpha(struct dsi_panel *panel)
 			panel->fod_dim_lut[i - 1].alpha, panel->fod_dim_lut[i].alpha);
 }
 
-int dsi_panel_update_doze(struct dsi_panel *panel) {
-	int rc = 0;
-
-	if (panel->doze_enabled && panel->doze_mode == DSI_DOZE_HBM) {
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DOZE_HBM);
-		if (rc)
-			pr_err("[%s] failed to send DSI_CMD_SET_DOZE_HBM cmd, rc=%d\n",
-					panel->name, rc);
-	} else if (panel->doze_enabled && panel->doze_mode == DSI_DOZE_LPM) {
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DOZE_LBM);
-		if (rc)
-			pr_err("[%s] failed to send DSI_CMD_SET_DOZE_LBM cmd, rc=%d\n",
-					panel->name, rc);
-	} else if (!panel->doze_enabled) {
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_NOLP);
-		if (rc)
-			pr_err("[%s] failed to send DSI_CMD_SET_NOLP cmd, rc=%d\n",
-					panel->name, rc);
-	}
-
-	return rc;
-}
-
-int dsi_panel_set_doze_status(struct dsi_panel *panel, bool status) {
-	if (panel->doze_enabled == status)
-		return 0;
-
-	panel->doze_enabled = status;
-
-	return dsi_panel_update_doze(panel);
-}
-
-int dsi_panel_set_doze_mode(struct dsi_panel *panel, enum dsi_doze_mode_type mode) {
-	if (panel->doze_mode == mode)
-		return 0;
-
-	panel->doze_mode = mode;
-
-	if (!panel->doze_enabled)
-		return 0;
-
-	return dsi_panel_update_doze(panel);
-}
-
 int dsi_panel_set_fod_hbm(struct dsi_panel *panel, bool status)
 {
 	int rc = 0;
 
+	if (panel->hbm_mode)
+		return rc;
+
 	if (status) {
+#ifdef CONFIG_EXPOSURE_ADJUSTMENT
+		if (ea_panel_is_enabled()) {
+			ea_panel_mode_ctrl(panel, 0);
+			panel->resend_ea = true;
+		}
+#endif
 		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISP_HBM_FOD_ON);
 		if (rc)
 			pr_err("[%s] failed to send DSI_CMD_SET_DISP_HBM_FOD_ON cmd, rc=%d\n",
 					panel->name, rc);
-	} else if (panel->doze_enabled) {
-		dsi_panel_update_doze(panel);
 	} else {
 		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISP_HBM_FOD_OFF);
 		if (rc)
 			pr_err("[%s] failed to send DSI_CMD_SET_DISP_HBM_FOD_OFF cmd, rc=%d\n",
 					panel->name, rc);
+#ifdef CONFIG_EXPOSURE_ADJUSTMENT
+		if (panel->resend_ea) {
+			ea_panel_mode_ctrl(panel, 1);
+			panel->resend_ea = false;
+		}
+#endif
 	}
 
 	return rc;
@@ -799,12 +761,19 @@ int dsi_panel_set_fod_hbm(struct dsi_panel *panel, bool status)
 int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 {
 	int rc = 0;
+	int bl_dc_min = panel->bl_config.bl_min_level * 2;
 	struct dsi_backlight_config *bl = &panel->bl_config;
 
 	if (panel->host_config.ext_bridge_num)
 		return 0;
 
 	pr_debug("backlight type:%d lvl:%d\n", bl->type, bl_lvl);
+
+#ifdef CONFIG_EXPOSURE_ADJUSTMENT
+	if (bl_lvl > 0)
+		bl_lvl = ea_panel_calc_backlight(bl_lvl < bl_dc_min ? bl_dc_min : bl_lvl);
+#endif
+
 	switch (bl->type) {
 	case DSI_BACKLIGHT_WLED:
 		rc = backlight_device_set_brightness(bl->raw_bd, bl_lvl);
@@ -969,7 +938,7 @@ static int dsi_panel_parse_timing(struct dsi_mode_info *mode,
 			&mode->mdp_transfer_time_us);
 	if (rc) {
 		pr_debug("fallback to default mdp-transfer-time-us\n");
-		mode->mdp_transfer_time_us = DEFAULT_MDP_TRANSFER_TIME;
+		mode->mdp_transfer_time_us = 0;
 	}
 	display_mode->priv_info->mdp_transfer_time_us =
 					mode->mdp_transfer_time_us;
@@ -1085,6 +1054,8 @@ static int dsi_panel_parse_pixel_format(struct dsi_host_common_cfg *host,
 		return rc;
 	}
 
+	host->bpp = bpp;
+
 	switch (bpp) {
 	case 3:
 		fmt = DSI_PIXEL_FORMAT_RGB111;
@@ -1125,6 +1096,7 @@ static int dsi_panel_parse_lane_states(struct dsi_host_common_cfg *host,
 {
 	int rc = 0;
 	bool lane_enabled;
+	u32 num_of_lanes = 0;
 
 	lane_enabled = utils->read_bool(utils->data,
 					    "qcom,mdss-dsi-lane-0-state");
@@ -1141,6 +1113,17 @@ static int dsi_panel_parse_lane_states(struct dsi_host_common_cfg *host,
 	lane_enabled = utils->read_bool(utils->data,
 					     "qcom,mdss-dsi-lane-3-state");
 	host->data_lanes |= (lane_enabled ? DSI_DATA_LANE_3 : 0);
+
+	if (host->data_lanes & DSI_DATA_LANE_0)
+		num_of_lanes++;
+	if (host->data_lanes & DSI_DATA_LANE_1)
+		num_of_lanes++;
+	if (host->data_lanes & DSI_DATA_LANE_2)
+		num_of_lanes++;
+	if (host->data_lanes & DSI_DATA_LANE_3)
+		num_of_lanes++;
+
+	host->num_data_lanes = num_of_lanes;
 
 	if (host->data_lanes == 0) {
 		pr_err("[%s] No data lanes are enabled, rc=%d\n", name, rc);
@@ -1438,8 +1421,14 @@ static int dsi_panel_parse_qsync_caps(struct dsi_panel *panel,
 				     struct device_node *of_node)
 {
 	int rc = 0;
-	u32 val = 0;
+	u32 val = 0, i;
+	struct dsi_qsync_capabilities *qsync_caps = &panel->qsync_caps;
+	struct dsi_parser_utils *utils = &panel->utils;
 
+	/**
+	 * "mdss-dsi-qsync-min-refresh-rate" is defined in cmd mode and
+	 *  video mode when there is only one qsync min fps present.
+	 */
 	rc = of_property_read_u32(of_node,
 				  "qcom,mdss-dsi-qsync-min-refresh-rate",
 				  &val);
@@ -1447,7 +1436,71 @@ static int dsi_panel_parse_qsync_caps(struct dsi_panel *panel,
 		pr_err("[%s] qsync min fps not defined rc:%d\n",
 			panel->name, rc);
 
-	panel->qsync_min_fps = val;
+	qsync_caps->qsync_min_fps = val;
+
+	/**
+	 * "dsi-supported-qsync-min-fps-list" may be defined in video
+	 *  mode, only in dfps case when "qcom,dsi-supported-dfps-list"
+	 *  is defined.
+	 */
+	qsync_caps->qsync_min_fps_list_len = utils->count_u32_elems(utils->data,
+				  "qcom,dsi-supported-qsync-min-fps-list");
+	if (qsync_caps->qsync_min_fps_list_len < 1)
+		goto qsync_support;
+
+	/**
+	 * qcom,dsi-supported-qsync-min-fps-list cannot be defined
+	 *  along with qcom,mdss-dsi-qsync-min-refresh-rate.
+	 */
+	if (qsync_caps->qsync_min_fps_list_len >= 1 &&
+		qsync_caps->qsync_min_fps) {
+		rc = -EINVAL;
+		goto error;
+	}
+
+	if (panel->dfps_caps.dfps_list_len !=
+			qsync_caps->qsync_min_fps_list_len) {
+		rc = -EINVAL;
+		goto error;
+	}
+
+	qsync_caps->qsync_min_fps_list =
+		kcalloc(qsync_caps->qsync_min_fps_list_len, sizeof(u32),
+			GFP_KERNEL);
+	if (!qsync_caps->qsync_min_fps_list) {
+		rc = -ENOMEM;
+		goto error;
+	}
+
+	rc = utils->read_u32_array(utils->data,
+			"qcom,dsi-supported-qsync-min-fps-list",
+			qsync_caps->qsync_min_fps_list,
+			qsync_caps->qsync_min_fps_list_len);
+	if (rc) {
+		rc = -EINVAL;
+		goto error;
+	}
+
+	qsync_caps->qsync_min_fps = qsync_caps->qsync_min_fps_list[0];
+
+	for (i = 1; i < qsync_caps->qsync_min_fps_list_len; i++) {
+		if (qsync_caps->qsync_min_fps_list[i] <
+				qsync_caps->qsync_min_fps)
+			qsync_caps->qsync_min_fps =
+				qsync_caps->qsync_min_fps_list[i];
+	}
+
+qsync_support:
+	/* allow qsync support only if DFPS is with VFP approach */
+	if ((panel->dfps_caps.dfps_support) &&
+	    !(panel->dfps_caps.type == DSI_DFPS_IMMEDIATE_VFP))
+		panel->qsync_caps.qsync_min_fps = 0;
+
+error:
+	if (rc < 0) {
+		qsync_caps->qsync_min_fps = 0;
+		qsync_caps->qsync_min_fps_list_len = 0;
+	}
 
 	return rc;
 }
@@ -1864,8 +1917,6 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-post-mode-switch-on-command",
 	"qcom,mdss-dsi-qsync-on-commands",
 	"qcom,mdss-dsi-qsync-off-commands",
-	"qcom,mdss-dsi-doze-hbm-command",
-	"qcom,mdss-dsi-doze-lbm-command",
 	"qcom,mdss-dsi-dispparam-hbm-fod-on-command",
 	"qcom,mdss-dsi-dispparam-hbm-fod-off-command",
 };
@@ -1894,8 +1945,6 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-post-mode-switch-on-command-state",
 	"qcom,mdss-dsi-qsync-on-commands-state",
 	"qcom,mdss-dsi-qsync-off-commands-state",
-	"qcom,mdss-dsi-doze-hbm-command-state",
-	"qcom,mdss-dsi-doze-lbm-command-state",
 	"qcom,mdss-dsi-dispparam-hbm-fod-on-command-state",
 	"qcom,mdss-dsi-dispparam-hbm-fod-off-command-state",
 };
@@ -2173,7 +2222,12 @@ error:
 static int dsi_panel_parse_misc_features(struct dsi_panel *panel)
 {
 	struct dsi_parser_utils *utils = &panel->utils;
+	u32 val;
 
+#ifdef CONFIG_DSI_FEATURES
+	panel->ulps_feature_enabled = true;
+	panel->ulps_suspend_enabled = true;
+#else
 	panel->ulps_feature_enabled =
 		utils->read_bool(utils->data, "qcom,ulps-enabled");
 
@@ -2185,6 +2239,7 @@ static int dsi_panel_parse_misc_features(struct dsi_panel *panel)
 
 	pr_info("%s: ulps during suspend feature %s", __func__,
 		(panel->ulps_suspend_enabled ? "enabled" : "disabled"));
+#endif
 
 	panel->te_using_watchdog_timer = utils->read_bool(utils->data,
 					"qcom,mdss-dsi-te-using-wd");
@@ -2194,6 +2249,15 @@ static int dsi_panel_parse_misc_features(struct dsi_panel *panel)
 
 	panel->lp11_init = utils->read_bool(utils->data,
 			"qcom,mdss-dsi-lp11-init");
+	if (!utils->read_u32(utils->data,
+				  "qcom,mdss-dsi-init-delay-us",
+				  &val)) {
+		pr_debug("Panel init delay specified: %d\n", val);
+		panel->init_delay_us = val;
+	} else {
+		panel->init_delay_us = 0;
+	}
+
 	return 0;
 }
 
@@ -2374,6 +2438,9 @@ static int dsi_panel_parse_fod_dim_lut(struct dsi_panel *panel,
 	int rc;
 	int i;
 
+	if (!panel->bl_config.dcs_type_ss)
+		return 0;
+
 	len = utils->count_u32_elems(utils->data, "qcom,disp-fod-dim-lut");
 	if (len <= 0 || len % BRIGHTNESS_ALPHA_PAIR_LEN) {
 		pr_err("[%s] invalid number of elements, rc=%d\n",
@@ -2512,6 +2579,9 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel)
 		panel->bl_config.brightness_default_level = val;
 	}
 
+	panel->bl_config.bl_inverted_dbv = utils->read_bool(utils->data,
+		"qcom,mdss-dsi-bl-inverted-dbv");
+
 	rc = utils->read_u32(utils->data,
 			"qcom,disp-doze-lpm-backlight", &val);
 	if (rc) {
@@ -2533,9 +2603,6 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel)
 	rc = dsi_panel_parse_fod_dim_lut(panel, utils);
 	if (rc)
 		pr_err("[%s failed to parse fod dim lut\n", panel->name);
-
-	panel->bl_config.bl_inverted_dbv = utils->read_bool(utils->data,
-		"qcom,mdss-dsi-bl-inverted-dbv");
 
 	if (panel->bl_config.type == DSI_BACKLIGHT_PWM) {
 		rc = dsi_panel_parse_bl_pwm_config(panel);
@@ -2762,9 +2829,6 @@ static int dsi_panel_parse_phy_timing(struct dsi_display_mode *mode,
 	u32 len, i;
 	int rc = 0;
 	struct dsi_display_mode_priv_info *priv_info;
-	u64 h_period, v_period;
-	u64 refresh_rate = TICKS_IN_MICRO_SECOND;
-	struct dsi_mode_info *timing = NULL;
 	u64 pixel_clk_khz;
 
 	if (!mode || !mode->priv_info)
@@ -2788,21 +2852,18 @@ static int dsi_panel_parse_phy_timing(struct dsi_display_mode *mode,
 		priv_info->phy_timing_len = len;
 	};
 
-	timing = &mode->timing;
-
-	if (panel_mode == DSI_OP_CMD_MODE) {
-		h_period = DSI_H_ACTIVE_DSC(timing);
-		v_period = timing->v_active;
-		do_div(refresh_rate, priv_info->mdp_transfer_time_us);
-	} else {
-		h_period = DSI_H_TOTAL_DSC(timing);
-		v_period = DSI_V_TOTAL(timing);
-		refresh_rate = timing->refresh_rate;
+	if (panel_mode == DSI_OP_VIDEO_MODE) {
+		/*
+		 *  For command mode we update the pclk as part of
+		 *  function dsi_panel_calc_dsi_transfer_time( )
+		 *  as we set it based on dsi clock or mdp transfer time.
+		 */
+		pixel_clk_khz = (DSI_H_TOTAL_DSC(&mode->timing) *
+				DSI_V_TOTAL(&mode->timing) *
+				mode->timing.refresh_rate);
+		do_div(pixel_clk_khz, 1000);
+		mode->pixel_clk_khz = pixel_clk_khz;
 	}
-
-	pixel_clk_khz = h_period * v_period * refresh_rate;
-	do_div(pixel_clk_khz, 1000);
-	mode->pixel_clk_khz = pixel_clk_khz;
 
 	return rc;
 }
@@ -3530,11 +3591,6 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 	if (rc)
 		pr_debug("failed to parse qsync features, rc=%d\n", rc);
 
-	/* allow qsync support only if DFPS is with VFP approach */
-	if ((panel->dfps_caps.dfps_support) &&
-	    !(panel->dfps_caps.type == DSI_DFPS_IMMEDIATE_VFP))
-		panel->qsync_min_fps = 0;
-
 	rc = dsi_panel_parse_dyn_clk_caps(panel);
 	if (rc)
 		pr_err("failed to parse dynamic clk config, rc=%d\n", rc);
@@ -3584,9 +3640,6 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 	if (rc)
 		pr_debug("failed to parse esd config, rc=%d\n", rc);
 
-	panel->doze_mode = DSI_DOZE_LPM;
-	panel->doze_enabled = false;
-
 	panel->power_mode = SDE_MODE_DPMS_OFF;
 	drm_panel_init(&panel->drm_panel);
 	mutex_init(&panel->panel_lock);
@@ -3604,6 +3657,47 @@ void dsi_panel_put(struct dsi_panel *panel)
 
 	kfree(panel);
 }
+
+#ifdef CONFIG_EXPOSURE_ADJUSTMENT
+static struct dsi_panel * set_panel;
+static ssize_t mdss_fb_set_ea_enable(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t len)
+{
+	u32 ea_enable;
+
+	if (sscanf(buf, "%d", &ea_enable) != 1) {
+		pr_err("sccanf buf error!\n");
+		return len;
+	}
+
+	ea_panel_mode_ctrl(set_panel, ea_enable != 0);
+
+	return len;
+}
+
+static ssize_t mdss_fb_get_ea_enable(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	int ret;
+	bool ea_enable = ea_panel_is_enabled();
+
+	ret = scnprintf(buf, PAGE_SIZE, "%d\n", ea_enable ? 1 : 0);
+
+	return ret;
+}
+
+static DEVICE_ATTR(msm_fb_ea_enable, S_IRUGO | S_IWUSR,
+	mdss_fb_get_ea_enable, mdss_fb_set_ea_enable);
+
+static struct attribute *mdss_fb_attrs[] = {
+	&dev_attr_msm_fb_ea_enable.attr,
+	NULL,
+};
+
+static struct attribute_group mdss_fb_attr_group = {
+	.attrs = mdss_fb_attrs,
+};
+#endif
 
 int dsi_panel_drv_init(struct dsi_panel *panel,
 		       struct mipi_dsi_host *host)
@@ -3657,6 +3751,13 @@ int dsi_panel_drv_init(struct dsi_panel *panel,
 			       panel->name, rc);
 		goto error_gpio_release;
 	}
+
+#ifdef CONFIG_EXPOSURE_ADJUSTMENT
+	rc = sysfs_create_group(&(panel->parent->kobj), &mdss_fb_attr_group);
+	if (rc)
+		pr_err("sysfs group creation failed, rc=%d\n", rc);
+	set_panel = panel;
+#endif
 
 	goto exit;
 
@@ -3838,6 +3939,71 @@ void dsi_panel_put_mode(struct dsi_display_mode *mode)
 	kfree(mode->priv_info);
 }
 
+void dsi_panel_calc_dsi_transfer_time(struct dsi_host_common_cfg *config,
+			struct dsi_display_mode *mode, u32 frame_threshold_us)
+{
+	u32 frame_time_us, nslices;
+	u64 min_bitclk_hz, total_active_pixels, bits_per_line, pclk_rate_hz,
+		dsi_transfer_time_us, pixel_clk_khz;
+	struct msm_display_dsc_info *dsc = mode->timing.dsc;
+	struct dsi_mode_info *timing = &mode->timing;
+	struct dsi_display_mode *display_mode;
+
+	/* Packet overlead in bits,2 bytes header + 2 bytes checksum
+	 * + 1 byte dcs data command.
+	 */
+	const u32 packet_overhead = 56;
+
+	display_mode = container_of(timing, struct dsi_display_mode, timing);
+
+	frame_time_us = mult_frac(1000, 1000, (timing->refresh_rate));
+
+	if (timing->dsc_enabled) {
+		nslices = (timing->h_active)/(dsc->slice_width);
+		/* (slice width x bit-per-pixel + packet overhead) x
+		 * number of slices x height x fps / lane
+		 */
+		bits_per_line = ((dsc->slice_width * dsc->bpp) +
+				packet_overhead) * nslices;
+		bits_per_line = bits_per_line / (config->num_data_lanes);
+
+		min_bitclk_hz = (bits_per_line * timing->v_active *
+					timing->refresh_rate);
+	} else {
+		total_active_pixels = ((DSI_H_ACTIVE_DSC(timing)
+					* timing->v_active));
+		/* calculate the actual bitclk needed to transfer the frame */
+		min_bitclk_hz = (total_active_pixels * (timing->refresh_rate) *
+				(config->bpp));
+		do_div(min_bitclk_hz, config->num_data_lanes);
+	}
+
+	timing->min_dsi_clk_hz = min_bitclk_hz;
+
+	if (timing->clk_rate_hz) {
+		/* adjust the transfer time proportionately for bit clk*/
+		dsi_transfer_time_us = frame_time_us * min_bitclk_hz;
+		do_div(dsi_transfer_time_us, timing->clk_rate_hz);
+		timing->dsi_transfer_time_us = dsi_transfer_time_us;
+	} else if (mode->priv_info->mdp_transfer_time_us) {
+		timing->dsi_transfer_time_us =
+			mode->priv_info->mdp_transfer_time_us;
+	} else {
+		timing->dsi_transfer_time_us = frame_time_us -
+				frame_threshold_us;
+	}
+
+	/* Calculate pclk_khz to update modeinfo */
+	pclk_rate_hz =  min_bitclk_hz * frame_time_us;
+	do_div(pclk_rate_hz, timing->dsi_transfer_time_us);
+
+	pixel_clk_khz = pclk_rate_hz * config->num_data_lanes;
+	do_div(pixel_clk_khz, config->bpp);
+	display_mode->pixel_clk_khz = pixel_clk_khz;
+
+	display_mode->pixel_clk_khz = display_mode->pixel_clk_khz / 1000;
+}
+
 int dsi_panel_get_mode(struct dsi_panel *panel,
 			u32 index, struct dsi_display_mode *mode,
 			int topology_override)
@@ -4016,6 +4182,12 @@ int dsi_panel_pre_prepare(struct dsi_panel *panel)
 
 	mutex_lock(&panel->panel_lock);
 
+	rc = dsi_pwr_enable_regulator(&panel->power_info, true);
+	if (rc) {
+		pr_err("[%s] failed to enable vregs, rc=%d\n", panel->name, rc);
+		goto error;
+	}
+
 #if 0
 	/* If LP11_INIT is set, panel will be powered up during prepare() */
 	if (panel->lp11_init)
@@ -4099,10 +4271,6 @@ int dsi_panel_set_lp1(struct dsi_panel *panel)
 	if (rc)
 		pr_err("[%s] failed to send DSI_CMD_SET_LP1 cmd, rc=%d\n",
 		       panel->name, rc);
-
-	rc = dsi_panel_set_doze_status(panel, true);
-	if (rc)
-		pr_err("unable to set doze on\n");
 exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -4125,10 +4293,6 @@ int dsi_panel_set_lp2(struct dsi_panel *panel)
 	if (rc)
 		pr_err("[%s] failed to send DSI_CMD_SET_LP2 cmd, rc=%d\n",
 		       panel->name, rc);
-
-	rc = dsi_panel_set_doze_status(panel, true);
-	if (rc)
-		pr_err("unable to set doze on\n");
 exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -4159,10 +4323,6 @@ int dsi_panel_set_nolp(struct dsi_panel *panel)
 	if (rc)
 		pr_err("[%s] failed to send DSI_CMD_SET_NOLP cmd, rc=%d\n",
 		       panel->name, rc);
-
-	rc = dsi_panel_set_doze_status(panel, false);
-	if (rc)
-		pr_err("unable to set doze on\n");
 exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -4176,7 +4336,11 @@ int dsi_panel_prepare(struct dsi_panel *panel)
 		pr_err("invalid params\n");
 		return -EINVAL;
 	}
+
 	mutex_lock(&panel->panel_lock);
+
+	if (panel->init_delay_us)
+		usleep_range(panel->init_delay_us, panel->init_delay_us);
 
 	if (panel->lp11_init) {
 #if 0
@@ -4498,7 +4662,7 @@ int dsi_panel_enable(struct dsi_panel *panel)
 		panel->panel_initialized = true;
 	mutex_unlock(&panel->panel_lock);
 
-	if (panel->hbm_mode)
+  if (panel->hbm_mode)
 		dsi_panel_apply_hbm_mode(panel);
 
 	return rc;
@@ -4587,7 +4751,6 @@ int dsi_panel_disable(struct dsi_panel *panel)
 	}
 	panel->panel_initialized = false;
 	panel->power_mode = SDE_MODE_DPMS_OFF;
-	panel->doze_enabled = false;
 
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -4659,10 +4822,20 @@ int dsi_panel_apply_hbm_mode(struct dsi_panel *panel)
 	int rc;
 
 	if (panel->hbm_mode >= 0 &&
-		panel->hbm_mode < ARRAY_SIZE(type_map))
+		panel->hbm_mode < ARRAY_SIZE(type_map)) {
+#ifdef CONFIG_EXPOSURE_ADJUSTMENT
+		if (ea_panel_is_enabled() && panel->hbm_mode != 0) {
+			ea_panel_mode_ctrl(panel, 0);
+			panel->resend_ea_hbm = true;
+		} else if (panel->resend_ea_hbm && panel->hbm_mode == 0) {
+			ea_panel_mode_ctrl(panel, 1);
+			panel->resend_ea_hbm = false;
+		}
+#endif
 		type = type_map[panel->hbm_mode];
-	else
+	} else {
 		type = type_map[0];
+	}
 
 	mutex_lock(&panel->panel_lock);
 	rc = dsi_panel_tx_cmd_set(panel, type);

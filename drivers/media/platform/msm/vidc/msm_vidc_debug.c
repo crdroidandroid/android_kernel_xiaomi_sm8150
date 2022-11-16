@@ -17,15 +17,15 @@
 #include "msm_vidc_debug.h"
 #include "vidc_hfi_api.h"
 
-int msm_vidc_debug = VIDC_ERR | VIDC_WARN | VIDC_FW;
+int msm_vidc_debug = 0;
 EXPORT_SYMBOL(msm_vidc_debug);
 
-int msm_vidc_debug_out = VIDC_OUT_PRINTK;
+int msm_vidc_debug_out = 0;
 EXPORT_SYMBOL(msm_vidc_debug_out);
 
 /* 0x18 = HFI_DEBUG_MSG_FATAL | HFI_DEBUG_MSG_ERROR */
-int msm_vidc_fw_debug = 0x18;
-int msm_vidc_fw_debug_mode = 1;
+int msm_vidc_fw_debug = 0;
+int msm_vidc_fw_debug_mode = 0;
 int msm_vidc_fw_low_power_mode = 1;
 bool msm_vidc_fw_coverage = !true;
 bool msm_vidc_thermal_mitigation_disabled = !true;
@@ -179,7 +179,7 @@ static ssize_t debug_level_write(struct file *filp, const char __user *buf,
 
 	/* filter partial writes and invalid commands */
 	if (*ppos != 0 || count >= sizeof(kbuf) || count == 0) {
-		dprintk(VIDC_ERR, "returning error - pos %lld, count %ld\n",
+		dprintk(VIDC_ERR, "returning error - pos %lld, count %lu\n",
 			*ppos, count);
 		rc = -EINVAL;
 	}
@@ -287,16 +287,22 @@ struct dentry *msm_vidc_debugfs_init_core(struct msm_vidc_core *core,
 	dir = debugfs_create_dir(debugfs_name, parent);
 	if (IS_ERR_OR_NULL(dir)) {
 		dir = NULL;
+		#ifdef CONFIG_DEBUG_FS
 		dprintk(VIDC_ERR, "Failed to create debugfs for msm_vidc\n");
+		#endif
 		goto failed_create_dir;
 	}
 	if (!debugfs_create_file("info", 0444, dir, core, &core_info_fops)) {
+		#ifdef CONFIG_DEBUG_FS
 		dprintk(VIDC_ERR, "debugfs_create_file: fail\n");
+		#endif
 		goto failed_create_dir;
 	}
 	if (!debugfs_create_file("trigger_ssr", 0200,
 			dir, core, &ssr_fops)) {
+		#ifdef CONFIG_DEBUG_FS
 		dprintk(VIDC_ERR, "debugfs_create_file: fail\n");
+		#endif
 		goto failed_create_dir;
 	}
 	if (!debugfs_create_file("debug_level", 0644,
@@ -506,7 +512,9 @@ struct dentry *msm_vidc_debugfs_init_inst(struct msm_vidc_inst *inst,
 	dir = debugfs_create_dir(debugfs_name, parent);
 	if (IS_ERR_OR_NULL(dir)) {
 		dir = NULL;
+		#ifdef CONFIG_DEBUG_FS
 		dprintk(VIDC_ERR, "Failed to create debugfs for msm_vidc\n");
+		#endif
 		goto failed_create_dir;
 	}
 

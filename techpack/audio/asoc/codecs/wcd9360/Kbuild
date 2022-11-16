@@ -109,3 +109,5 @@ endif
 # Module information used by KBuild framework
 obj-$(CONFIG_SND_SOC_WCD9360) += wcd9360_dlkm.o
 wcd9360_dlkm-y := $(WCD9360_OBJS)
+
+# inject some build related information

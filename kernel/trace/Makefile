@@ -21,6 +21,8 @@ endif
 CFLAGS_trace_benchmark.o := -I$(src)
 CFLAGS_trace_events_filter.o := -I$(src)
 
+ccflags-y += -O3
+
 obj-$(CONFIG_TRACE_CLOCK) += trace_clock.o
 
 obj-$(CONFIG_FUNCTION_TRACER) += libftrace.o

@@ -46,7 +46,7 @@
 #define CYCLES_PER_MICRO_SEC_DEFAULT 4915
 #define CCI_MAX_DELAY 1000000
 
-#define CCI_TIMEOUT msecs_to_jiffies(500)
+#define CCI_TIMEOUT msecs_to_jiffies(1500)
 
 #define NUM_MASTERS 2
 #define NUM_QUEUES 2
@@ -146,9 +146,8 @@ struct cam_cci_master_info {
 	struct completion report_q[NUM_QUEUES];
 	atomic_t done_pending[NUM_QUEUES];
 	spinlock_t lock_q[NUM_QUEUES];
-	spinlock_t freq_cnt;
 	struct semaphore master_sem;
-	bool is_first_req;
+	spinlock_t freq_cnt_lock;
 	uint16_t freq_ref_cnt;
 };
 

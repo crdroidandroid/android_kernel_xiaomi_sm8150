@@ -255,7 +255,6 @@ static int wcd_event_notify(struct notifier_block *self, unsigned long val,
 					MBHC_COMMON_MICB_PRECHARGE,
 					false);
 out_micb_en:
-		/* Disable current source if micbias enabled */
 		if (!mbhc->mbhc_cb->mbhc_micbias_control) {
 			mbhc->is_hs_recording = true;
 			wcd_enable_curr_micbias(mbhc, WCD_MBHC_EN_MB);
@@ -798,6 +797,9 @@ void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,
 		 * Nothing was reported previously
 		 * report a headphone or unsupported
 		 */
+		if (mbhc->current_plug == MBHC_PLUG_TYPE_HEADSET)
+			wcd_mbhc_report_plug(mbhc, 0, SND_JACK_HEADSET);
+
 		wcd_mbhc_report_plug(mbhc, 1, SND_JACK_HEADPHONE);
 	} else if (plug_type == MBHC_PLUG_TYPE_GND_MIC_SWAP) {
 		if (mbhc->current_plug == MBHC_PLUG_TYPE_HEADPHONE)
@@ -813,6 +815,9 @@ void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,
 		jack_type = SND_JACK_HEADSET;
 		if (anc_mic_found)
 			jack_type = SND_JACK_ANC_HEADPHONE;
+
+		if (mbhc->current_plug == MBHC_PLUG_TYPE_HEADPHONE)
+			wcd_mbhc_report_plug(mbhc, 0, SND_JACK_HEADPHONE);
 
 		/*
 		 * If Headphone was reported previously, this will
@@ -1081,21 +1086,27 @@ int wcd_mbhc_get_button_mask(struct wcd_mbhc *mbhc)
 	switch (btn) {
 	case 0:
 		mask = SND_JACK_BTN_0;
+        pr_debug("%s() button is 0x%x[hook]", __func__, mask);
 		break;
 	case 1:
 		mask = SND_JACK_BTN_1;
+        pr_debug("%s() button is 0x%x[volume up]", __func__, mask);
 		break;
 	case 2:
 		mask = SND_JACK_BTN_2;
+        pr_debug("%s() button is 0x%x[volume down]", __func__, mask);
 		break;
 	case 3:
 		mask = SND_JACK_BTN_3;
+        pr_debug("%s() button is 0x%x", __func__, mask);
 		break;
 	case 4:
 		mask = SND_JACK_BTN_4;
+        pr_debug("%s() button is 0x%x", __func__, mask);
 		break;
 	case 5:
 		mask = SND_JACK_BTN_5;
+        pr_debug("%s() button is 0x%x", __func__, mask);
 		break;
 	default:
 		break;
@@ -1191,7 +1202,7 @@ static irqreturn_t wcd_mbhc_btn_press_handler(int irq, void *data)
 	}
 	mbhc->buttons_pressed |= mask;
 	mbhc->mbhc_cb->lock_sleep(mbhc, true);
-	if (schedule_delayed_work(&mbhc->mbhc_btn_dwork,
+	if (queue_delayed_work(system_power_efficient_wq, &mbhc->mbhc_btn_dwork,
 				msecs_to_jiffies(400)) == 0) {
 		WARN(1, "Button pressed twice without release event\n");
 		mbhc->mbhc_cb->lock_sleep(mbhc, false);
@@ -1372,6 +1383,9 @@ static int wcd_mbhc_initialise(struct wcd_mbhc *mbhc)
 	 * by an external source
 	 */
 	if (mbhc->mbhc_cfg->enable_usbc_analog) {
+		mbhc->hphl_swh = 0;
+		mbhc->gnd_swh = 0;
+
 		if (mbhc->mbhc_cb->hph_pull_up_control_v2)
 			mbhc->mbhc_cb->hph_pull_up_control_v2(codec,
 							      HS_PULLUP_I_OFF);
@@ -1403,8 +1417,8 @@ static int wcd_mbhc_initialise(struct wcd_mbhc *mbhc)
 		/* Insertion debounce set to 48ms */
 		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_INSREM_DBNC, 4);
 	} else {
-		/* Insertion debounce set to 96ms */
-		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_INSREM_DBNC, 6);
+		/* Insertion debounce set to 256ms */
+		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_INSREM_DBNC, 9);
 	}
 
 	/* Button Debounce set to 16ms */
@@ -1838,7 +1852,6 @@ int wcd_mbhc_start(struct wcd_mbhc *mbhc, struct wcd_mbhc_config *mbhc_cfg)
 				goto err;
 		}
 #endif
-
 			rc = wcd_mbhc_usb_c_analog_init(mbhc);
 			if (rc) {
 				rc = EPROBE_DEFER;
@@ -1875,7 +1888,7 @@ int wcd_mbhc_start(struct wcd_mbhc *mbhc, struct wcd_mbhc_config *mbhc_cfg)
 		}
 	} else {
 		if (!mbhc->mbhc_fw || !mbhc->mbhc_cal)
-			schedule_delayed_work(&mbhc->mbhc_firmware_dwork,
+			queue_delayed_work(system_power_efficient_wq, &mbhc->mbhc_firmware_dwork,
 				      usecs_to_jiffies(FW_READ_TIMEOUT));
 		else
 			pr_err("%s: Skipping to read mbhc fw, 0x%pK %pK\n",
@@ -1922,6 +1935,7 @@ err:
 	if (config->usbc_force_gpio_p)
 		of_node_put(config->usbc_force_gpio_p);
 	dev_dbg(mbhc->codec->dev, "%s: leave %d\n", __func__, rc);
+
 	return rc;
 }
 EXPORT_SYMBOL(wcd_mbhc_start);

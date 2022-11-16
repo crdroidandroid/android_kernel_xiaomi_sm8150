@@ -167,7 +167,7 @@
 /* Maximum status buffer size in bytes of interrupt URB. */
 #define UVC_MAX_STATUS_SIZE	16
 
-#define UVC_CTRL_CONTROL_TIMEOUT	500
+#define UVC_CTRL_CONTROL_TIMEOUT	5000
 #define UVC_CTRL_STREAMING_TIMEOUT	5000
 
 /* Maximum allowed number of control mappings per device */
@@ -767,10 +767,12 @@ void uvc_video_decode_isight(struct urb *urb, struct uvc_streaming *stream,
 		struct uvc_buffer *buf);
 
 /* debugfs and statistics */
+#ifdef CONFIG_DEBUG_FS
 void uvc_debugfs_init(void);
 void uvc_debugfs_cleanup(void);
 void uvc_debugfs_init_stream(struct uvc_streaming *stream);
 void uvc_debugfs_cleanup_stream(struct uvc_streaming *stream);
+#endif
 
 size_t uvc_video_stats_dump(struct uvc_streaming *stream, char *buf,
 			    size_t size);

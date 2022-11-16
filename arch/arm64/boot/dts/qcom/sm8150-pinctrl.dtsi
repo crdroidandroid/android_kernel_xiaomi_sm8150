@@ -841,12 +841,12 @@
 		ss5_pwr_ctrl_pins: ss5_pwr_ctrl_pins {
 			ss5_pwr_ctrl_rst_on: ss5_pwr_ctrl_rst_on {
 				mux {
-					pins = "gpio11", "gpio39";
+					pins = "gpio11", "gpio39", "gpio40";
 					function = "gpio";
 				};
 
 				config {
-					pins = "gpio11", "gpio39";
+					pins = "gpio11", "gpio39", "gpio40";
 					drive-strength = <2>; /* 2 mA */
 					bias-pull-up;
 					output-high;
@@ -855,12 +855,12 @@
 
 			ss5_pwr_ctrl_rst_off: ss5_pwr_ctrl_off {
 				mux {
-					pins = "gpio11", "gpio39";
+					pins = "gpio11", "gpio39", "gpio40";
 					function = "gpio";
 				};
 
 				config {
-					pins = "gpio11", "gpio39";
+					pins = "gpio11", "gpio39", "gpio40";
 					drive-strength = <2>; /* 2 mA */
 					bias-pull-down;
 					output-low;
@@ -2665,19 +2665,6 @@
 		};
 
 		tert_tdm {
-			cs35l41_int_default: cs35l41_int_default {
-				mux {
-					pins = "gpio10";
-					function = "gpio";
-				};
-				config {
-					pins = "gpio10";
-					bias-pull-up;
-					drive-strength = <8>;
-					input-enable;
-				};
-			};
-
 			tert_tdm_sleep: tert_tdm_sleep {
 				mux {
 					pins = "gpio133", "gpio134";
@@ -4679,7 +4666,7 @@
 			hs1_i2s_data0_sleep: hs1_i2s_data0_sleep {
 				mux {
 					pins = "gpio158";
-					function = "sleep";
+					function = "gpio";
 				};
 
 				config {

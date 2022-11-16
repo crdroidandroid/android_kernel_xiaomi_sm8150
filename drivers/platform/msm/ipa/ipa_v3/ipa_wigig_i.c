@@ -1,4 +1,4 @@
-/* Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -394,7 +394,7 @@ static int ipa3_wigig_config_gsi(bool Rx,
 {
 	struct gsi_evt_ring_props evt_props;
 	struct gsi_chan_props channel_props;
-	union __packed gsi_channel_scratch gsi_scratch;
+	union gsi_channel_scratch gsi_scratch;
 	int gsi_res;
 	struct ipa_wigig_pipe_setup_info_smmu *pipe_smmu;
 	struct ipa_wigig_pipe_setup_info *pipe;
@@ -441,7 +441,7 @@ static int ipa3_wigig_config_gsi(bool Rx,
 
 	/* event scratch not configured by SW for TX channels */
 	if (Rx) {
-		union __packed gsi_evt_scratch evt_scratch;
+		union gsi_evt_scratch evt_scratch;
 
 		memset(&evt_scratch, 0, sizeof(evt_scratch));
 		evt_scratch.w11ad.update_status_hwtail_mod_threshold = 1;
@@ -1560,22 +1560,24 @@ int ipa3_disable_wigig_pipe_i(enum ipa_client_type client)
 	}
 
 	IPADBG("pipe %d\n", ipa_ep_idx);
-	source_pipe_bitmask = 1 << ipa_ep_idx;
-	res = ipa3_enable_force_clear(ipa_ep_idx,
-		false, source_pipe_bitmask);
-	if (res) {
-		/*
-		 * assuming here modem SSR, AP can remove
-		 * the delay in this case
-		 */
-		IPAERR("failed to force clear %d\n", res);
-		IPAERR("remove delay from SCND reg\n");
-		ep_ctrl_scnd.endp_delay = false;
-		ipahal_write_reg_n_fields(
-			IPA_ENDP_INIT_CTRL_SCND_n, ipa_ep_idx,
-			&ep_ctrl_scnd);
-	} else {
-		disable_force_clear = true;
+	if (IPA_CLIENT_IS_PROD(ep->client)) {
+		source_pipe_bitmask = 1 << ipa_ep_idx;
+		res = ipa3_enable_force_clear(ipa_ep_idx,
+				false, source_pipe_bitmask);
+		if (res) {
+			/*
+			 * assuming here modem SSR, AP can remove
+			 * the delay in this case
+			 */
+			IPAERR("failed to force clear %d\n", res);
+			IPAERR("remove delay from SCND reg\n");
+			ep_ctrl_scnd.endp_delay = false;
+			ipahal_write_reg_n_fields(
+					IPA_ENDP_INIT_CTRL_SCND_n, ipa_ep_idx,
+					&ep_ctrl_scnd);
+		} else {
+			disable_force_clear = true;
+		}
 	}
 retry_gsi_stop:
 	res = ipa3_stop_gsi_channel(ipa_ep_idx);

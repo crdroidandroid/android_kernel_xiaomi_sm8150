@@ -2384,10 +2384,11 @@ QDF_STATUS hdd_roam_register_sta(struct hdd_adapter *adapter,
 		hdd_conn_set_authenticated(adapter, true);
 		hdd_objmgr_set_peer_mlme_auth_state(adapter->vdev, true);
 	} else {
+#ifdef WLAN_DEBUG
 		hdd_debug("ULA auth Sta: " QDF_MAC_ADDR_FMT
 			  " Changing TL state to CONNECTED at Join time",
 			  QDF_MAC_ADDR_REF(txrx_desc.peer_addr.bytes));
-
+#endif
 		qdf_status = hdd_conn_change_peer_state(
 						adapter, roam_info,
 						txrx_desc.peer_addr.bytes,
@@ -3346,6 +3347,9 @@ hdd_association_completion_handler(struct hdd_adapter *adapter,
 					  DOT11F_IE_RSN_MAX_LEN);
 		if (!reqRsnIe)
 			return QDF_STATUS_E_NOMEM;
+
+		if (roam_info->fReassocReq || ft_carrier_on)
+			hdd_nud_indicate_roam(adapter);
 
 		/*
 		 * For reassoc, the station is already registered, all we need

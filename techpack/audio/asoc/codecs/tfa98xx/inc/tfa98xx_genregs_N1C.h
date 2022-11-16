@@ -1,5 +1,16 @@
+/*
+ * Copyright (C) 2014-2020 NXP Semiconductors, All Rights Reserved.
+ * Copyright 2021 GOODIX
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ */
+
+
 /** Filename: Tfa98xx_genregs.h
- *  This file was generated automatically on 09/01/15 at 09:40:23. 
+ *  This file was generated automatically on 09/01/15 at 09:40:23.
  *  Source file: TFA9888_N1C_I2C_regmap_V1.xlsx
  */
 
@@ -538,7 +549,7 @@
 /*
  * flag_mtp_busy
  */
-#define TFA98XX_STATUS_FLAGS0_MTPB                        (0x1<7)
+#define TFA98XX_STATUS_FLAGS0_MTPB                        (0x1<<7)
 #define TFA98XX_STATUS_FLAGS0_MTPB_POS                           7
 #define TFA98XX_STATUS_FLAGS0_MTPB_LEN                           1
 #define TFA98XX_STATUS_FLAGS0_MTPB_MAX                           1

@@ -36,6 +36,7 @@ enum ion_heap_ids {
 	ION_SECURE_DISPLAY_HEAP_ID = 10,
 	ION_VIDEO_HEAP_ID = 12,
 	ION_SPSS_HEAP_ID = 13, /* Secure Processor ION heap */
+	ION_NON_PIXEL_HEAP_ID = 15,
 	ION_ADSP_HEAP_ID = 22,
 	ION_SYSTEM_HEAP_ID = 25,
 	ION_QSECOM_HEAP_ID = 27,
@@ -108,7 +109,7 @@ struct ion_prefetch_regions {
 };
 
 struct ion_prefetch_data {
-	__u64 len;
+	__u64 unused;
 	__u64 regions;
 	__u32 heap_id;
 	__u32 nr_regions;

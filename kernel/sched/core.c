@@ -1120,6 +1120,11 @@ static int __set_cpus_allowed_ptr(struct task_struct *p,
 	int ret = 0;
 	cpumask_t allowed_mask;
 
+	/* Don't allow perf-critical threads to have non-perf affinities */
+	if ((p->flags & PF_PERF_CRITICAL) && new_mask != cpu_lp_mask &&
+	    new_mask != cpu_perf_mask && new_mask != cpu_prime_mask)
+		return -EINVAL;
+
 	rq = task_rq_lock(p, &rf);
 	update_rq_clock(rq);
 
@@ -1148,7 +1153,12 @@ static int __set_cpus_allowed_ptr(struct task_struct *p,
 	dest_cpu = cpumask_any(&allowed_mask);
 	if (dest_cpu >= nr_cpu_ids) {
 		cpumask_and(&allowed_mask, cpu_valid_mask, new_mask);
-		dest_cpu = cpumask_any(&allowed_mask);
+		/*
+		 * Picking a ~random cpu helps in cases where we are changing affinity
+		 * for groups of tasks (ie. cpuset), so that load balancing is not
+		 * immediately required to distribute the tasks within their new mask.
+		 */
+		dest_cpu = cpumask_any_and_distribute(cpu_valid_mask, new_mask);
 		if (!cpumask_intersects(new_mask, cpu_valid_mask)) {
 			ret = -EINVAL;
 			goto out;
@@ -1364,6 +1374,48 @@ int migrate_swap(struct task_struct *cur, struct task_struct *p)
 
 out:
 	return ret;
+}
+
+/*
+ * Calls to sched_migrate_to_cpumask_start() cannot nest. This can only be used
+ * in process context.
+ */
+void sched_migrate_to_cpumask_start(struct cpumask *old_mask,
+				    const struct cpumask *dest)
+{
+	struct task_struct *p = current;
+
+	raw_spin_lock_irq(&p->pi_lock);
+	*cpumask_bits(old_mask) = *cpumask_bits(&p->cpus_allowed);
+	raw_spin_unlock_irq(&p->pi_lock);
+
+	/*
+	 * This will force the current task onto the destination cpumask. It
+	 * will sleep when a migration to another CPU is actually needed.
+	 */
+	set_cpus_allowed_ptr(p, dest);
+}
+
+void sched_migrate_to_cpumask_end(const struct cpumask *old_mask,
+				  const struct cpumask *dest)
+{
+	struct task_struct *p = current;
+
+	/*
+	 * Check that cpus_allowed didn't change from what it was temporarily
+	 * set to earlier. If so, we can go ahead and lazily restore the old
+	 * cpumask. There's no need to immediately migrate right now.
+	 */
+	raw_spin_lock_irq(&p->pi_lock);
+	if (*cpumask_bits(&p->cpus_allowed) == *cpumask_bits(dest)) {
+		struct rq *rq = this_rq();
+
+		raw_spin_lock(&rq->lock);
+		update_rq_clock(rq);
+		do_set_cpus_allowed(p, old_mask);
+		raw_spin_unlock(&rq->lock);
+	}
+	raw_spin_unlock_irq(&p->pi_lock);
 }
 
 /*
@@ -1874,6 +1926,22 @@ void scheduler_ipi(void)
 	irq_exit();
 }
 
+void send_call_function_single_ipi(int cpu)
+{
+	struct rq *rq = cpu_rq(cpu);
+
+	if (!set_nr_if_polling(rq->idle))
+		arch_send_call_function_single_ipi(cpu);
+	else
+		trace_sched_wake_idle_without_ipi(cpu);
+}
+
+/*
+ * Queue a task on the target CPUs wake_list and wake the CPU via IPI if
+ * necessary. The wakee CPU on receipt of the IPI will queue the task
+ * via sched_ttwu_wakeup() for activation so the wakee incurs the cost
+ * of the wakeup instead of the waker.
+ */
 static void ttwu_queue_remote(struct task_struct *p, int cpu, int wake_flags)
 {
 	struct rq *rq = cpu_rq(cpu);
@@ -1914,6 +1982,9 @@ out:
 
 bool cpus_share_cache(int this_cpu, int that_cpu)
 {
+	if (this_cpu == that_cpu)
+		return true;
+
 	return per_cpu(sd_llc_id, this_cpu) == per_cpu(sd_llc_id, that_cpu);
 }
 #endif /* CONFIG_SMP */
@@ -2729,6 +2800,50 @@ prepare_task_switch(struct rq *rq, struct task_struct *prev,
 	prepare_arch_switch(next);
 }
 
+void release_task_stack(struct task_struct *tsk);
+static void task_async_free(struct work_struct *work)
+{
+	struct task_struct *t = container_of(work, typeof(*t), async_free.work);
+	bool free_stack = READ_ONCE(t->async_free.free_stack);
+
+	atomic_set(&t->async_free.running, 0);
+
+	if (free_stack) {
+		release_task_stack(t);
+		put_task_struct(t);
+	} else {
+		__put_task_struct(t);
+	}
+}
+
+static void finish_task_switch_dead(struct task_struct *prev)
+{
+	if (atomic_cmpxchg(&prev->async_free.running, 0, 1)) {
+		put_task_stack(prev);
+		put_task_struct(prev);
+		return;
+	}
+
+	if (atomic_dec_and_test(&prev->stack_refcount)) {
+		prev->async_free.free_stack = true;
+	} else if (atomic_dec_and_test(&prev->usage)) {
+		prev->async_free.free_stack = false;
+	} else {
+		atomic_set(&prev->async_free.running, 0);
+		return;
+	}
+
+	INIT_WORK(&prev->async_free.work, task_async_free);
+	queue_work(system_unbound_wq, &prev->async_free.work);
+}
+
+static void mmdrop_async_free(struct work_struct *work)
+{
+	struct mm_struct *mm = container_of(work, typeof(*mm), async_put_work);
+
+	__mmdrop(mm);
+}
+
 /**
  * finish_task_switch - clean up after a task-switch
  * @prev: the thread we just switched away from.
@@ -2802,8 +2917,10 @@ static struct rq *finish_task_switch(struct task_struct *prev)
 	kcov_finish_switch(current);
 
 	fire_sched_in_preempt_notifiers(current);
-	if (mm)
-		mmdrop(mm);
+	if (mm && atomic_dec_and_test(&mm->mm_count)) {
+		INIT_WORK(&mm->async_put_work, mmdrop_async_free);
+		queue_work(system_unbound_wq, &mm->async_put_work);
+	}
 	if (unlikely(prev_state  == TASK_DEAD)) {
 			if (prev->sched_class->task_dead)
 				prev->sched_class->task_dead(prev);
@@ -2814,11 +2931,7 @@ static struct rq *finish_task_switch(struct task_struct *prev)
 			 */
 			kprobe_flush_task(prev);
 
-			/* Task is done with its stack. */
-			put_task_stack(prev);
-
-			put_task_struct(prev);
-
+			finish_task_switch_dead(prev);
 	}
 
 	tick_nohz_task_switch();
@@ -4151,7 +4264,8 @@ static void __setscheduler_params(struct task_struct *p,
 	if (policy == SETPARAM_POLICY)
 		policy = p->policy;
 
-	p->policy = policy;
+	/* Replace SCHED_FIFO with SCHED_RR to reduce latency */
+	p->policy = policy == SCHED_FIFO ? SCHED_RR : policy;
 
 	if (dl_policy(policy))
 		__setparam_dl(p, attr);
@@ -5109,12 +5223,8 @@ SYSCALL_DEFINE0(sched_yield)
 	schedstat_inc(rq->yld_count);
 	current->sched_class->yield_task(rq);
 
-	/*
-	 * Since we are going to call schedule() anyway, there's
-	 * no need to preempt or enable interrupts:
-	 */
 	preempt_disable();
-	rq_unlock(rq, &rf);
+	rq_unlock_irq(rq, &rf);
 	sched_preempt_enable_no_resched();
 
 	schedule();
