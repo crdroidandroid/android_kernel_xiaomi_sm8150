@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -214,6 +215,12 @@
 
 #define MAX_NET_DEV_REF_LEAK_ITERATIONS 10
 #define NET_DEV_REF_LEAK_ITERATION_SLEEP_TIME_MS 10
+
+#ifdef FEATURE_TSO
+#define TSO_FEATURE_FLAGS (NETIF_F_TSO | NETIF_F_TSO6 | NETIF_F_SG)
+#else
+#define TSO_FEATURE_FLAGS 0
+#endif
 
 int wlan_start_ret_val;
 static DECLARE_COMPLETION(wlan_start_comp);
@@ -2483,6 +2490,14 @@ int hdd_update_tgt_cfg(hdd_handle_t hdd_handle, struct wma_tgt_cfg *cfg)
 			hdd_ctx->psoc, cfg->obss_color_collision_offloaded);
 	if (QDF_IS_STATUS_ERROR(status))
 		hdd_err("Failed to set WNI_CFG_OBSS_COLOR_COLLISION_OFFLOAD");
+
+	if (!cfg->obss_color_collision_offloaded) {
+		status = ucfg_mlme_set_bss_color_collision_det_sta(
+				hdd_ctx->psoc,
+				cfg->obss_color_collision_offloaded);
+		if (QDF_IS_STATUS_ERROR(status))
+			hdd_err("Failed to set CFG_BSS_CLR_COLLISION_DET_STA");
+	}
 
 	ucfg_mlme_get_bcast_twt(hdd_ctx->psoc, &bval);
 	if (bval)
@@ -7129,8 +7144,10 @@ void hdd_set_netdev_flags(struct hdd_adapter *adapter)
 			(NETIF_F_IP_CSUM | NETIF_F_IPV6_CSUM);
 
 	if (cdp_cfg_get(soc, cfg_dp_tso_enable) && enable_csum)
-		adapter->dev->features |=
-			 (NETIF_F_TSO | NETIF_F_TSO6 | NETIF_F_SG);
+		adapter->dev->features |= TSO_FEATURE_FLAGS;
+
+	if (cdp_cfg_get(soc, cfg_dp_sg_enable))
+		adapter->dev->features |= NETIF_F_SG;
 
 	adapter->dev->features |= NETIF_F_RXCSUM;
 	temp = (uint64_t)adapter->dev->features;
@@ -15428,6 +15445,37 @@ void hdd_init_start_completion(void)
 }
 
 static int hdd_driver_load(void);
+
+#if defined CFG80211_USER_HINT_CELL_BASE_SELF_MANAGED || \
+                    (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0))
+static void hdd_inform_wifi_on(void)
+{
+	int ret;
+	struct hdd_context *hdd_ctx = cds_get_context(QDF_MODULE_ID_HDD);
+	struct osif_psoc_sync *psoc_sync;
+
+	hdd_nofl_debug("inform regdomain for wifi on");
+	ret = wlan_hdd_validate_context(hdd_ctx);
+	if (ret)
+		return;
+	if (!wlan_hdd_validate_modules_state(hdd_ctx))
+		return;
+	if (!hdd_ctx->wiphy)
+		return;
+	ret = osif_psoc_sync_op_start(wiphy_dev(hdd_ctx->wiphy), &psoc_sync);
+	if (ret)
+		return;
+	if (hdd_ctx->wiphy->registered)
+		hdd_send_wiphy_regd_sync_event(hdd_ctx);
+
+	osif_psoc_sync_op_stop(psoc_sync);
+}
+#else
+static void hdd_inform_wifi_on(void)
+{
+}
+#endif
+
 static ssize_t wlan_hdd_state_ctrl_param_write(struct file *filp,
 						const char __user *user_buf,
 						size_t count,
@@ -15439,6 +15487,7 @@ static ssize_t wlan_hdd_state_ctrl_param_write(struct file *filp,
 	int ret;
 	unsigned long rc;
 	struct hdd_context *hdd_ctx = cds_get_context(QDF_MODULE_ID_HDD);
+	bool turning_on = false;
 
 	if (copy_from_user(buf, user_buf, 3)) {
 		pr_err("Failed to read buffer\n");
@@ -15446,13 +15495,15 @@ static ssize_t wlan_hdd_state_ctrl_param_write(struct file *filp,
 	}
 
 	if (strncmp(buf, wlan_off_str, strlen(wlan_off_str)) == 0) {
-		pr_debug("Wifi turning off from UI\n");
+		hdd_info("Wifi turning off from UI\n");
 		hdd_inform_wifi_off();
 		goto exit;
 	}
 
-	if (strncmp(buf, wlan_on_str, strlen(wlan_on_str)) == 0)
-		pr_info("Wifi Turning On from UI\n");
+	if (strncmp(buf, wlan_on_str, strlen(wlan_on_str)) == 0) {
+		hdd_info("Wifi Turning On from UI\n");
+		turning_on = true;
+	}
 
 	if (strncmp(buf, wlan_on_str, strlen(wlan_on_str)) != 0) {
 		pr_err("Invalid value received from framework");
@@ -15482,8 +15533,10 @@ static ssize_t wlan_hdd_state_ctrl_param_write(struct file *filp,
 	 */
 	if (hdd_ctx)
 		hdd_psoc_idle_timer_stop(hdd_ctx);
-
 exit:
+	if (turning_on)
+		hdd_inform_wifi_on();
+
 	return count;
 }
 
