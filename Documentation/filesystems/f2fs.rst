@@ -343,6 +343,11 @@ discard_unit=%s		 Control discard unit, the argument can be "block", "segment"
 			 default, it is helpful for large sized SMR or ZNS devices to
 			 reduce memory cost by getting rid of fs metadata supports small
 			 discard.
+age_extent_cache	 Enable an age extent cache based on rb-tree. It records
+			 data block update frequency of the extent per inode, in
+			 order to provide better temperature hints for data block
+			 allocation.
+
 ======================== ============================================================
 
 Debugfs Entries
