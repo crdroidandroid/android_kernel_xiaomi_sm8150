@@ -1475,6 +1475,8 @@ static void uclamp_fork(struct task_struct *p)
 	for_each_clamp_id(clamp_id)
 		p->uclamp[clamp_id].active = false;
 
+	p->uclamp_req[UCLAMP_MAX].ignore_uclamp_max = 0;
+
 	if (likely(!p->sched_reset_on_fork))
 		return;
 
