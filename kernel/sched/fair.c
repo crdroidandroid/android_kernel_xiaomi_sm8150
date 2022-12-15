@@ -8183,18 +8183,10 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 #elif  CONFIG_UCLAMP_TASK
 	int boosted = (uclamp_boosted(p) > 0 || per_task_boost(p) > 0);
 #endif
-	int start_cpu;
 
 	if (is_many_wakeup(sibling_count_hint) && prev_cpu != cpu &&
                         cpumask_test_cpu(prev_cpu, &p->cpus_allowed))
                 return prev_cpu;
-
-        start_cpu = get_start_cpu(p);
-        if (start_cpu < 0)
-                return -1;
-
-        is_rtg = task_in_related_thread_group(p);
-        curr_is_rtg = task_in_related_thread_group(cpu_rq(cpu)->curr);
 
 	fbt_env.fastpath = 0;
 	fbt_env.need_idle = 0;
