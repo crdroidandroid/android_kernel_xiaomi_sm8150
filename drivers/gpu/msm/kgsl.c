@@ -673,11 +673,11 @@ int kgsl_context_init(struct kgsl_device_private *dev_priv,
 	if (id == -ENOSPC) {
 		/*
 		 * Before declaring that there are no contexts left try
-		 * flushing the event workqueue just in case there are
+		 * flushing the event worker just in case there are
 		 * detached contexts waiting to finish
 		 */
 
-		flush_workqueue(device->events_wq);
+		kthread_flush_worker(device->events_worker);
 		id = _kgsl_get_context_id(device);
 	}
 
@@ -5158,8 +5158,7 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 				PM_QOS_CPU_DMA_LATENCY,
 				PM_QOS_DEFAULT_VALUE);
 
-	device->events_wq = alloc_workqueue("kgsl-events",
-		WQ_CPU_INTENSIVE | WQ_MEM_RECLAIM | WQ_SYSFS | WQ_HIGHPRI, 0);
+	device->events_worker = kthread_create_worker(0, "kgsl-events");
 
 	/* Initialize the snapshot engine */
 	kgsl_device_snapshot_init(device);
@@ -5172,6 +5171,9 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 error_close_mmu:
 	kgsl_mmu_close(device);
 error_pwrctrl_close:
+	if (!IS_ERR(device->events_worker))
+		kthread_destroy_worker(device->events_worker);
+
 	kgsl_pwrctrl_close(device);
 error:
 	_unregister_device(device);
@@ -5181,7 +5183,7 @@ EXPORT_SYMBOL(kgsl_device_platform_probe);
 
 void kgsl_device_platform_remove(struct kgsl_device *device)
 {
-	destroy_workqueue(device->events_wq);
+	kthread_destroy_worker(device->events_worker);
 
 	kfree(device->dev->dma_parms);
 	device->dev->dma_parms = NULL;
