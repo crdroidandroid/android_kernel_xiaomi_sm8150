@@ -5045,29 +5045,67 @@ error:
 	return rc;
 }
 
-static ssize_t sysfs_fod_ui_read(struct device *dev,
-	struct device_attribute *attr, char *buf)
+static ssize_t sysfs_hbm_read(struct device *dev,
+		struct device_attribute *attr, char *buf)
 {
-	struct dsi_display *display;
-	bool status;
+	struct dsi_display *display = dev_get_drvdata(dev);
+	if (!display->panel)
+		return 0;
 
-	display = dev_get_drvdata(dev);
-	if (!display) {
-		pr_err("Invalid display\n");
-		return -EINVAL;
-	}
-
-	status = atomic_read(&display->fod_ui);
-
-	return snprintf(buf, PAGE_SIZE, "%d\n", status);
+	return scnprintf(buf, PAGE_SIZE, "%d\n", display->panel->hbm_mode);
 }
 
-static DEVICE_ATTR(fod_ui, 0444,
-			sysfs_fod_ui_read,
-			NULL);
+static ssize_t sysfs_hbm_write(struct device *dev,
+	    struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct dsi_display *display = dev_get_drvdata(dev);
+	int ret, hbm_mode;
+
+	if (!display->panel)
+		return -EINVAL;
+
+	ret = kstrtoint(buf, 10, &hbm_mode);
+	if (ret) {
+		pr_err("kstrtoint failed. ret=%d\n", ret);
+		return ret;
+	}
+
+	mutex_lock(&display->display_lock);
+
+	display->panel->hbm_mode = hbm_mode;
+	if (!dsi_panel_initialized(display->panel))
+		goto error;
+
+	ret = dsi_display_clk_ctrl(display->dsi_clk_handle,
+			DSI_CORE_CLK, DSI_CLK_ON);
+	if (ret) {
+		pr_err("[%s] failed to enable DSI core clocks, rc=%d\n",
+		       display->name, ret);
+		goto error;
+	}
+
+	ret = dsi_panel_apply_hbm_mode(display->panel);
+	if (ret)
+		pr_err("unable to set hbm mode\n");
+
+	ret = dsi_display_clk_ctrl(display->dsi_clk_handle,
+			DSI_CORE_CLK, DSI_CLK_OFF);
+	if (ret) {
+		pr_err("[%s] failed to disable DSI core clocks, rc=%d\n",
+		       display->name, ret);
+		goto error;
+	}
+error:
+	mutex_unlock(&display->display_lock);
+	return ret == 0 ? count : ret;
+}
+
+static DEVICE_ATTR(hbm, 0644,
+			sysfs_hbm_read,
+			sysfs_hbm_write);
 
 static struct attribute *display_fs_attrs[] = {
-	&dev_attr_fod_ui.attr,
+	&dev_attr_hbm.attr,
 	NULL,
 };
 static struct attribute_group display_fs_attrs_group = {
@@ -5101,13 +5139,6 @@ static int dsi_display_sysfs_deinit(struct dsi_display *display)
 
 	return 0;
 
-}
-
-void dsi_display_set_fod_ui(struct dsi_display *display, bool status)
-{
-	struct device *dev = &display->pdev->dev;
-	atomic_set(&display->fod_ui, status);
-	sysfs_notify(&dev->kobj, NULL, "fod_ui");
 }
 
 /**
@@ -5406,7 +5437,6 @@ static void dsi_display_unbind(struct device *dev,
 	}
 
 	atomic_set(&display->clkrate_change_pending, 0);
-	atomic_set(&display->fod_ui, false);
 	(void)dsi_display_sysfs_deinit(display);
 	(void)dsi_display_debugfs_deinit(display);
 
