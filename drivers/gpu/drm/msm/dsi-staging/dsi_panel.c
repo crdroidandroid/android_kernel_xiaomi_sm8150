@@ -20,6 +20,7 @@
 #include <linux/pwm.h>
 #include <video/mipi_display.h>
 
+#include "dsi_display.h"
 #include "dsi_panel.h"
 #include "dsi_ctrl_hw.h"
 #include "dsi_parser.h"
