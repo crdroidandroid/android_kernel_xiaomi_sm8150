@@ -113,9 +113,6 @@ static bool zswap_same_filled_pages_enabled = true;
 module_param_named(same_filled_pages_enabled, zswap_same_filled_pages_enabled,
 		   bool, 0644);
 
-/* zpool is shared by all of zswap backend  */
-static struct zpool *zswap_pool;
-
 /*********************************
 * data structures
 **********************************/
@@ -363,7 +360,7 @@ static int zswap_cpu_comp_prepare(unsigned int cpu, struct hlist_node *node)
 		return 0;
 
 	tfm = crypto_alloc_comp(pool->tfm_name, 0, 0);
-	if (IS_ERR(tfm)) {
+	if (IS_ERR_OR_NULL(tfm)) {
 		pr_err("could not alloc crypto comp %s : %ld\n",
 		       pool->tfm_name, PTR_ERR(tfm));
 		return -ENOMEM;
@@ -446,7 +443,7 @@ static struct zswap_pool *zswap_pool_create(char *type, char *compressor)
 {
 	struct zswap_pool *pool;
 	char name[38]; /* 'zswap' + 32 char (max) num + \0 */
-	gfp_t gfp = __GFP_NORETRY | __GFP_NOWARN | __GFP_KSWAPD_RECLAIM | __GFP_HIGHMEM | __GFP_MOVABLE;
+	gfp_t gfp = __GFP_NORETRY | __GFP_NOWARN | __GFP_KSWAPD_RECLAIM;
 	int ret;
 
 	if (!zswap_has_pool) {
@@ -472,10 +469,9 @@ static struct zswap_pool *zswap_pool_create(char *type, char *compressor)
 		pr_err("%s zpool not available\n", type);
 		goto error;
 	}
-	zswap_pool = pool->zpool;
 	pr_debug("using %s zpool\n", zpool_get_type(pool->zpool));
 
-	strlcpy(pool->tfm_name, compressor, sizeof(pool->tfm_name));
+	strscpy(pool->tfm_name, compressor, sizeof(pool->tfm_name));
 	pool->tfm = alloc_percpu(struct crypto_comp *);
 	if (!pool->tfm) {
 		pr_err("percpu alloc failed\n");
@@ -500,10 +496,8 @@ static struct zswap_pool *zswap_pool_create(char *type, char *compressor)
 
 error:
 	free_percpu(pool->tfm);
-	if (pool->zpool) {
+	if (pool->zpool)
 		zpool_destroy_pool(pool->zpool);
-		zswap_pool = NULL;
-	}
 	kfree(pool);
 	return NULL;
 }
@@ -555,7 +549,6 @@ static void zswap_pool_destroy(struct zswap_pool *pool)
 	cpuhp_state_remove_instance(CPUHP_MM_ZSWP_POOL_PREPARE, &pool->node);
 	free_percpu(pool->tfm);
 	zpool_destroy_pool(pool->zpool);
-	zswap_pool = NULL;
 	kfree(pool);
 }
 
@@ -777,7 +770,7 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 	unsigned long handle, value;
 	char *buf;
 	u8 *src, *dst;
-	gfp_t gfp = __GFP_NORETRY | __GFP_NOWARN | __GFP_KSWAPD_RECLAIM | __GFP_HIGHMEM | __GFP_MOVABLE;
+	gfp_t gfp = __GFP_NORETRY | __GFP_NOWARN | __GFP_KSWAPD_RECLAIM | __GFP_HIGHMEM | __GFP_MOVABLE | __GFP_CMA;
 
 	/* THP isn't supported */
 	if (PageTransHuge(page)) {
@@ -831,8 +824,6 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 	}
 
 	/* store */
-	if (dlen > PAGE_SIZE)
-		dlen = PAGE_SIZE;
 	ret = zpool_malloc(entry->pool->zpool, dlen,
 			   gfp, &handle);
 	if (ret == -ENOSPC) {
@@ -843,15 +834,8 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 		zswap_reject_alloc_fail++;
 		goto put_dstmem;
 	}
-
-	buf = (u8 *)zpool_map_handle(entry->pool->zpool, handle, ZPOOL_MM_RW);
-	if (dlen == PAGE_SIZE) {
-		src = kmap_atomic(page);
-		copy_page(buf, src);
-		kunmap_atomic(src);
-	} else
-		memcpy(buf, dst, dlen);
-
+	buf = (u8 *)zpool_map_handle(entry->pool->zpool, handle, ZPOOL_MM_WO);
+	memcpy(buf, dst, dlen);
 	zpool_unmap_handle(entry->pool->zpool, handle);
 	put_cpu_var(zswap_dstmem);
 
@@ -921,15 +905,9 @@ static int zswap_frontswap_load(unsigned type, pgoff_t offset,
 	src = (u8 *)zpool_map_handle(entry->pool->zpool, entry->handle,
 			ZPOOL_MM_RO);
 	dst = kmap_atomic(page);
-
-	if (entry->length == PAGE_SIZE)
-		copy_page(dst, src);
-	else {
-		tfm = *get_cpu_ptr(entry->pool->tfm);
-		ret = crypto_comp_decompress(tfm, src, entry->length, dst, &dlen);
-		put_cpu_ptr(entry->pool->tfm);
-	}
-
+	tfm = *get_cpu_ptr(entry->pool->tfm);
+	ret = crypto_comp_decompress(tfm, src, entry->length, dst, &dlen);
+	put_cpu_ptr(entry->pool->tfm);
 	kunmap_atomic(dst);
 	zpool_unmap_handle(entry->pool->zpool, entry->handle);
 	BUG_ON(ret);
@@ -940,15 +918,6 @@ freeentry:
 	spin_unlock(&tree->lock);
 
 	return 0;
-}
-
-void zswap_compact(void) {
-	if (!zswap_pool)
-		return;
-
-	pr_info("zswap_compact++\n");
-	zpool_compact(zswap_pool);
-	pr_info("zswap_compact--\n");
 }
 
 /* frees an entry in zswap */
