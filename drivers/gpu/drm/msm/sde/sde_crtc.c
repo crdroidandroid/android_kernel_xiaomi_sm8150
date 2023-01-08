@@ -5287,6 +5287,9 @@ static void sde_crtc_fod_atomic_check(struct sde_crtc_state *cstate,
 		if (plane_idx == fod_plane_idx)
 			continue;
 
+		if (display->panel->hbm_mode)
+			return;
+
 		sde_plane_set_fod_dim_alpha(pstates[plane_idx].sde_pstate,
 					    alpha);
 	}
