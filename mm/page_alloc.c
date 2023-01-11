@@ -323,7 +323,7 @@ compound_page_dtor * const compound_page_dtors[] = {
  */
 int min_free_kbytes = 16384;
 int user_min_free_kbytes = -1;
-int watermark_scale_factor = 10;
+int watermark_scale_factor = 32;
 
 /*
  * Extra memory for the system to try freeing. Used to temporarily
@@ -4240,15 +4240,9 @@ retry:
 		wake_all_kswapds(order, gfp_mask, ac);
 
 	/* Boost when memory is low so allocation latency doesn't get too bad */
-	if (kp_active_mode() == 2 || kp_active_mode() == 0) {
-		cpu_input_boost_kick_max(50);
-		devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 50);
-		devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 50);
-	} else if (kp_active_mode() == 3) {
-		cpu_input_boost_kick_max(100);
-		devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 100);
-		devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 100);
-	}
+	cpu_input_boost_kick_max(100, false);
+	devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 100, false);
+	devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 100, false);
 
 	reserve_flags = __gfp_pfmemalloc_flags(gfp_mask);
 	if (reserve_flags)
@@ -4276,6 +4270,11 @@ retry:
 	/* Avoid recursion of direct reclaim */
 	if (current->flags & PF_MEMALLOC)
 		goto nopage;
+
+	/* Boost when memory is low so allocation latency doesn't get too bad */
+	cpu_input_boost_kick_max(250, true);
+	devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 250, true);
+	devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 250, true);
 
 	/* Try direct reclaim and then allocating */
 	if (!used_vmpressure)
