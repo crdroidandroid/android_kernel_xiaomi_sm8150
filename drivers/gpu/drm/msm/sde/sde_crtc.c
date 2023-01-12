@@ -5260,6 +5260,36 @@ static int _sde_crtc_check_secure_state(struct drm_crtc *crtc,
 	return 0;
 }
 
+static void sde_crtc_dc_dim_atomic_check(struct sde_crtc_state *cstate,
+			  struct plane_state *pstates, int cnt)
+{
+	struct dsi_display *display = get_main_display();
+	unsigned int dc_dim_plane_idx, plane_idx;
+	bool dc_dim;
+	u8 alpha = 0;
+
+	for (plane_idx = 0; plane_idx < cnt; plane_idx++)
+		if (sde_plane_is_dc_dim_layer(pstates[plane_idx].drm_pstate))
+			break;
+
+	dc_dim_plane_idx = plane_idx;
+
+	dc_dim = dsi_panel_get_dc_dim(display->panel);
+
+	if (dc_dim_plane_idx != cnt || dc_dim)
+		alpha = dsi_panel_get_dc_dim_alpha(display->panel);
+
+	cstate->dc_dim_alpha = alpha;
+
+	for (plane_idx = 0; plane_idx < cnt; plane_idx++) {
+		if (plane_idx == dc_dim_plane_idx)
+			continue;
+
+		sde_plane_set_dc_dim_alpha(pstates[plane_idx].sde_pstate,
+			alpha);
+	}
+}
+
 static void sde_crtc_fod_atomic_check(struct sde_crtc_state *cstate,
 			  struct plane_state *pstates, int cnt)
 {
@@ -5477,6 +5507,7 @@ static int sde_crtc_atomic_check(struct drm_crtc *crtc,
 			sde_plane_clear_multirect(pipe_staged[i]);
 		}
 	}
+	sde_crtc_dc_dim_atomic_check(cstate, pstates, cnt);
 
 	sde_crtc_fod_atomic_check(cstate, pstates, cnt);
 
