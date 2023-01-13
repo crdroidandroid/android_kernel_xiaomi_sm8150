@@ -444,6 +444,8 @@ static int gsx_gesture_ist(struct goodix_ts_core *core_data,
 				overlapping_area = temp_data[8];
 				area = temp_data[9];
 
+			core_data->udfps_pressed = 1;
+			sysfs_notify(&core_data->pdev->dev.kobj, NULL, "udfps_pressed");
 			input_mt_slot(core_data->input_dev, 0);
 			input_mt_report_slot_state(core_data->input_dev, MT_TOOL_FINGER, true);
 			input_report_key(core_data->input_dev, BTN_INFO, 1);
