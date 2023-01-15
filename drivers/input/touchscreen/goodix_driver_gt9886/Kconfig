@@ -47,4 +47,10 @@ config TOUCHSCREEN_GOODIX_GTX8_GAMEMODE
         default y
         help
           Say Y here to enable game mode.
+
+config FORCE_FOD_STATUS
+       bool "Force fod_status = 1 when screen suspend"
+       default n
+       help
+          screen off FOD won't work when fod_status is 0, force it to 1 when screen suspend
 endif
