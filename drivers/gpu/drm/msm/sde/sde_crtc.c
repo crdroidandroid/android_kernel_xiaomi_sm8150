@@ -1959,10 +1959,8 @@ static void _sde_crtc_set_src_split_order(struct drm_crtc *crtc,
 {
 	struct plane_state *prv_pstate, *cur_pstate, *nxt_pstate;
 	struct sde_kms *sde_kms;
-	struct sde_rect left_rect, right_rect;
+	struct sde_rect;
 	uint32_t prev_flags, cur_flags = 0;
-	int32_t left_pid, right_pid;
-	int32_t stage;
 	int i;
 
 	sde_kms = _sde_crtc_get_kms(crtc);
