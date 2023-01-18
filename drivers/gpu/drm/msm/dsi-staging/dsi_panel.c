@@ -2555,7 +2555,7 @@ count_fail:
 static int dsi_panel_parse_dc_dim_lut(struct dsi_panel *panel,
 		struct dsi_parser_utils *utils)
 {
-	const char *prop_name = "qcom,dc-dim-lut";
+	const char *prop_name = "qcom,disp-dc-dim-lut";
 	unsigned int i;
 	u32 *array;
 	int count;
