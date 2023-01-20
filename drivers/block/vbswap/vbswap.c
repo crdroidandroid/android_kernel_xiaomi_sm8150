@@ -27,7 +27,7 @@
 /* Globals */
 static int vbswap_major;
 static struct gendisk *vbswap_disk;
-static const u64 vbswap_disksize = PAGE_ALIGN((u64)SZ_1G * 4);
+static const u64 vbswap_disksize = PAGE_ALIGN((u64)SZ_1M * 3536);
 static struct page *swap_header_page;
 
 /*
