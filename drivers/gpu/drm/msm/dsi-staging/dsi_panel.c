@@ -47,6 +47,8 @@
 #define DEFAULT_PANEL_PREFILL_LINES	25
 #define TICKS_IN_MICRO_SECOND		1000000
 
+#define ELVSS_OFF_THRESHOLD 420 // Max brightness for DC Dimming
+
 enum dsi_dsc_ratio_type {
 	DSC_8BPC_8BPP,
 	DSC_10BPC_8BPP,
@@ -621,6 +623,9 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 	}
 
 	dsi = &panel->mipi_device;
+
+	if (panel->dc_dim && bl_lvl != 0 && bl_lvl < ELVSS_OFF_THRESHOLD)
+               bl_lvl = ELVSS_OFF_THRESHOLD;
 
 	if (panel->bl_config.bl_inverted_dbv)
 		bl_lvl = (((bl_lvl & 0xff) << 8) | (bl_lvl >> 8));
