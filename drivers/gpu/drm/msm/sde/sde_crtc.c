@@ -5276,7 +5276,7 @@ static void sde_crtc_dc_dim_atomic_check(struct sde_crtc_state *cstate,
 			continue;
 
 		sde_plane_set_dc_dim_alpha(pstates[plane_idx].sde_pstate,
-			alpha);
+			display->panel->hbm_mode ? 0 : alpha);
 	}
 }
 
