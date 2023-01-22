@@ -699,6 +699,8 @@ u8 dsi_panel_get_fod_dim_alpha(struct dsi_panel *panel)
 	alpha = panel->fod_dim_alpha - panel->dc_dim_alpha;
 	mutex_unlock(&panel->panel_lock);
 
+	alpha = alpha < 1 ? 1 : alpha;
+
 	return alpha;
 }
 
