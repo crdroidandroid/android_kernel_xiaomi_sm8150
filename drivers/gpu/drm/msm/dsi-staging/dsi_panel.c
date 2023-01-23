@@ -1229,6 +1229,7 @@ EXPORT_SYMBOL(dsi_panel_doubleclick_enable);
 int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 {
 	int rc = 0;
+	int bl_dc_min = panel->bl_config.bl_min_level * 2;
 	struct dsi_backlight_config *bl = &panel->bl_config;
 	u32 last_backlight = dsi_panel_get_backlight(panel);
 
