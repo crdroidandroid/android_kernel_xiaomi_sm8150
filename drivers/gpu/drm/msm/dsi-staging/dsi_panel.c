@@ -816,6 +816,9 @@ int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 #ifdef CONFIG_EXPOSURE_ADJUSTMENT
 	if (bl_lvl > 0)
 		bl_lvl = ea_panel_calc_backlight(bl_lvl < bl_dc_min ? bl_dc_min : bl_lvl);
+#else
+        if (bl_lvl > 0 && !panel->dc_dim)
+                bl_lvl = bl_lvl < bl_dc_min ? bl_dc_min : bl_lvl;
 #endif
 
 	switch (bl->type) {
