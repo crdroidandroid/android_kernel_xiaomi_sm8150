@@ -844,7 +844,8 @@ int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 	if (!panel->force_fod_dim_alpha)
 		panel->fod_dim_alpha = dsi_panel_calc_fod_dim_alpha(panel, bl_lvl);
 
-	panel->dc_dim_alpha = dsi_panel_calc_dc_dim_alpha(panel, bl_lvl);
+	if (!panel->force_dc_dim_alpha)
+		panel->dc_dim_alpha = dsi_panel_calc_dc_dim_alpha(panel, bl_lvl);
 
 	return rc;
 }
@@ -3811,6 +3812,38 @@ exit:
 	return count;
 }
 
+static ssize_t sysfs_dc_dim_alpha_read(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct dsi_display *display = dev_get_drvdata(dev);
+	struct dsi_panel *panel = display->panel;
+
+	return snprintf(buf, PAGE_SIZE, "%u\n", panel->dc_dim_alpha);
+}
+
+ssize_t sysfs_dc_dim_alpha_write(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct dsi_display *display = dev_get_drvdata(dev);
+	struct dsi_panel *panel = display->panel;
+	int value;
+
+	sscanf(buf, "%d", &value);
+
+	if (value > 255)
+		return -EINVAL;
+
+	panel->force_dc_dim_alpha = value >= 0;
+
+	if (!panel->force_dc_dim_alpha)
+		goto exit;
+
+	panel->dc_dim_alpha = value;
+
+exit:
+	return count;
+}
+
 static DEVICE_ATTR(fod_ui, 0444, sysfs_fod_ui_read, NULL);
 static DEVICE_ATTR(force_fod_ui, 0644,
 		   sysfs_force_fod_ui_read,
@@ -3822,11 +3855,15 @@ static DEVICE_ATTR(fod_dim_alpha, 0644,
 static DEVICE_ATTR(dc_dim, 0644,
 		   sysfs_dc_dim_read,
 		   sysfs_dc_dim_write);
+static DEVICE_ATTR(dc_dim_alpha, 0644,
+		   sysfs_dc_dim_alpha_read,
+		   sysfs_dc_dim_alpha_write);
 
 static struct attribute *panel_attrs[] = {
 	&dev_attr_fod_ui.attr,
 	&dev_attr_fod_dim_alpha.attr,
 	&dev_attr_force_fod_ui.attr,
+	&dev_attr_dc_dim_alpha.attr,
 	&dev_attr_dc_dim.attr,
 	NULL,
 };
