@@ -1976,6 +1976,7 @@ int goodix_ts_msm_drm_notifier_callback(struct notifier_block *self,
 			blank == MSM_DRM_BLANK_LP)) {
 #ifdef CONFIG_FORCE_FOD_STATUS
 			core_data->fod_status = 1;
+			core_data->double_wakeup = 1;
 #endif
 			ts_info("touchpanel suspend .....blank=%d\n", blank);
 			ts_info("touchpanel suspend .....suspend_stat=%d\n", atomic_read(&core_data->suspend_stat));
