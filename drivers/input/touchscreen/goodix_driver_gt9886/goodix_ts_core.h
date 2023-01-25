@@ -498,6 +498,7 @@ struct goodix_ts_core {
 	int fod_pressed;
 	int fod_test;
 	int udfps_pressed;
+	int udfps_enabled;
 	int double_wakeup;
 	int double_tap_pressed;
 	int double_tap_enabled;
@@ -1288,6 +1289,7 @@ struct goodix_ts_core {
 	int fod_pressed;
 	int fod_test;
 	int udfps_pressed;
+	int udfps_enabled;
 	int double_wakeup;
 	int double_tap_pressed;
 	int double_tap_enabled;
