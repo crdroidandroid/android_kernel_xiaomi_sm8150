@@ -505,6 +505,9 @@ static int gsx_gesture_ist(struct goodix_ts_core *core_data,
 
 	if (temp_data[2] == 0xcc && core_data->double_wakeup) {
 		/*ts_info("Gesture match success, resume IC");*/
+		if (!core_data->double_tap_enabled) {
+			goto re_send_ges_cmd;
+		}
 		core_data->double_tap_pressed = 1;
 		sysfs_notify(&core_data->pdev->dev.kobj, NULL, "double_tap_pressed");
 #ifdef CONFIG_GOODIX_HWINFO
