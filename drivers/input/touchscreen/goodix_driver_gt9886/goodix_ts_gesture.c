@@ -513,10 +513,6 @@ static int gsx_gesture_ist(struct goodix_ts_core *core_data,
 		snprintf(ch, sizeof(ch), "%d", core_data->dbclick_count);
 		}
 #endif
-		input_report_key(core_data->input_dev, KEY_WAKEUP, 1);
-		input_sync(core_data->input_dev);
-		input_report_key(core_data->input_dev, KEY_WAKEUP, 0);
-		input_sync(core_data->input_dev);
 		goto gesture_ist_exit;
 
 	}
