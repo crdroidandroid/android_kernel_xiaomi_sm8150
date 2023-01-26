@@ -235,22 +235,38 @@ int goodix_sync_ic_stat(struct goodix_ts_core *core_data)
 
 	mutex_lock(&core_data->work_stat);
 	tp_stat = atomic_read(&core_data->suspend_stat);
-	if (tp_stat == TP_GESTURE_DBCLK) {
-		ts_info("sync IC suspend stat from DBCLK to DBCLK_FOD");
-
-		/*TODO:maybe add retry here*/
-		ret = goodix_set_suspend_func(core_data);
-		if (ret < 0)
-			ts_err("set suspend function failed!!");
-	} else if (tp_stat == TP_SLEEP) {
-		ts_info("sync IC suspend stat from SLEEP to FOD");
-
-		ret = goodix_wakeup_and_set_suspend_func(core_data);
-		if (ret < 0)
-			ts_err("set suspend function failed!!");
+	switch (tp_stat) {
+		case TP_NO_SUSPEND:
+			goto exit;
+			break;
+		case TP_GESTURE_DBCLK:
+			goto sync;
+			break;
+		case TP_GESTURE_FOD:
+			goto sync;
+			break;
+		case TP_GESTURE_DBCLK_FOD:
+			goto sync;
+			break;
+		case TP_SLEEP:
+			goto fromsleep;
+			break;
 	}
-	mutex_unlock(&core_data->work_stat);
 
+sync:
+	ret = goodix_set_suspend_func(core_data);
+	if (ret < 0)
+		ts_err("set suspend function failed");
+	goto exit;
+
+fromsleep:
+	ret = goodix_wakeup_and_set_suspend_func(core_data);
+	if (ret < 0)
+		ts_err("set suspend function failed");
+	goto exit;
+
+exit:
+	mutex_unlock(&core_data->work_stat);
 	return ret;
 }
 
