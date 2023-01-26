@@ -651,6 +651,8 @@ static int goodix_wakeup_and_set_suspend_func(struct goodix_ts_core *core_data)
 		atomic_set(&core_data->suspend_stat, TP_GESTURE_DBCLK);
 	} else if (core_data->fod_status) {
 		atomic_set(&core_data->suspend_stat, TP_GESTURE_FOD);
+	} else {
+		atomic_set(&core_data->suspend_stat, TP_SLEEP);
 	}
 	ts_info("suspend_stat[%d]", atomic_read(&core_data->suspend_stat));
 
