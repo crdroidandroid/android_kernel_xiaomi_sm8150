@@ -2020,24 +2020,35 @@ int goodix_ts_msm_drm_notifier_callback(struct notifier_block *self,
 	if (msm_drm_event && msm_drm_event->data && core_data) {
 		blank = *(int *)(msm_drm_event->data);
 		flush_workqueue(core_data->event_wq);
-		if (event == MSM_DRM_EVENT_BLANK && (blank == MSM_DRM_BLANK_POWERDOWN ||
-			blank == MSM_DRM_BLANK_LP)) {
-			ts_info("touchpanel suspend .....blank=%d\n", blank);
-			ts_info("touchpanel suspend .....suspend_stat=%d\n", atomic_read(&core_data->suspend_stat));
-			if (atomic_read(&core_data->suspend_stat))
-				return 0;
-			ts_info("touchpanel suspend by %s", blank == MSM_DRM_BLANK_POWERDOWN ? "blank" : "doze");
-			queue_work(core_data->event_wq, &core_data->suspend_work);
-		} else if (event == MSM_DRM_EVENT_BLANK && blank == MSM_DRM_BLANK_UNBLANK) {
-			//if (!atomic_read(&core_data->suspend_stat))
-			core_data->udfps_pressed = 0;
-			core_data->double_tap_pressed = 0;
-			ts_info("core_data->suspend_stat = %d\n", atomic_read(&core_data->suspend_stat));
-			ts_info("touchpanel resume");
-			queue_work(core_data->event_wq, &core_data->resume_work);
+
+		switch (blank) {
+			case MSM_DRM_BLANK_POWERDOWN:
+				goto suspend;
+				break;
+			case MSM_DRM_BLANK_LP:
+				goto suspend;
+				break;
+			case MSM_DRM_BLANK_UNBLANK:
+				goto resume;
+				break;
 		}
 	}
 
+suspend:
+	ts_info("touchpanel suspend .....blank=%d\n", blank);
+	ts_info("touchpanel suspend .....suspend_stat=%d\n", atomic_read(&core_data->suspend_stat));
+	if (atomic_read(&core_data->suspend_stat))
+		return 0;
+	ts_info("touchpanel suspend by %s", blank == MSM_DRM_BLANK_POWERDOWN ? "blank" : "doze");
+	queue_work(core_data->event_wq, &core_data->suspend_work);
+	return 0;
+resume:
+	//if (!atomic_read(&core_data->suspend_stat))
+	core_data->udfps_pressed = 0;
+	core_data->double_tap_pressed = 0;
+	ts_info("core_data->suspend_stat = %d\n", atomic_read(&core_data->suspend_stat));
+	ts_info("touchpanel resume");
+	queue_work(core_data->event_wq, &core_data->resume_work);
 	return 0;
 }
 #endif
