@@ -1454,8 +1454,6 @@ static ssize_t gtp_fod_status_store(struct device *dev,
 	sscanf(buf, "%u", &core_data->fod_status);
 
 	//goodix_ts_input_report(core_data->input_dev,&ts_event->event_data.touch_data);
-	core_data->gesture_enabled = core_data->double_wakeup | core_data->fod_status;
-	goodix_check_gesture_stat(!!core_data->fod_status);
 
 	return count;
 }
