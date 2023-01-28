@@ -449,10 +449,10 @@ static int gsx_gesture_ist(struct goodix_ts_core *core_data,
 
 	/*ts_debug("temp_data： %*ph", (int)sizeof(temp_data), temp_data);
 	ts_debug("FP_Event_Gesture： %d", FP_Event_Gesture);
-	ts_debug("fod_status= %d aod_status=%d", core_data->fod_status, core_data->aod_status);
+	ts_debug("udfps_enabled= %d aod_status=%d", core_data->udfps_enabled, core_data->aod_status);
 	ts_debug("sleep_finger： %d", !core_data->sleep_finger);*/
 
-	if (core_data->fod_status || core_data->aod_status) {
+	if (core_data->udfps_enabled || core_data->aod_status) {
 		if ((FP_Event_Gesture == 1) && (temp_data[2] == 0x46)) {
 
 			x = temp_data[4] | (temp_data[5] << 8);
@@ -519,7 +519,7 @@ static int gsx_gesture_ist(struct goodix_ts_core *core_data,
 		write_unlock(&gsx_gesture->rwlock);
 	}
 
-	if (temp_data[2] == 0xcc && core_data->double_wakeup) {
+	if (temp_data[2] == 0xcc) {
 		/*ts_info("Gesture match success, resume IC");*/
 		if (!core_data->double_tap_enabled) {
 			goto re_send_ges_cmd;
@@ -569,25 +569,25 @@ static int goodix_set_suspend_func(struct goodix_ts_core *core_data)
 	u8 state_data[3] = {0};
 	int ret;
 
-	if (core_data->double_wakeup && core_data->fod_status) {
+	if (core_data->double_tap_enabled && core_data->udfps_enabled) {
 		state_data[0] = GSX_GESTURE_CMD;
 		state_data[1] = 0x01;
 		state_data[2] = 0xF7;
 		ret = goodix_i2c_write(dev, GSX_REG_GESTURE, state_data, 3);
 		ts_info("Set IC double wakeup mode on,FOD mode on;");
-	} else if (core_data->double_wakeup && (!core_data->fod_status)) {
+	} else if (core_data->double_tap_enabled && (!core_data->udfps_enabled)) {
 		state_data[0] = GSX_GESTURE_CMD;
 		state_data[1] = 0x03;
 		state_data[2] = 0xF5;
 		ret = goodix_i2c_write(dev, GSX_REG_GESTURE, state_data, 3);
 		ts_info("Set IC double wakeup mode on,FOD mode off;");
-	} else if (!core_data->double_wakeup && core_data->fod_status) {
+	} else if (!core_data->double_tap_enabled && core_data->udfps_enabled) {
 		state_data[0] = GSX_GESTURE_CMD;
 		state_data[1] = 0x00;
 		state_data[2] = 0xF8;
 		ret = goodix_i2c_write(dev, GSX_REG_GESTURE, state_data, 3);
 		ts_info("Set IC double wakeup mode off,FOD mode on;");
-	} else if (!core_data->double_wakeup && (!core_data->fod_status)) {
+	} else if (!core_data->double_tap_enabled && (!core_data->udfps_enabled)) {
 		state_data[0] = GSX_GESTURE_CMD;
 		state_data[1] = 0x02;
 		state_data[2] = 0xF6;
@@ -595,8 +595,8 @@ static int goodix_set_suspend_func(struct goodix_ts_core *core_data)
 		ts_info("Set IC double wakeup mode off,FOD mode off;");
 	} else {
 		ret = -1;
-		ts_info("Get IC mode falied,core_data->double_wakeup=%d,core_data->fod_status=%d;",
-			core_data->double_wakeup, core_data->fod_status);
+		ts_info("Get IC mode falied,core_data->double_tap_enabled=%d,core_data->udfps_enabled=%d;",
+			core_data->double_tap_enabled, core_data->udfps_enabled);
 	}
 
 	return ret;
@@ -645,11 +645,11 @@ static int goodix_wakeup_and_set_suspend_func(struct goodix_ts_core *core_data)
 		}
 	} while (r < 0 && ++retry < 3);
 
-	if (core_data->double_wakeup && core_data->fod_status) {
+	if (core_data->double_tap_enabled && core_data->udfps_enabled) {
 		atomic_set(&core_data->suspend_stat, TP_GESTURE_DBCLK_FOD);
-	} else if (core_data->double_wakeup) {
+	} else if (core_data->double_tap_enabled) {
 		atomic_set(&core_data->suspend_stat, TP_GESTURE_DBCLK);
-	} else if (core_data->fod_status) {
+	} else if (core_data->udfps_enabled) {
 		atomic_set(&core_data->suspend_stat, TP_GESTURE_FOD);
 	} else {
 		atomic_set(&core_data->suspend_stat, TP_SLEEP);
