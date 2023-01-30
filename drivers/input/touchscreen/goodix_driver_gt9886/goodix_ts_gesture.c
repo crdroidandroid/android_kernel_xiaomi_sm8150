@@ -452,68 +452,67 @@ static int gsx_gesture_ist(struct goodix_ts_core *core_data,
 	ts_debug("udfps_enabled= %d aod_status=%d", core_data->udfps_enabled, core_data->aod_status);
 	ts_debug("sleep_finger： %d", !core_data->sleep_finger);*/
 
-	if (core_data->udfps_enabled || core_data->aod_status) {
-		if ((FP_Event_Gesture == 1) && (temp_data[2] == 0x46)) {
+	if ((core_data->udfps_enabled || core_data->aod_status) && FP_Event_Gesture) {
+		switch (temp_data[2]) {
+			case 0x46:
+				x = temp_data[4] | (temp_data[5] << 8);
+				y = temp_data[6] | (temp_data[7] << 8);
+					overlapping_area = temp_data[8];
+					area = temp_data[9];
 
-			x = temp_data[4] | (temp_data[5] << 8);
-			y = temp_data[6] | (temp_data[7] << 8);
-				overlapping_area = temp_data[8];
-				area = temp_data[9];
+				core_data->udfps_pressed = 1;
+				sysfs_notify(&core_data->pdev->dev.kobj, NULL, "udfps_pressed");
+				input_mt_slot(core_data->input_dev, 0);
+				input_mt_report_slot_state(core_data->input_dev, MT_TOOL_FINGER, true);
+				input_report_key(core_data->input_dev, BTN_INFO, 1);
+				/*input_report_key(core_data->input_dev, KEY_INFO, 1);*/
+				input_report_key(core_data->input_dev, BTN_TOUCH, 1);
+				input_report_key(core_data->input_dev, BTN_TOOL_FINGER, 1);
+				input_report_abs(core_data->input_dev, ABS_MT_TOOL_TYPE, MT_TOOL_FINGER);
+				input_report_abs(core_data->input_dev, ABS_MT_POSITION_X, x);
+				input_report_abs(core_data->input_dev, ABS_MT_POSITION_Y, y);
+				input_report_abs(core_data->input_dev, ABS_MT_WIDTH_MINOR, overlapping_area);
+				/*input_report_abs(core_data->input_dev, ABS_MT_TOUCH_MINOR, area);*/
 
-			core_data->udfps_pressed = 1;
-			sysfs_notify(&core_data->pdev->dev.kobj, NULL, "udfps_pressed");
-			input_mt_slot(core_data->input_dev, 0);
-			input_mt_report_slot_state(core_data->input_dev, MT_TOOL_FINGER, true);
-			input_report_key(core_data->input_dev, BTN_INFO, 1);
-			/*input_report_key(core_data->input_dev, KEY_INFO, 1);*/
-			input_report_key(core_data->input_dev, BTN_TOUCH, 1);
-			input_report_key(core_data->input_dev, BTN_TOOL_FINGER, 1);
-			input_report_abs(core_data->input_dev, ABS_MT_TOOL_TYPE, MT_TOOL_FINGER);
-			input_report_abs(core_data->input_dev, ABS_MT_POSITION_X, x);
-			input_report_abs(core_data->input_dev, ABS_MT_POSITION_Y, y);
-			input_report_abs(core_data->input_dev, ABS_MT_WIDTH_MINOR, overlapping_area);
-			/*input_report_abs(core_data->input_dev, ABS_MT_TOUCH_MINOR, area);*/
+				core_data->fod_pressed = true;
+				__set_bit(0, &core_data->touch_id);
 
-			core_data->fod_pressed = true;
-			__set_bit(0, &core_data->touch_id);
+				ts_debug("Gesture report, x=%d, y=%d, overlapping_area=%d, area=%d",
+						x, y, overlapping_area, area);
 
+				/*wait for report key event*/
+				FP_Event_Gesture = 0;
+				input_sync(core_data->input_dev);
+				break;
 
-			ts_debug("Gesture report, x=%d, y=%d, overlapping_area=%d, area=%d",
-					x, y, overlapping_area, area);
+			case 0x4c:
+				/*wait for report key event*/
+				FP_Event_Gesture = 0;
+				input_report_key(core_data->input_dev, KEY_GOTO, 1);
+				input_sync(core_data->input_dev);
+				input_report_key(core_data->input_dev, KEY_GOTO, 0);
+				input_sync(core_data->input_dev);
+				core_data->sleep_finger = 0;
+				ts_debug("Gesture report L");
+				break;
 
-			/*wait for report key event*/
-			FP_Event_Gesture = 0;
-			input_sync(core_data->input_dev);
+			case 0xff:
+				if (core_data->fod_pressed) {
+					ts_debug("Gesture report up");
+				input_mt_slot(core_data->input_dev, 0);
+				input_mt_report_slot_state(core_data->input_dev, MT_TOOL_FINGER, false);
+				input_report_abs(core_data->input_dev, ABS_MT_WIDTH_MINOR, 0);
+				input_report_key(core_data->input_dev, BTN_INFO, 0);
+				/*input_report_key(core_data->input_dev, KEY_INFO, 0);*/
+				input_report_key(core_data->input_dev, BTN_TOUCH, 0);
+				input_report_key(core_data->input_dev, BTN_TOOL_FINGER, 0);
+				input_sync(core_data->input_dev);
+				__clear_bit(0, &core_data->touch_id);
+				core_data->fod_pressed = false;
+				}
+				core_data->sleep_finger = 0;
+				break;
 		}
-
-		if ((FP_Event_Gesture == 1) && (temp_data[2] == 0x4c)) {
-			/*wait for report key event*/
-			FP_Event_Gesture = 0;
-			input_report_key(core_data->input_dev, KEY_GOTO, 1);
-			input_sync(core_data->input_dev);
-			input_report_key(core_data->input_dev, KEY_GOTO, 0);
-			input_sync(core_data->input_dev);
-			core_data->sleep_finger = 0;
-			ts_debug("Gesture report L");
-		}
-
-		if ((FP_Event_Gesture == 1) && (temp_data[2] == 0xff)) {
-			if (core_data->fod_pressed) {
-				ts_debug("Gesture report up");
-			input_mt_slot(core_data->input_dev, 0);
-			input_mt_report_slot_state(core_data->input_dev, MT_TOOL_FINGER, false);
-			input_report_abs(core_data->input_dev, ABS_MT_WIDTH_MINOR, 0);
-			input_report_key(core_data->input_dev, BTN_INFO, 0);
-			/*input_report_key(core_data->input_dev, KEY_INFO, 0);*/
-			input_report_key(core_data->input_dev, BTN_TOUCH, 0);
-			input_report_key(core_data->input_dev, BTN_TOOL_FINGER, 0);
-			input_sync(core_data->input_dev);
-			__clear_bit(0, &core_data->touch_id);
-			core_data->fod_pressed = false;
-			}
-			core_data->sleep_finger = 0;
-		}
-
 		write_lock(&gsx_gesture->rwlock);
 		memcpy(gsx_gesture->gesture_data, temp_data, sizeof(temp_data));
 		write_unlock(&gsx_gesture->rwlock);
