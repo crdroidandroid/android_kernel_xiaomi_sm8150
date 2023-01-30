@@ -569,35 +569,41 @@ static int goodix_set_suspend_func(struct goodix_ts_core *core_data)
 	u8 state_data[3] = {0};
 	int ret;
 
-	if (core_data->double_tap_enabled && core_data->udfps_enabled) {
-		state_data[0] = GSX_GESTURE_CMD;
-		state_data[1] = 0x01;
-		state_data[2] = 0xF7;
-		ret = goodix_i2c_write(dev, GSX_REG_GESTURE, state_data, 3);
-		ts_info("Set IC double wakeup mode on,FOD mode on;");
-	} else if (core_data->double_tap_enabled && (!core_data->udfps_enabled)) {
-		state_data[0] = GSX_GESTURE_CMD;
-		state_data[1] = 0x03;
-		state_data[2] = 0xF5;
-		ret = goodix_i2c_write(dev, GSX_REG_GESTURE, state_data, 3);
-		ts_info("Set IC double wakeup mode on,FOD mode off;");
-	} else if (!core_data->double_tap_enabled && core_data->udfps_enabled) {
-		state_data[0] = GSX_GESTURE_CMD;
-		state_data[1] = 0x00;
-		state_data[2] = 0xF8;
-		ret = goodix_i2c_write(dev, GSX_REG_GESTURE, state_data, 3);
-		ts_info("Set IC double wakeup mode off,FOD mode on;");
-	} else if (!core_data->double_tap_enabled && (!core_data->udfps_enabled)) {
-		state_data[0] = GSX_GESTURE_CMD;
-		state_data[1] = 0x02;
-		state_data[2] = 0xF6;
-		ret = goodix_i2c_write(dev, GSX_REG_GESTURE, state_data, 3);
-		ts_info("Set IC double wakeup mode off,FOD mode off;");
-	} else {
-		ret = -1;
-		ts_info("Get IC mode falied,core_data->double_tap_enabled=%d,core_data->udfps_enabled=%d;",
-			core_data->double_tap_enabled, core_data->udfps_enabled);
-	}
+    int mode = 0;
+    if (core_data->double_tap_enabled)
+        mode |= 0x01;
+    if (core_data->udfps_enabled)
+        mode |= 0x02;
+
+    switch (mode) {
+        case 0x03:	// Fod on Dt2w on
+            state_data[1] = 0x01;
+            state_data[2] = 0xF7;
+            break;
+        case 0x01:	// Fod off Dt2w on
+            state_data[1] = 0x03;
+            state_data[2] = 0xF5;
+            break;
+        case 0x02:	// Fod on Dt2w off
+            state_data[1] = 0x00;
+            state_data[2] = 0xF8;
+            break;
+        case 0x00:	// Fod off Dt2w off
+            state_data[1] = 0x02;
+            state_data[2] = 0xF6;
+            break;
+        default:
+            ret = -1;
+            ts_info("Get IC mode failed, core_data->double_tap_enabled=%d, core_data->udfps_enabled=%d;",
+                    core_data->double_tap_enabled, core_data->udfps_enabled);
+            return ret;
+    }
+
+    state_data[0] = GSX_GESTURE_CMD;
+    ret = goodix_i2c_write(dev, GSX_REG_GESTURE, state_data, 3);
+    ts_info("Set IC double wakeup mode %s, FOD mode %s;",
+            core_data->double_tap_enabled ? "on" : "off",
+            core_data->udfps_enabled ? "on" : "off");
 
 	return ret;
 }
