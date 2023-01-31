@@ -53,7 +53,6 @@ static int FP_Event_Gesture;
  * @registered: module register state
  * @sysfs_node_created: sysfs node state
  * @gesture_type: store valied gesture type,each bit stand for a gesture
- * @gesture_data: gesture data
  * @gesture_ts_cmd: gesture command data
 */
 struct gesture_module {
@@ -61,7 +60,6 @@ struct gesture_module {
 	unsigned int kobj_initialized;
 	rwlock_t rwlock;
 	unsigned char gesture_type[GSX_GESTURE_TYPE_LEN];
-	unsigned char gesture_data[GSX_KEY_DATA_LEN];
 	struct goodix_ext_module module;
 	struct goodix_ts_cmd cmd;
 };
@@ -277,61 +275,12 @@ int goodix_check_gesture_stat(bool enable)
 	}
 	return 0;
 }
-/**
- * gsx_gesture_data_show - show gesture data read frome IC
- *
- * @module: pointer to goodix_ext_module struct
- * @buf: pointer to output buffer
- * Returns >0 - gesture data length,< 0 - failed
- */
-/*static ssize_t gsx_gesture_data_show(struct goodix_ext_module *module,
-				char *buf)
-{
-	int count = GSX_KEY_DATA_LEN;
-
-	if (atomic_read(&gsx_gesture->registered) != 1) {
-		ts_info("Gesture module not register!");
-		return -EPERM;
-	}
-	if (!buf || !gsx_gesture->gesture_data) {
-		ts_info("Parameter error!");
-		return -EPERM;
-	}
-	read_lock(&gsx_gesture->rwlock);
-	memcpy(buf, gsx_gesture->gesture_data, count);
-	read_unlock(&gsx_gesture->rwlock);
-
-	return count;
-}*/
-
-static ssize_t gsx_gesture_data_show(struct goodix_ext_module *module,
-				char *buf)
-{
-	int count = GSX_KEY_DATA_LEN;
-
-	if (atomic_read(&gsx_gesture->registered) != 1) {
-		ts_info("Gesture module not register!");
-		return -EPERM;
-	}
-	if (!buf || !*(gsx_gesture->gesture_data)) {
-		ts_info("Parameter error!");
-		return -EPERM;
-	}
-	read_lock(&gsx_gesture->rwlock);
-
-	count = scnprintf(buf, PAGE_SIZE, "Previous gesture type:0x%x\n",
-			  gsx_gesture->gesture_data[2]);
-	read_unlock(&gsx_gesture->rwlock);
-
-	return count;
-}
 
 const struct goodix_ext_attribute gesture_attrs[] = {
 	__EXTMOD_ATTR(type, 0666, gsx_gesture_type_show,
 		gsx_gesture_type_store),
 	__EXTMOD_ATTR(enable, 0666, gsx_gesture_enable_show,
-		gsx_gesture_enable_store),
-	__EXTMOD_ATTR(data, 0444, gsx_gesture_data_show, NULL)
+		gsx_gesture_enable_store)
 };
 
 static int gsx_gesture_init(struct goodix_ts_core *core_data,
@@ -353,7 +302,6 @@ static int gsx_gesture_init(struct goodix_ts_core *core_data,
 	gsx_gesture->cmd.initialized = 1;
 
 	memset(gsx_gesture->gesture_type, 0, GSX_GESTURE_TYPE_LEN);
-	memset(gsx_gesture->gesture_data, 0xff, GSX_KEY_DATA_LEN);
 
 	ts_debug("Set gesture type manually");
 	memset(gsx_gesture->gesture_type, 0xff, GSX_GESTURE_TYPE_LEN);
@@ -511,9 +459,6 @@ static int gsx_gesture_ist(struct goodix_ts_core *core_data,
 				core_data->sleep_finger = 0;
 				break;
 		}
-		write_lock(&gsx_gesture->rwlock);
-		memcpy(gsx_gesture->gesture_data, temp_data, sizeof(temp_data));
-		write_unlock(&gsx_gesture->rwlock);
 	}
 
 	if (temp_data[2] == 0xcc) {
