@@ -1966,10 +1966,11 @@ suspend:
 	queue_work(core_data->event_wq, &core_data->suspend_work);
 	return 0;
 resume:
-	//if (!atomic_read(&core_data->suspend_stat))
+	ts_info("core_data->suspend_stat = %d\n", atomic_read(&core_data->suspend_stat));
+	if (!atomic_read(&core_data->suspend_stat))
+		return 0;
 	core_data->udfps_pressed = 0;
 	core_data->double_tap_pressed = 0;
-	ts_info("core_data->suspend_stat = %d\n", atomic_read(&core_data->suspend_stat));
 	ts_info("touchpanel resume");
 	queue_work(core_data->event_wq, &core_data->resume_work);
 	return 0;
