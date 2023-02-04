@@ -433,11 +433,34 @@ static const struct fg_pt fg_tsmc_osc_table[] = {
 	{  90,		444992 },
 };
 
+#define BATT_MA_AVG_SAMPLES		8
+struct batt_params {
+	bool		update_now;
+	int		batt_raw_soc;
+	int		batt_soc;
+	int		samples_num;
+	int		samples_index;
+	int		batt_ma_avg_samples[BATT_MA_AVG_SAMPLES];
+	int		batt_ma_avg;
+	int		batt_ma_prev;
+	int		batt_ma;
+	int		batt_mv;
+	int		batt_temp;
+	struct timespec	last_soc_change_time;
+};
+
 struct fg_memif {
 	struct fg_dma_address	*addr_map;
 	int			num_partitions;
 	u16			address_max;
 	u8			num_bytes_per_word;
+};
+
+struct cold_thermal {
+	int index;
+	int temp_l;
+	int temp_h;
+	int curr_th;
 };
 
 struct fg_dev {
@@ -509,8 +532,16 @@ struct fg_dev {
 	bool			qnovo_enable;
 	bool			empty_restart_fg;
 	bool			input_present;
+	bool			batt_temp_low;
+	bool			shutdown_delay;
+	/* cold thermal related */
+	struct cold_thermal *cold_thermal_seq;
+	int			cold_thermal_len;
+	int			curr_cold_thermal_level;
 	enum fg_version		version;
 	bool			suspended;
+	struct batt_params	param;
+	struct delayed_work	soc_monitor_work;
 	struct completion	soc_update;
 	struct completion	soc_ready;
 	struct delayed_work	profile_load_work;
