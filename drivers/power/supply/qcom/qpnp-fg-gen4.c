@@ -6523,7 +6523,7 @@ static void soc_monitor_work(struct work_struct *work)
 		}
 	}
 
-	schedule_delayed_work(&fg->soc_monitor_work,
+	mod_delayed_work(system_freezable_power_efficient_wq, &fg->soc_monitor_work,
 			msecs_to_jiffies(MONITOR_SOC_WAIT_PER_MS));
 }
 
@@ -6671,7 +6671,7 @@ static int fg_gen4_probe(struct platform_device *pdev)
 	INIT_DEFERRABLE_WORK(&fg->soc_work, soc_work_fn);
 	INIT_DEFERRABLE_WORK(&fg->empty_restart_fg_work, empty_restart_fg_work);
 	INIT_DEFERRABLE_WORK(&chip->pl_enable_work, pl_enable_work);
-	INIT_DELAYED_WORK(&fg->soc_monitor_work, soc_monitor_work);
+	INIT_DEFERRABLE_WORK(&fg->soc_monitor_work, soc_monitor_work);
 	INIT_WORK(&chip->pl_current_en_work, pl_current_en_work);
 
 	fg->awake_votable = create_votable("FG_WS", VOTE_SET_ANY,
@@ -6853,7 +6853,7 @@ static int fg_gen4_probe(struct platform_device *pdev)
 	fg_gen4_post_init(chip);
 
 	fg->param.batt_soc = -EINVAL;
-	schedule_delayed_work(&fg->soc_monitor_work,
+	mod_delayed_work(system_freezable_power_efficient_wq, &fg->soc_monitor_work,
 				msecs_to_jiffies(MONITOR_SOC_WAIT_MS));
 
 	pr_debug("FG GEN4 driver probed successfully\n");
@@ -6949,7 +6949,7 @@ static int fg_gen4_resume(struct device *dev)
 				msecs_to_jiffies(fg_sram_dump_period_ms));
 
 	fg->param.update_now = true;
-	schedule_delayed_work(&fg->soc_monitor_work,
+	mod_delayed_work(system_freezable_power_efficient_wq, &fg->soc_monitor_work,
 				msecs_to_jiffies(MONITOR_SOC_WAIT_MS));
 	return 0;
 }
