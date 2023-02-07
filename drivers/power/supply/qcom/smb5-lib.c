@@ -195,6 +195,11 @@ int smblib_icl_override(struct smb_charger *chg, enum icl_override_mode  mode)
 		icl_override = 0;
 		apsd_override = ICL_OVERRIDE_AFTER_APSD_BIT;
 		break;
+	case SW_OVERRIDE_NO_CC_MODE:
+		usb51_mode = USBIN_MODE_CHG_BIT;
+		icl_override = 1;
+		apsd_override = ICL_OVERRIDE_AFTER_APSD_BIT;
+		break;
 	case HW_AUTO_MODE:
 	default:
 		usb51_mode = USBIN_MODE_CHG_BIT;
@@ -1557,6 +1562,13 @@ int smblib_set_icl_current(struct smb_charger *chg, int icl_ua)
 
 	if (icl_ua == INT_MAX)
 		goto set_mode;
+
+	if ((chg->typec_mode == POWER_SUPPLY_TYPEC_NONE)
+				&& (chg->real_charger_type >= POWER_SUPPLY_TYPE_USB)) {
+		rc = smblib_set_charge_param(chg, &chg->param.usb_icl, icl_ua);
+		icl_override = SW_OVERRIDE_NO_CC_MODE;
+		goto set_mode;
+	}
 
 	/* configure current */
 	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB

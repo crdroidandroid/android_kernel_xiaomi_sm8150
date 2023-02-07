@@ -373,6 +373,8 @@ enum icl_override_mode {
 	SW_OVERRIDE_USB51_MODE,
 	/* ICL other than USB51 */
 	SW_OVERRIDE_HC_MODE,
+	/* ICL in cc float mode */
+	SW_OVERRIDE_NO_CC_MODE,
 };
 
 /* EXTCON_USB and EXTCON_USB_HOST are mutually exclusive */
