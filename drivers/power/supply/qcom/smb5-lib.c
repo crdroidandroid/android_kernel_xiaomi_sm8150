@@ -2167,6 +2167,28 @@ int smblib_get_prop_batt_capacity(struct smb_charger *chg,
 	return rc;
 }
 
+int smblib_get_prop_batt_capacity_level(struct smb_charger *chg,
+                                  union power_supply_propval *val)
+{
+	int rc,cap;
+	union power_supply_propval capacity;
+
+	rc = smblib_get_prop_from_bms(chg, POWER_SUPPLY_PROP_CAPACITY, &capacity);
+
+	cap=capacity.intval;
+	if (cap <= 0)
+		val->intval = POWER_SUPPLY_CAPACITY_LEVEL_CRITICAL;
+	if (cap > 0 && cap <= 20)
+		val->intval = POWER_SUPPLY_CAPACITY_LEVEL_LOW;
+	if (cap > 20 && cap <= 90)
+		val->intval = POWER_SUPPLY_CAPACITY_LEVEL_NORMAL;
+	if (cap > 90 && cap <= 99)
+		val->intval = POWER_SUPPLY_CAPACITY_LEVEL_HIGH;
+	if (cap == 100)
+		val->intval = POWER_SUPPLY_CAPACITY_LEVEL_FULL;
+	return rc;
+}
+
 static bool smblib_is_jeita_warm_charging(struct smb_charger *chg)
 {
 	union power_supply_propval pval = {0, };

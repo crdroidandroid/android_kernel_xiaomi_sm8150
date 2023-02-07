@@ -746,6 +746,7 @@ struct smb_charger {
 	bool			cc_un_compliant_detected;
 	bool			snk_debug_acc_detected;
 	bool			support_wireless;
+	bool			ext_fg;
 };
 
 enum quick_charge_type {
@@ -826,6 +827,8 @@ int smblib_get_prop_input_suspend(struct smb_charger *chg,
 int smblib_get_prop_batt_present(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_get_prop_batt_capacity(struct smb_charger *chg,
+				union power_supply_propval *val);
+int smblib_get_prop_batt_capacity_level(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_get_prop_batt_status(struct smb_charger *chg,
 				union power_supply_propval *val);
