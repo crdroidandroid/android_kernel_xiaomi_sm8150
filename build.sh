@@ -26,7 +26,7 @@ ZIP_MOVE=~/AK-releases
 
 # Functions
 function clean_all {
-		rm -rf $REPACK_DIR/Image*
+		rm -rf $REPACK_DIR/Image* $REPACK_DIR/dtbo.img
 		cd $KERNEL_DIR
 		echo
 		make clean && make mrproper
@@ -34,18 +34,14 @@ function clean_all {
 
 function make_kernel {
 		echo
-		make LLVM=1 LLVM_IAS=1 $DEFCONFIG
-		make LLVM=1 LLVM_IAS=1 -j$(grep -c ^processor /proc/cpuinfo)
+		make LLVM=1 LLVM_IAS=1 CC="ccache clang" $DEFCONFIG
+		make LLVM=1 LLVM_IAS=1 CC="ccache clang" -j$(grep -c ^processor /proc/cpuinfo)
 
 }
-
-
-function make_boot {
-		cp out/arch/arm64/boot/Image.gz-dtb $REPACK_DIR
-}
-
 
 function make_zip {
+                cp out/arch/arm64/boot/Image.gz-dtb $REPACK_DIR
+                cp out/arch/arm64/boot/dtbo.img $REPACK_DIR
 		cd $REPACK_DIR
 		zip -r9 `echo $ZIP_NAME`.zip *
 		mv  `echo $ZIP_NAME`*.zip $ZIP_MOVE
@@ -104,7 +100,6 @@ do
 case "$dchoice" in
 	y|Y )
 		make_kernel
-		make_boot
                 make_zip
 		break
 		;;
