@@ -1774,7 +1774,8 @@ static ssize_t cpuset_write_resmask(struct kernfs_open_file *of,
 
 	free_trial_cpuset(trialcs);
 #ifdef CONFIG_UCLAMP_ASSIST
-	uclamp_set(of, nbytes, off);
+	if (task_is_booster(current))
+		uclamp_set(of, nbytes, off);
 #endif
 
 out_unlock:
