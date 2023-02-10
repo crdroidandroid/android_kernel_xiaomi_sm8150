@@ -650,6 +650,7 @@ static int rndis_set_response(struct rndis_params *params,
 	BufLength = le32_to_cpu(buf->InformationBufferLength);
 	BufOffset = le32_to_cpu(buf->InformationBufferOffset);
 	if ((BufLength > RNDIS_MAX_TOTAL_SIZE) ||
+	    (BufOffset > RNDIS_MAX_TOTAL_SIZE) ||
 	    (BufOffset + 8 >= RNDIS_MAX_TOTAL_SIZE))
 		    return -EINVAL;
 
@@ -1124,16 +1125,17 @@ u8 *rndis_get_next_response(struct rndis_params *params, u32 *length)
 	if (!length) return NULL;
 
 	spin_lock_irqsave(&params->lock, flags);
+
 	list_for_each_entry_safe(r, n, &params->resp_queue, list) {
 		if (!r->send) {
 			r->send = 1;
 			*length = r->length;
+
 			spin_unlock_irqrestore(&params->lock, flags);
 			return r->buf;
 		}
 	}
 	spin_unlock_irqrestore(&params->lock, flags);
-
 	return NULL;
 }
 EXPORT_SYMBOL_GPL(rndis_get_next_response);

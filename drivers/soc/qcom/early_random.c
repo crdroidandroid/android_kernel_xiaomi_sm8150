@@ -52,13 +52,6 @@ void __init init_random_pool(void)
 		if (bytes_received != SZ_512)
 			pr_warn("Did not receive the expected number of bytes from PRNG: %llu\n",
 				bytes_received);
-
-		dmac_inv_range(random_buffer, random_buffer +
-						RANDOM_BUFFER_SIZE);
-		bytes_received = (bytes_received <= RANDOM_BUFFER_SIZE) ?
-					bytes_received : RANDOM_BUFFER_SIZE;
-		add_hwgenerator_randomness(random_buffer, bytes_received,
-					   bytes_received << 3);
 	}
 }
 
