@@ -1237,6 +1237,7 @@ static const struct file_operations mem_read_fops = {
 	.read = wcd_spi_debugfs_mem_read,
 };
 
+#ifdef CONFIG_DEBUG_FS
 static int wcd_spi_debugfs_init(struct spi_device *spi)
 {
 	struct wcd_spi_priv *wcd_spi = spi_get_drvdata(spi);
@@ -1261,7 +1262,7 @@ static int wcd_spi_debugfs_init(struct spi_device *spi)
 done:
 	return rc;
 }
-
+#endif
 
 static const struct reg_default wcd_spi_defaults[] = {
 	{WCD_SPI_SLAVE_SANITY, 0xDEADBEEF},
@@ -1396,8 +1397,10 @@ static int wcd_spi_component_bind(struct device *dev,
 		goto done;
 	}
 
+	#ifdef CONFIG_DEBUG_FS
 	if (wcd_spi_debugfs_init(spi))
 		dev_dbg(&spi->dev, "%s: Failed debugfs init\n", __func__);
+	#endif
 
 	spi_message_init(&wcd_spi->msg1);
 	spi_message_add_tail(&wcd_spi->xfer1, &wcd_spi->msg1);
