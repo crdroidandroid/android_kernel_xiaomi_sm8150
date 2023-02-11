@@ -6410,7 +6410,7 @@ static void fg_battery_soc_smooth_tracking(struct fg_gen4_chip *chip)
 			power_supply_changed(fg->batt_psy);
 	}
 
-	pr_info("soc:%d, last_soc:%d, raw_soc:%d, soc_changed:%d.\n",
+	pr_debug("soc:%d, last_soc:%d, raw_soc:%d, soc_changed:%d.\n",
 				fg->param.batt_soc, last_batt_soc,
 				fg->param.batt_raw_soc, soc_changed);
 }
@@ -6464,7 +6464,7 @@ static void soc_monitor_work(struct work_struct *work)
 	if (fg->soc_reporting_ready)
 		fg_battery_soc_smooth_tracking(chip);
 
-	pr_info("soc:%d, raw_soc:%d, c:%d, s:%d\n",
+	pr_debug("soc:%d, raw_soc:%d, c:%d, s:%d\n",
 			fg->param.batt_soc, fg->param.batt_raw_soc,
 			fg->param.batt_ma, fg->charge_status);
 
@@ -6564,7 +6564,7 @@ int fg_get_batt_isense(struct fg_dev *fg, int *val)
 	rc = fg_sram_read(fg, IBAT_OLD_WORD, IBAT_OLD_OFFSET, buf, 2,
 			FG_IMA_DEFAULT);
 	if (rc < 0) {
-		pr_err("Error in reading %04x[%d] rc=%d\n", IBAT_OLD_WORD,
+		pr_debug("Error in reading %04x[%d] rc=%d\n", IBAT_OLD_WORD,
 				IBAT_OLD_OFFSET, rc);
 		return rc;
 	}
