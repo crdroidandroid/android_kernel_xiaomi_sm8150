@@ -6451,7 +6451,7 @@ static void fg_battery_soc_smooth_tracking(struct fg_gen4_chip *chip)
 			power_supply_changed(fg->batt_psy);
 	}
 
-	pr_info("soc:%d, last_soc:%d, raw_soc:%d, soc_changed:%d.\n",
+	pr_debug("soc:%d, last_soc:%d, raw_soc:%d, soc_changed:%d.\n",
 				fg->param.batt_soc, last_batt_soc,
 				fg->param.batt_raw_soc, soc_changed);
 }
@@ -6505,7 +6505,7 @@ static void soc_monitor_work(struct work_struct *work)
 	if (fg->soc_reporting_ready)
 		fg_battery_soc_smooth_tracking(chip);
 
-	pr_info("soc:%d, raw_soc:%d, c:%d, s:%d\n",
+	pr_debug("soc:%d, raw_soc:%d, c:%d, s:%d\n",
 			fg->param.batt_soc, fg->param.batt_raw_soc,
 			fg->param.batt_ma, fg->charge_status);
 
@@ -6589,7 +6589,7 @@ int fg_get_batt_isense(struct fg_dev *fg, int *val)
 	/* Sign bit is bit 15 */
 	temp = sign_extend32(temp, 15);
 	*val = div_s64((s64)temp * BATT_CURRENT_NUMR, BATT_CURRENT_DENR);
-	pr_info("read batt isense: %d[%d]%d\n",
+	pr_debug("read batt isense: %d[%d]%d\n",
 			(*val)/10, *val, (*val)/1000);
 
 	return 0;
