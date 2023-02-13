@@ -3040,7 +3040,7 @@ static int smblib_therm_charging(struct smb_charger *chg)
 		}
 	}
 
-	pr_info("thermal_icl_ua: %d", thermal_icl_ua);
+	pr_debug("thermal_icl_ua: %d", thermal_icl_ua);
 	return rc;
 }
 #endif
