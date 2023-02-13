@@ -3148,11 +3148,11 @@ static int smblib_therm_charging(struct smb_charger *chg)
 		/* if therm_lvl_sel is 0, clear thermal voter */
 		rc = vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, false, 0);
 		if (rc < 0)
-			pr_err("Couldn't disable USB thermal ICL vote rc=%d\n",
+			pr_debug("Couldn't disable USB thermal ICL vote rc=%d\n",
 				rc);
 		rc = vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, false, 0);
 		if (rc < 0)
-			pr_err("Couldn't disable USB thermal ICL vote rc=%d\n",
+			pr_debug("Couldn't disable USB thermal ICL vote rc=%d\n",
 				rc);
 	} else {
 		pr_debug("thermal_icl_ua is %d, chg->system_temp_level: %d\n",
@@ -3170,7 +3170,7 @@ static int smblib_therm_charging(struct smb_charger *chg)
 				rc = vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER,
 						true, thermal_icl_ua);
 				if (rc < 0)
-					pr_err("Couldn't enable USB thermal ICL vote rc=%d\n",
+					pr_debug("Couldn't enable USB thermal ICL vote rc=%d\n",
 						rc);
 			} else {
 				/*
@@ -3180,7 +3180,7 @@ static int smblib_therm_charging(struct smb_charger *chg)
 				rc = vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER,
 					false, 0);
 				if (rc < 0)
-					pr_err("Couldn't disable USB thermal ICL vote rc=%d\n",
+					pr_debug("Couldn't disable USB thermal ICL vote rc=%d\n",
 						rc);
 			}
 		} else {
@@ -3196,11 +3196,12 @@ static int smblib_therm_charging(struct smb_charger *chg)
 			rc = vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, true,
 					thermal_fcc_ua);
 			if (rc < 0)
-				pr_err("Couldn't enable USB thermal ICL vote rc=%d\n",
+				pr_debug("Couldn't enable USB thermal ICL vote rc=%d\n",
 						rc);
 		}
 	}
 
+	pr_debug("thermal_icl_ua: %d", thermal_icl_ua);
 	return rc;
 }
 #endif
