@@ -91,8 +91,7 @@ static void end_report(unsigned long *flags)
 	pr_err("==================================================================\n");
 	add_taint(TAINT_BAD_PAGE, LOCKDEP_NOW_UNRELIABLE);
 	spin_unlock_irqrestore(&report_lock, *flags);
-	if (panic_on_warn)
-		panic("panic_on_warn set ...\n");
+	check_panic_on_warn("KASAN");
 	kasan_enable_current();
 }
 
@@ -255,19 +254,6 @@ static void print_shadow_for_address(const void *addr)
 
 		shadow_row += SHADOW_BYTES_PER_ROW;
 	}
-}
-
-void kasan_report_invalid_free(void *object, unsigned long ip)
-{
-	unsigned long flags;
-
-	kasan_start_report(&flags);
-	pr_err("BUG: KASAN: double-free or invalid-free in %pS\n", (void *)ip);
-	pr_err("\n");
-	print_address_description(object);
-	pr_err("\n");
-	print_shadow_for_address(object);
-	kasan_end_report(&flags);
 }
 
 static bool report_enabled(void)

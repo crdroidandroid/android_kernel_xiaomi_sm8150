@@ -24,7 +24,6 @@
 #include <linux/delay.h>
 #include <linux/pm_runtime.h>
 #include <linux/kernel.h>
-#include <linux/gpio.h>
 #include <linux/regmap.h>
 #include <linux/spi/spi.h>
 #include <linux/regulator/consumer.h>
@@ -493,7 +492,7 @@ static struct afe_param_id_cdc_aanc_version tavil_cdc_aanc_version = {
 	.aanc_hw_version        = AANC_HW_BLOCK_VERSION_2,
 };
 
-static const DECLARE_TLV_DB_SCALE(digital_gain, 0, 1, 0);
+static const DECLARE_TLV_DB_SCALE(digital_gain, -8400, 100, -8400);
 static const DECLARE_TLV_DB_SCALE(line_gain, 0, 7, 1);
 static const DECLARE_TLV_DB_SCALE(analog_gain, 0, 25, 1);
 
@@ -4329,11 +4328,6 @@ static u16 tavil_codec_get_amic_pwlvl_reg(struct snd_soc_codec *codec, int amic)
 	return pwr_level_reg;
 }
 
-#define  TX_HPF_CUT_OFF_FREQ_MASK 0x60
-#define  CF_MIN_3DB_4HZ     0x0
-#define  CF_MIN_3DB_75HZ    0x1
-#define  CF_MIN_3DB_150HZ   0x2
-
 static void tavil_tx_hpf_corner_freq_callback(struct work_struct *work)
 {
 	struct delayed_work *hpf_delayed_work;
@@ -4434,7 +4428,7 @@ static int tavil_codec_enable_dec(struct snd_soc_dapm_widget *w,
 
 	dev_dbg(codec->dev, "%s %d\n", __func__, event);
 
-	widget_name = kstrndup(w->name, 15, GFP_KERNEL);
+	widget_name = kmemdup_nul(w->name, 15, GFP_KERNEL);
 	if (!widget_name)
 		return -ENOMEM;
 
@@ -4580,7 +4574,7 @@ static u32 tavil_get_dmic_sample_rate(struct snd_soc_codec *codec,
 	u16 adc_mux_ctl_reg, tx_fs_reg;
 	u32 dmic_fs;
 
-	while (dec_found == 0 && adc_mux_index < WCD934X_MAX_VALID_ADC_MUX) {
+	while (!dec_found && adc_mux_index < WCD934X_MAX_VALID_ADC_MUX) {
 		if (adc_mux_index < 4) {
 			adc_mux_ctl_reg = WCD934X_CDC_TX_INP_MUX_ADC_MUX0_CFG0 +
 						(adc_mux_index * 2);
@@ -8862,7 +8856,7 @@ static int tavil_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	return 0;
 }
 
-static struct snd_soc_dai_ops tavil_dai_ops = {
+static const struct snd_soc_dai_ops tavil_dai_ops = {
 	.startup = tavil_startup,
 	.shutdown = tavil_shutdown,
 	.hw_params = tavil_hw_params,
@@ -8891,7 +8885,8 @@ static struct snd_soc_dai_driver tavil_slim_dai[] = {
 		.id = AIF1_PB,
 		.playback = {
 			.stream_name = "AIF1 Playback",
-			.rates = WCD934X_RATES_MASK | WCD934X_FRAC_RATES_MASK,
+			.rates = WCD934X_RATES_MASK | WCD934X_FRAC_RATES_MASK |
+					 SNDRV_PCM_RATE_384000,
 			.formats = WCD934X_FORMATS_S16_S24_S32_LE,
 			.rate_min = 8000,
 			.rate_max = 384000,
@@ -8919,7 +8914,8 @@ static struct snd_soc_dai_driver tavil_slim_dai[] = {
 		.id = AIF2_PB,
 		.playback = {
 			.stream_name = "AIF2 Playback",
-			.rates = WCD934X_RATES_MASK | WCD934X_FRAC_RATES_MASK,
+			.rates = WCD934X_RATES_MASK | WCD934X_FRAC_RATES_MASK |
+					 SNDRV_PCM_RATE_384000,
 			.formats = WCD934X_FORMATS_S16_S24_S32_LE,
 			.rate_min = 8000,
 			.rate_max = 384000,
@@ -8947,7 +8943,8 @@ static struct snd_soc_dai_driver tavil_slim_dai[] = {
 		.id = AIF3_PB,
 		.playback = {
 			.stream_name = "AIF3 Playback",
-			.rates = WCD934X_RATES_MASK | WCD934X_FRAC_RATES_MASK,
+			.rates = WCD934X_RATES_MASK | WCD934X_FRAC_RATES_MASK |
+					 SNDRV_PCM_RATE_384000,
 			.formats = WCD934X_FORMATS_S16_S24_S32_LE,
 			.rate_min = 8000,
 			.rate_max = 384000,
@@ -8975,7 +8972,8 @@ static struct snd_soc_dai_driver tavil_slim_dai[] = {
 		.id = AIF4_PB,
 		.playback = {
 			.stream_name = "AIF4 Playback",
-			.rates = WCD934X_RATES_MASK | WCD934X_FRAC_RATES_MASK,
+			.rates = WCD934X_RATES_MASK | WCD934X_FRAC_RATES_MASK |
+					 SNDRV_PCM_RATE_384000,
 			.formats = WCD934X_FORMATS_S16_S24_S32_LE,
 			.rate_min = 8000,
 			.rate_max = 384000,
