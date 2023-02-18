@@ -783,6 +783,17 @@ static void gtp_init_touchmode_data(void)
 	return;
 }
 
+void gtp_game_mode_rerun(struct goodix_ts_core *core_data)
+{
+	u8 i;
+
+	for (i = 0; i < Touch_Mode_NUM; i++)
+		if (core_data->touch_mode[i][GET_CUR_VALUE])
+			gtp_set_cur_value(i, core_data->touch_mode[i][GET_CUR_VALUE]);
+
+	return;
+}
+
 static ssize_t goodix_ts_game_mode_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -1906,6 +1917,10 @@ out:
 		     "touch_suspend_notify");
 
 	mutex_unlock(&core_data->work_stat);
+
+#ifdef CONFIG_TOUCHSCREEN_GOODIX_GTX8_GAMEMODE
+	gtp_game_mode_rerun(core_data);
+#endif
 
 	ts_info("Resume end");
 	return 0;
