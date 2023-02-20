@@ -234,21 +234,14 @@ int goodix_sync_ic_stat(struct goodix_ts_core *core_data)
 	mutex_lock(&core_data->work_stat);
 	tp_stat = atomic_read(&core_data->suspend_stat);
 	switch (tp_stat) {
-		case TP_NO_SUSPEND:
-			goto exit;
-			break;
-		case TP_GESTURE_DBCLK:
-			goto sync;
-			break;
-		case TP_GESTURE_FOD:
-			goto sync;
-			break;
-		case TP_GESTURE_DBCLK_FOD:
-			goto sync;
-			break;
-		case TP_SLEEP:
-			goto fromsleep;
-			break;
+	case TP_SLEEP:
+		goto fromsleep;
+	case TP_NO_SUSPEND:
+		goto exit;
+	case TP_GESTURE_DBCLK:
+	case TP_GESTURE_FOD:
+	case TP_GESTURE_DBCLK_FOD:
+		goto sync;
 	}
 
 sync:
@@ -399,41 +392,41 @@ static int gsx_gesture_ist(struct goodix_ts_core *core_data,
 
 	if ((core_data->udfps_enabled || core_data->aod_status) && FP_Event_Gesture) {
 		switch (temp_data[2]) {
-			case 0x46:
-				core_data->udfps_pressed = 1;
-				sysfs_notify(&core_data->pdev->dev.kobj, NULL, "udfps_pressed");
-				input_report_key(core_data->input_dev, BTN_INFO, 1);
+		case 0x46:
+			core_data->udfps_pressed = 1;
+			sysfs_notify(&core_data->pdev->dev.kobj, NULL, "udfps_pressed");
+			input_report_key(core_data->input_dev, BTN_INFO, 1);
 
-				core_data->fod_pressed = true;
+			core_data->fod_pressed = true;
 
-				ts_debug("Gesture report, x=%d, y=%d, overlapping_area=%d, area=%d",
-						x, y, overlapping_area, area);
+			ts_debug("Gesture report, x=%d, y=%d, overlapping_area=%d, area=%d",
+					x, y, overlapping_area, area);
 
-				/*wait for report key event*/
-				FP_Event_Gesture = 0;
+			/*wait for report key event*/
+			FP_Event_Gesture = 0;
+			input_sync(core_data->input_dev);
+			break;
+
+		case 0x4c:
+			/*wait for report key event*/
+			FP_Event_Gesture = 0;
+			input_report_key(core_data->input_dev, KEY_GOTO, 1);
+			input_sync(core_data->input_dev);
+			input_report_key(core_data->input_dev, KEY_GOTO, 0);
+			input_sync(core_data->input_dev);
+			core_data->sleep_finger = 0;
+			ts_debug("Gesture report L");
+			break;
+
+		case 0xff:
+			if (core_data->fod_pressed) {
+				ts_debug("Gesture report up");
+				input_report_key(core_data->input_dev, BTN_INFO, 0);
 				input_sync(core_data->input_dev);
-				break;
-
-			case 0x4c:
-				/*wait for report key event*/
-				FP_Event_Gesture = 0;
-				input_report_key(core_data->input_dev, KEY_GOTO, 1);
-				input_sync(core_data->input_dev);
-				input_report_key(core_data->input_dev, KEY_GOTO, 0);
-				input_sync(core_data->input_dev);
-				core_data->sleep_finger = 0;
-				ts_debug("Gesture report L");
-				break;
-
-			case 0xff:
-				if (core_data->fod_pressed) {
-					ts_debug("Gesture report up");
-					input_report_key(core_data->input_dev, BTN_INFO, 0);
-					input_sync(core_data->input_dev);
-					core_data->fod_pressed = false;
-				}
-				core_data->sleep_finger = 0;
-				break;
+				core_data->fod_pressed = false;
+			}
+			core_data->sleep_finger = 0;
+			break;
 		}
 	}
 
@@ -469,7 +462,7 @@ re_send_ges_cmd:
 		ts_err("set suspend function failed!!");
 gesture_ist_exit:
 	ts_dev->hw_ops->write_trans(core_data->ts_dev, GSX_REG_GESTURE_DATA,
-			      &clear_reg, 1);
+				&clear_reg, 1);
 	mutex_unlock(&ts_dev->report_mutex);
 	return EVT_CANCEL_IRQEVT;
 }
@@ -487,41 +480,42 @@ static int goodix_set_suspend_func(struct goodix_ts_core *core_data)
 	u8 state_data[3] = {0};
 	int ret;
 
-    int mode = 0;
-    if (core_data->double_tap_enabled)
-        mode |= 0x01;
-    if (core_data->udfps_enabled)
-        mode |= 0x02;
+	int mode = 0;
 
-    switch (mode) {
-        case 0x03:	// Fod on Dt2w on
-            state_data[1] = 0x01;
-            state_data[2] = 0xF7;
-            break;
-        case 0x01:	// Fod off Dt2w on
-            state_data[1] = 0x03;
-            state_data[2] = 0xF5;
-            break;
-        case 0x02:	// Fod on Dt2w off
-            state_data[1] = 0x00;
-            state_data[2] = 0xF8;
-            break;
-        case 0x00:	// Fod off Dt2w off
-            state_data[1] = 0x02;
-            state_data[2] = 0xF6;
-            break;
-        default:
-            ret = -1;
-            ts_info("Get IC mode failed, core_data->double_tap_enabled=%d, core_data->udfps_enabled=%d;",
-                    core_data->double_tap_enabled, core_data->udfps_enabled);
-            return ret;
-    }
+	if (core_data->double_tap_enabled)
+		mode |= 0x01;
+	if (core_data->udfps_enabled)
+		mode |= 0x02;
 
-    state_data[0] = GSX_GESTURE_CMD;
-    ret = goodix_i2c_write(dev, GSX_REG_GESTURE, state_data, 3);
-    ts_info("Set IC double wakeup mode %s, FOD mode %s;",
-            core_data->double_tap_enabled ? "on" : "off",
-            core_data->udfps_enabled ? "on" : "off");
+	switch (mode) {
+	case 0x03:	// Fod on Dt2w on
+		state_data[1] = 0x01;
+		state_data[2] = 0xF7;
+	break;
+	case 0x01:	// Fod off Dt2w on
+		state_data[1] = 0x03;
+		state_data[2] = 0xF5;
+	break;
+	case 0x02:	// Fod on Dt2w off
+		state_data[1] = 0x00;
+		state_data[2] = 0xF8;
+	break;
+	case 0x00:	// Fod off Dt2w off
+		state_data[1] = 0x02;
+		state_data[2] = 0xF6;
+	break;
+	default:
+		ret = -1;
+		ts_info("Get IC mode failed, core_data->double_tap_enabled=%d, core_data->udfps_enabled=%d;",
+			core_data->double_tap_enabled, core_data->udfps_enabled);
+	return ret;
+	}
+
+	state_data[0] = GSX_GESTURE_CMD;
+	ret = goodix_i2c_write(dev, GSX_REG_GESTURE, state_data, 3);
+	ts_info("Set IC double wakeup mode %s, FOD mode %s;",
+		core_data->double_tap_enabled ? "on" : "off",
+		core_data->udfps_enabled ? "on" : "off");
 
 	return ret;
 }
@@ -607,10 +601,10 @@ static int gsx_gesture_before_suspend(struct goodix_ts_core *core_data,
 	}
 
 	if (!core_data->gesture_enabled) {
-			ts_err("enter %s\n", __func__);
-			atomic_set(&core_data->suspended, 1);
-			return EVT_CONTINUE;
-		}
+		ts_err("enter %s\n", __func__);
+		atomic_set(&core_data->suspended, 1);
+		return EVT_CONTINUE;
+	}
 
 	ret = goodix_set_suspend_func(core_data);
 	if (ret != 0) {
