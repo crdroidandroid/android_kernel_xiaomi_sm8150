@@ -496,8 +496,7 @@ static int goodix_ts_convert_0x_data(const u8 *buf, int buf_size,
 			continue;
 
 		if (temp_index >= m_size) {
-			ts_err("exchange cfg data error, overflow,"
-			       "temp_index:%d,m_size:%d\n",
+			ts_err("exchange cfg data error, overflow,temp_index:%d,m_size:%d\n",
 			       temp_index, m_size);
 			return -EINVAL;
 		}
@@ -835,6 +834,7 @@ static ssize_t udfps_pressed_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
+
 	return scnprintf(buf, PAGE_SIZE, "%i\n", core_data->udfps_pressed);
 }
 
@@ -843,6 +843,7 @@ static ssize_t udfps_enabled_store(struct device *dev,
 				  size_t count)
 {
 	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
+
 	core_data->udfps_enabled = buf[0] != '0';
 
 	core_data->gesture_enabled = core_data->double_tap_enabled | core_data->udfps_enabled;
@@ -856,6 +857,7 @@ static ssize_t udfps_enabled_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
+
 	return scnprintf(buf, PAGE_SIZE, "%i\n", core_data->udfps_enabled);
 }
 
@@ -863,6 +865,7 @@ static ssize_t double_tap_pressed_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
+
 	return scnprintf(buf, PAGE_SIZE, "%i\n", core_data->double_tap_pressed);
 }
 
@@ -871,6 +874,7 @@ static ssize_t double_tap_enabled_store(struct device *dev,
 				  size_t count)
 {
 	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
+
 	core_data->double_tap_enabled = buf[0] != '0';
 
 	core_data->gesture_enabled = core_data->double_tap_enabled | core_data->udfps_enabled;
@@ -884,6 +888,7 @@ static ssize_t double_tap_enabled_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
+
 	return scnprintf(buf, PAGE_SIZE, "%i\n", core_data->double_tap_enabled);
 }
 
@@ -1174,7 +1179,7 @@ static inline irqreturn_t goodix_ts_threadirq_func(int irq, void *data)
 			r = ext_module->funcs->irq_event(core_data, ext_module);
 			ts_err("enter %s r=%d\n", __func__, r);
 			if (r == EVT_CANCEL_IRQEVT) {
-				/*ts_err("enter %s EVT_CANCEL_IRQEVT \n", __func__);*/
+				/*ts_err("enter %s EVT_CANCEL_IRQEVT\n", __func__);*/
 				mutex_unlock(&goodix_modules.mutex);
 				goto handled;
 			}
@@ -1264,6 +1269,7 @@ EXPORT_SYMBOL(goodix_ts_irq_enable);
 static int goodix_ts_power_init(struct goodix_ts_core *core_data)
 {
 	struct goodix_ts_board_data *ts_bdata;
+
 	ts_bdata = board_data(core_data);
 
 	gpio_direction_output(ts_bdata->reset_gpio, 0);
@@ -1963,15 +1969,11 @@ int goodix_ts_msm_drm_notifier_callback(struct notifier_block *self,
 		flush_workqueue(core_data->event_wq);
 
 		switch (blank) {
-			case MSM_DRM_BLANK_POWERDOWN:
-				goto suspend;
-				break;
-			case MSM_DRM_BLANK_LP:
-				goto suspend;
-				break;
-			case MSM_DRM_BLANK_UNBLANK:
-				goto resume;
-				break;
+		case MSM_DRM_BLANK_POWERDOWN:
+		case MSM_DRM_BLANK_LP:
+			goto suspend;
+		case MSM_DRM_BLANK_UNBLANK:
+			goto resume;
 		}
 	}
 
