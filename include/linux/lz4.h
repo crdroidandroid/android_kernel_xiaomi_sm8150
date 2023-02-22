@@ -658,4 +658,8 @@ ssize_t LZ4_arm64_decompress_safe(const void *source, void *dest, size_t inputSi
 
 ssize_t LZ4_arm64_decompress_safe_partial(const void *source, void *dest, size_t inputSize, size_t outputSize, bool dip);
 
+ssize_t LZ4_arm64_decompress_safe(const void *source, void *dest, size_t inputSize, size_t outputSize, bool dip);
+
+ssize_t LZ4_arm64_decompress_safe_partial(const void *source, void *dest, size_t inputSize, size_t outputSize, bool dip);
+
 #endif
