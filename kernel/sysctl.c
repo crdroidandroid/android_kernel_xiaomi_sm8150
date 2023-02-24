@@ -119,6 +119,10 @@ extern int sysctl_nr_trim_pages;
 #endif
 #ifndef CONFIG_SCHED_WALT
 unsigned int sysctl_sched_boost;
+unsigned int sysctl_sched_group_upmigrate_pct = 100;
+unsigned int sysctl_sched_group_downmigrate_pct = 95;
+unsigned int sched_group_upmigrate = 20000000;
+unsigned int sched_group_downmigrate = 19000000;
 #endif
 /* Constants used for minimum and  maximum */
 #ifdef CONFIG_LOCKUP_DETECTOR
@@ -715,6 +719,23 @@ static struct ctl_table kern_table[] = {
 		.proc_handler	= proc_douintvec_minmax,
 		.extra1		= &neg_three,
 		.extra2		= &three,
+	},
+	{
+		.procname	= "sched_group_upmigrate",
+		.data		= &sysctl_sched_group_upmigrate_pct,
+		.maxlen		= sizeof(unsigned int),
+		.mode		= 0644,
+		.proc_handler	= proc_douintvec_minmax,
+		.extra1		= &sysctl_sched_group_downmigrate_pct,
+	},
+	{
+		.procname	= "sched_group_downmigrate",
+		.data		= &sysctl_sched_group_downmigrate_pct,
+		.maxlen		= sizeof(unsigned int),
+		.mode		= 0644,
+		.proc_handler	= proc_douintvec_minmax,
+		.extra1		= &zero,
+		.extra2		= &sysctl_sched_group_upmigrate_pct,
 	},
 #endif
 #ifdef CONFIG_PROVE_LOCKING
