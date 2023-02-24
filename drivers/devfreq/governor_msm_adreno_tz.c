@@ -59,7 +59,7 @@ static DEFINE_SPINLOCK(suspend_lock);
 #define TAG "msm_adreno_tz: "
 
 #if 1
-static unsigned int adrenoboost = 0;
+static u8 adrenoboost;
 #endif
 
 static u64 suspend_time;
@@ -88,25 +88,9 @@ u64 suspend_time_ms(void)
 static ssize_t adrenoboost_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	size_t count = 0;
-	count += sprintf(buf, "%d\n", adrenoboost);
-
-	return count;
+	return scnprintf(buf, PAGE_SIZE, "%d\n", adrenoboost);
 }
 
-static ssize_t adrenoboost_save(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	int input;
-	sscanf(buf, "%d ", &input);
-	if (input < 0 || input > 3) {
-		adrenoboost = 0;
-	} else {
-		adrenoboost = input;
-	}
-
-	return count;
-}
 #endif
 
 static ssize_t gpu_load_show(struct device *dev,
@@ -156,8 +140,8 @@ static ssize_t suspend_time_show(struct device *dev,
 }
 
 #if 1
-static DEVICE_ATTR(adrenoboost, 0644,
-		adrenoboost_show, adrenoboost_save);
+static DEVICE_ATTR(adrenoboost, 0444,
+		adrenoboost_show, NULL);
 #endif
 
 static DEVICE_ATTR(gpu_load, 0444, gpu_load_show, NULL);
@@ -372,6 +356,8 @@ static inline int devfreq_get_freq_level(struct devfreq *devfreq,
 	return -EINVAL;
 }
 
+extern int kp_active_mode(void);
+
 static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq)
 {
 	int result = 0;
@@ -387,6 +373,11 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq)
 		pr_err(TAG "get_status failed %d\n", result);
 		return result;
 	}
+
+	if (kp_active_mode() != 3)
+		adrenoboost = 0;
+	else
+		adrenoboost = 2;
 
 	*freq = stats.current_frequency;
 	priv->bin.total_time += stats.total_time;
