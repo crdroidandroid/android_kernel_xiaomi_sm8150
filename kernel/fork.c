@@ -2237,12 +2237,12 @@ long _do_fork(unsigned long clone_flags,
 
 	/* Boost CPU to the max for 50 ms when userspace launches an app */
 	if (task_is_zygote(current)) {
-		if (kp_active_mode() == 3 || kp_active_mode() == 0) {
-			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 700);
-			devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 700);
-		} else if (kp_active_mode() == 2) {
+		if (kp_active_mode() == 2 || kp_active_mode() == 0) {
 			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 50);
 			devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 50);
+		} else if (kp_active_mode() == 3) {
+			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 700);
+			devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 700);
 		}
 	}
 
