@@ -117,7 +117,9 @@ extern unsigned int sysctl_nr_open_min, sysctl_nr_open_max;
 #ifndef CONFIG_MMU
 extern int sysctl_nr_trim_pages;
 #endif
-
+#ifndef CONFIG_SCHED_WALT
+unsigned int sysctl_sched_boost;
+#endif
 /* Constants used for minimum and  maximum */
 #ifdef CONFIG_LOCKUP_DETECTOR
 static int sixty = 60;
@@ -704,6 +706,15 @@ static struct ctl_table kern_table[] = {
 		.proc_handler	= proc_douintvec_minmax,
 		.extra1		= &zero,
 		.extra2		= &two_hundred_fifty_five,
+	},
+	{
+		.procname	= "sched_boost",
+		.data		= &sysctl_sched_boost,
+		.maxlen		= sizeof(unsigned int),
+		.mode		= 0644,
+		.proc_handler	= proc_douintvec_minmax,
+		.extra1		= &neg_three,
+		.extra2		= &three,
 	},
 #endif
 #ifdef CONFIG_PROVE_LOCKING
