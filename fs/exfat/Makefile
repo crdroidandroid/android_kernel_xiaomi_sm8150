@@ -1,13 +1,12 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 #
-# Makefile for the linux FAT12/16/32(VFAT)/64(exFAT) filesystem driver.
+# Makefile for the linux exFAT filesystem support.
 #
-
 ifneq ($(KERNELRELEASE),)
-# Called from inline kernel build
 obj-$(CONFIG_EXFAT_FS) += exfat.o
 
-exfat-objs	:= super.o core.o core_exfat.o blkdev.o fatent.o cache.o \
-		   nls.o misc.o extent.o xattr.o
+exfat-y	:= inode.o namei.o dir.o super.o fatent.o cache.o nls.o misc.o \
+	   file.o balloc.o
 else
 # Called from external kernel module build
 
