@@ -14,6 +14,8 @@
 #ifndef __QCOM_CLK_DEBUG_H__
 #define __QCOM_CLK_DEBUG_H__
 
+#include "../clk.h"
+
 /* Debugfs Measure Clocks */
 
 /**
