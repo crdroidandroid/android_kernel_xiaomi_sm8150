@@ -597,13 +597,6 @@ static inline void *kvmalloc_array(size_t n, size_t size, gfp_t flags)
 }
 
 extern void kvfree(const void *addr);
-
-static inline atomic_t *compound_mapcount_ptr(struct page *page)
-{
-	return kvmalloc_array(n, size, flags | __GFP_ZERO);
-}
-
-extern void kvfree(const void *addr);
 extern void kvfree_sensitive(const void *addr, size_t len);
 
 /*
