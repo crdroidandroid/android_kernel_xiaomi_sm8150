@@ -63,7 +63,6 @@
 			IPA_GSB_DRV_NAME " %s:%d " fmt, ## args); \
 	} while (0)
 
-#ifdef CONFIG_DEBUG_FS
 #define IPA_GSB_MAX_MSG_LEN 512
 
 #ifdef CONFIG_DEBUG_FS
@@ -76,6 +75,7 @@ static struct dentry *dfile_stats;
 #define IPA_GSB_SKB_DUMMY_HEADER 42
 #define IPA_GSB_AGGR_BYTE_LIMIT 14
 #define IPA_GSB_AGGR_TIME_LIMIT 1000 /* 1000 us */
+
 
 /**
  * struct stats - driver statistics,
