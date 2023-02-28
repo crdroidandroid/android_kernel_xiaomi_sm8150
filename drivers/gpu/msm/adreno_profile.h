@@ -108,3 +108,4 @@ static inline bool adreno_profile_assignments_ready(
 }
 
 #endif
+#endif
