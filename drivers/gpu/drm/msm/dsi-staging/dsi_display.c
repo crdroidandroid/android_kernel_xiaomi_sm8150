@@ -1060,7 +1060,7 @@ static bool dsi_display_get_cont_splash_status(struct dsi_display *display)
 static u32 interpolate(uint32_t x, uint32_t xa, uint32_t xb,
 		uint32_t ya, uint32_t yb)
 {
-	return ya - (ya - yb) * (x - xa) / (xb - xa);
+	return ya + (yb - ya) * (x - xa) / (xb - xa);
 }
 
 struct blbl {
@@ -1123,11 +1123,10 @@ int dsi_display_set_power(struct drm_connector *connector,
 
 	switch (power_mode) {
 	case SDE_MODE_DPMS_LP1:
+		dsi_panel_set_backlight(display->panel, dsi_panel_get_aod_bl(display));
 		rc = dsi_panel_set_lp1(display->panel);
 		break;
 	case SDE_MODE_DPMS_LP2:
-		dsi_panel_set_backlight(display->panel, dsi_panel_get_aod_bl(display));
-		usleep_range(20000, 30000);
 		rc = dsi_panel_set_lp2(display->panel);
 		break;
 	case SDE_MODE_DPMS_ON:
