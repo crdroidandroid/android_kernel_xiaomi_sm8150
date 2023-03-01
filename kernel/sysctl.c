@@ -395,6 +395,22 @@ static struct ctl_table kern_table[] = {
 #endif
 #ifdef CONFIG_SCHED_WALT
 	{
+                .procname       = "sched_lib_name",
+                .data           = sched_lib_name,
+                .maxlen         = LIB_PATH_LENGTH,
+                .mode           = 0644,
+                .proc_handler   = proc_dostring,
+        },
+        {
+                .procname       = "sched_lib_mask_force",
+                .data           = &sched_lib_mask_force,
+                .maxlen         = sizeof(unsigned int),
+                .mode           = 0644,
+                .proc_handler   = proc_douintvec_minmax,
+                .extra1         = &zero,
+                .extra2         = &two_hundred_fifty_five,
+        },
+	{
 		.procname       = "sched_cpu_high_irqload",
 		.data           = &sysctl_sched_cpu_high_irqload,
 		.maxlen         = sizeof(unsigned int),
@@ -688,22 +704,6 @@ static struct ctl_table kern_table[] = {
 		.extra1		= &one,
 	},
 #endif
-	{
-		.procname	= "sched_lib_name",
-		.data		= sched_lib_name,
-		.maxlen		= LIB_PATH_LENGTH,
-		.mode		= 0644,
-		.proc_handler	= proc_dostring,
-	},
-	{
-		.procname	= "sched_lib_mask_force",
-		.data		= &sched_lib_mask_force,
-		.maxlen		= sizeof(unsigned int),
-		.mode		= 0644,
-		.proc_handler	= proc_douintvec_minmax,
-		.extra1		= &zero,
-		.extra2		= &two_hundred_fifty_five,
-	},
 #ifdef CONFIG_PROVE_LOCKING
 	{
 		.procname	= "prove_locking",
