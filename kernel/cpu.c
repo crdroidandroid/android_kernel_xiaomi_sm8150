@@ -1096,12 +1096,6 @@ static int do_cpu_down(unsigned int cpu, enum cpuhp_state target)
 	    !cpumask_intersects(&newmask, cpu_prime_mask))
 		return -EINVAL;
 
-	/* there is no need to taking big cores offline*/
-	if (cpumask_intersects(cpumask_of(cpu), cpu_perf_mask)) {
-		pr_info("%s: can not take down core %i\n", __func__, cpu);
-		return -EINVAL;
-	}
-
 	/*
 	 * When cpusets are enabled, the rebuilding of the scheduling
 	 * domains is deferred to a workqueue context. Make sure
