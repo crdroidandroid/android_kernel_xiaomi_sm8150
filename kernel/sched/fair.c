@@ -8314,59 +8314,48 @@ static inline bool is_many_wakeup(int sibling_count_hint)
  * energy-aware placement option.
  */
 static int find_energy_efficient_cpu(struct sched_domain *sd,
-				     struct task_struct *p,
-				     int cpu, int prev_cpu,
-				     int sync, int sibling_count_hint)
+                                     struct task_struct *p,
+                                     int cpu, int prev_cpu,
+                                     int sync, bool sync_boost)
 {
-	int use_fbt = sched_feat(FIND_BEST_TARGET);
-	int cpu_iter, eas_cpu_idx = EAS_CPU_NXT;
-	int delta = 0;
-	int target_cpu = -1;
-	struct energy_env *eenv;
-	struct cpumask *rtg_target = find_rtg_target(p);
-	struct find_best_target_env fbt_env;
-	bool need_idle = wake_to_idle(p);
-	int placement_boost = task_boost_policy(p);
-	u64 start_t = 0;
-	int next_cpu = -1, backup_cpu = -1;
+        int use_fbt = sched_feat(FIND_BEST_TARGET);
+        int cpu_iter, eas_cpu_idx = EAS_CPU_NXT;
+        int delta = 0;
+        int target_cpu = -1;
+        struct energy_env *eenv;
+        struct cpumask *rtg_target = find_rtg_target(p);
+        struct find_best_target_env fbt_env;
+        bool need_idle = wake_to_idle(p) || uclamp_latency_sensitive(p);
+        int placement_boost = task_boost_policy(p);
+        u64 start_t = 0;
+        int next_cpu = -1, backup_cpu = -1;
 #ifdef CONFIG_SCHED_TUNE
-	bool prefer_high_cap = schedtune_prefer_high_cap(p);
-	int boosted = (schedtune_task_boost(p) > 0 || per_task_boost(p) > 0);
+        bool prefer_high_cap = schedtune_prefer_high_cap(p);
+        int boosted = (schedtune_task_boost(p) > 0);
 #elif  CONFIG_UCLAMP_TASK
-	int boosted = (uclamp_boosted(p) > 0 || per_task_boost(p) > 0);
+        int boosted = (uclamp_boosted(p) > 0);
+#else
+        int boosted = (schedtune_task_boost(p) > 0);
 #endif
+        fbt_env.fastpath = 0;
 
-	if (is_many_wakeup(sibling_count_hint) && prev_cpu != cpu &&
-                        cpumask_test_cpu(prev_cpu, &p->cpus_allowed))
-                return prev_cpu;
+        if (trace_sched_task_util_enabled())
+                start_t = sched_clock();
 
-	fbt_env.fastpath = 0;
-	fbt_env.need_idle = 0;
+        if (need_idle)
+                sync = 0;
 
-	if (trace_sched_task_util_enabled())
-		start_t = sched_clock();
+        if (sysctl_sched_sync_hint_enable && sync &&
+                                bias_to_this_cpu(p, cpu, rtg_target)) {
+                target_cpu = cpu;
+                fbt_env.fastpath = SYNC_WAKEUP;
+                goto out;
+        }
 
-	if (need_idle)
-		sync = 0;
-
-	if (sysctl_sched_sync_hint_enable && sync &&
-				bias_to_this_cpu(p, cpu, rtg_target)) {
-		target_cpu = cpu;
-		fbt_env.fastpath = SYNC_WAKEUP;
-		goto out;
-	}
-
-	if (is_many_wakeup(sibling_count_hint) && prev_cpu != cpu &&
-				bias_to_this_cpu(p, prev_cpu, rtg_target)) {
-		target_cpu = prev_cpu;
-		fbt_env.fastpath = MANY_WAKEUP;
-		goto out;
-	}
-
-	/* prepopulate energy diff environment */
-	eenv = get_eenv(p, prev_cpu);
-	if (eenv->max_cpu_count < 2)
-		goto out;
+        /* prepopulate energy diff environment */
+        eenv = get_eenv(p, prev_cpu);
+        if (eenv->max_cpu_count < 2)
+                goto out;
 
 	if(!use_fbt) {
 		/*
@@ -8419,8 +8408,6 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 		fbt_env.rtg_target = rtg_target;
 		fbt_env.placement_boost = placement_boost;
 		fbt_env.need_idle = need_idle;
-		fbt_env.skip_cpu = is_many_wakeup(sibling_count_hint) ?
-				   cpu : -1;
 
 		/* Find a cpu with sufficient capacity */
 		target_cpu = find_best_target(p, &eenv->cpu[EAS_CPU_BKP].cpu_id,
