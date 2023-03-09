@@ -2132,7 +2132,7 @@ static void uclamp_set(struct kernfs_open_file *of,
 	const char *cs_name = cs->css.cgroup->kn->name;
 
 	static struct ucl_param tgts[] = {
-		{"top-app",    	     	"20", "max", 1, 1},  // 20-100%
+		{"top-app",    	     	"10", "max", 1, 1},  // 10-100%
 		{"foreground", 	     	"10", "80",  1, 0},  // 10-80%
 		{"background", 	     	"0",  "50",  0, 0},  // 0-50%
 		{"system-background", 	"0",  "60",  0, 0},  // 0-60%
