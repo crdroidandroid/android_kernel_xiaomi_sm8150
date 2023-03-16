@@ -1123,10 +1123,11 @@ int dsi_display_set_power(struct drm_connector *connector,
 
 	switch (power_mode) {
 	case SDE_MODE_DPMS_LP1:
-		dsi_panel_set_backlight(display->panel, dsi_panel_get_aod_bl(display));
 		rc = dsi_panel_set_lp1(display->panel);
 		break;
 	case SDE_MODE_DPMS_LP2:
+		dsi_panel_set_backlight(display->panel, dsi_panel_get_aod_bl(display));
+		usleep_range(20000, 30000);
 		rc = dsi_panel_set_lp2(display->panel);
 		break;
 	case SDE_MODE_DPMS_ON:
