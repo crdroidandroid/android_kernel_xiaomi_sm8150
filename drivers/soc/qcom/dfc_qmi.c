@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1005,9 +1004,7 @@ static int dfc_update_fc_map(struct net_device *dev, struct qos_info *qos,
 	u32 adjusted_grant;
 
 	itm = qmi_rmnet_get_bearer_map(qos, fc_info->bearer_id);
-
-	/* cache the bearer assuming it is a new bearer */
-	if (unlikely(!itm && !is_query && fc_info->num_bytes))
+	if (!itm)
 		itm = qmi_rmnet_get_bearer_noref(qos, fc_info->bearer_id);
 
 	if (itm) {
