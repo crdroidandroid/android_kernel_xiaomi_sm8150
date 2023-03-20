@@ -1,6 +1,5 @@
 ccflags-y := -Iinclude/linux
-ccflags-y += -mllvm -inline-threshold=15000
-ccflags-y += -mllvm -inlinehint-threshold=10000
+ccflags-y += -O3
 
 msm_kgsl_core-y = \
 	kgsl.o \
