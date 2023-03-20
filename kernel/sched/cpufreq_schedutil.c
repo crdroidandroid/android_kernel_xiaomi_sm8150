@@ -27,8 +27,6 @@ struct sugov_tunables {
 	unsigned int		up_rate_limit_us;
 	unsigned int		down_rate_limit_us;
 	bool iowait_boost_enable;
-	bool			limit_freq;
-	bool			limit_freq_userspace_ctl;
 };
 
 struct sugov_policy {
@@ -153,24 +151,6 @@ static inline bool use_pelt(void)
 #endif
 }
 
-extern int kp_active_mode(void);
-static inline void do_freq_limit(struct sugov_policy *sg_policy, unsigned int *freq, u64 time)
-{
-	if (kp_active_mode() == 3) {
-		if(sg_policy->tunables->limit_freq && !sg_policy->tunables->limit_freq_userspace_ctl)
-			sg_policy->tunables->limit_freq = false;
-	}
-	else 
-	{
-		if(!(sg_policy->tunables->limit_freq || sg_policy->tunables->limit_freq_userspace_ctl))
-				sg_policy->tunables->limit_freq = true;
-	}
-	if (!sg_policy->tunables->limit_freq )
-	{
-		return;
-	}
-}
-
 static bool sugov_update_next_freq(struct sugov_policy *sg_policy, u64 time,
 				   unsigned int next_freq)
 {
@@ -245,7 +225,6 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 	if (freq == sg_policy->cached_raw_freq && !sg_policy->need_freq_update)
 		return sg_policy->next_freq;
 
-	do_freq_limit(sg_policy, &freq, true);
 	sg_policy->need_freq_update = false;
 	sg_policy->cached_raw_freq = freq;
 	return cpufreq_driver_resolve_freq(policy, freq);
@@ -625,42 +604,6 @@ static ssize_t down_rate_limit_us_store(struct gov_attr_set *attr_set,
 	return count;
 }
 
-static ssize_t limit_freq_show(struct gov_attr_set *attr_set, char *buf)
-{
-	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
-
-	return scnprintf(buf, PAGE_SIZE, "%u\n", tunables->limit_freq);
-}
-
-static ssize_t limit_freq_store(struct gov_attr_set *attr_set, const char *buf,
-				   size_t count)
-{
-	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
-
-	if (kstrtobool(buf, &tunables->limit_freq))
-		return -EINVAL;
-
-	return count;
-}
-
-static ssize_t limit_freq_userspace_ctl_show(struct gov_attr_set *attr_set, char *buf)
-{
-	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
-
-	return scnprintf(buf, PAGE_SIZE, "%u\n", tunables->limit_freq_userspace_ctl);
-}
-
-static ssize_t limit_freq_userspace_ctl_store(struct gov_attr_set *attr_set, const char *buf,
-				   size_t count)
-{
-	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
-
-	if (kstrtobool(buf, &tunables->limit_freq_userspace_ctl))
-		return -EINVAL;
-
-	return count;
-}
-
 static ssize_t iowait_boost_enable_show(struct gov_attr_set *attr_set,
 					char *buf)
 {
@@ -689,15 +632,11 @@ static ssize_t iowait_boost_enable_store(struct gov_attr_set *attr_set,
 static struct governor_attr up_rate_limit_us = __ATTR_RW(up_rate_limit_us);
 static struct governor_attr down_rate_limit_us = __ATTR_RW(down_rate_limit_us);
 static struct governor_attr iowait_boost_enable = __ATTR_RW(iowait_boost_enable);
-static struct governor_attr limit_freq = __ATTR_RW(limit_freq);
-static struct governor_attr limit_freq_userspace_ctl = __ATTR_RW(limit_freq_userspace_ctl);
 
 static struct attribute *sugov_attributes[] = {
 	&up_rate_limit_us.attr,
 	&down_rate_limit_us.attr,
 	&iowait_boost_enable.attr,
-	&limit_freq.attr,
-	&limit_freq_userspace_ctl.attr,
 	NULL
 };
 
@@ -721,8 +660,6 @@ static void sugov_tunables_save(struct cpufreq_policy *policy,
 
 	cached->up_rate_limit_us = tunables->up_rate_limit_us;
 	cached->down_rate_limit_us = tunables->down_rate_limit_us;
-	cached->limit_freq = tunables->limit_freq;
-	cached->limit_freq_userspace_ctl = tunables->limit_freq_userspace_ctl;
 }
 
 static void sugov_tunables_free(struct kobject *kobj)
@@ -843,8 +780,6 @@ static void sugov_tunables_restore(struct cpufreq_policy *policy)
 
 	tunables->up_rate_limit_us = cached->up_rate_limit_us;
 	tunables->down_rate_limit_us = cached->down_rate_limit_us;
-	tunables->limit_freq = cached->limit_freq;
-	tunables->limit_freq_userspace_ctl = cached->limit_freq_userspace_ctl;
 	update_min_rate_limit_ns(sg_policy);
 }
 
@@ -890,11 +825,9 @@ static int sugov_init(struct cpufreq_policy *policy)
 		goto stop_kthread;
 	}
 
-	/* limit freq on Kprofiles battry */
-	tunables->limit_freq = false;
-        tunables->limit_freq_userspace_ctl = true;
-        tunables->up_rate_limit_us = 0;
-        tunables->down_rate_limit_us = 0;
+   /* Hardcode ratelimits with CAF values */
+	tunables->up_rate_limit_us = 0;
+	tunables->down_rate_limit_us = 0;
 
 	tunables->iowait_boost_enable = true;
 
