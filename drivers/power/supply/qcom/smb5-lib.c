@@ -49,7 +49,6 @@
 	&& (!chg->typec_legacy || chg->typec_legacy_use_rp_icl))
 
 static bool off_charge_flag;
-static bool first_boot_flag;
 
 bool smblib_rsbux_low(struct smb_charger *chg, int r_thr);
 static int smblib_get_prop_typec_mode(struct smb_charger *chg);
@@ -6186,14 +6185,6 @@ static void smblib_cc_un_compliant_charge_work(struct work_struct *work)
 	}
 }
 
-static void smb_check_init_boot(struct work_struct *work)
-{
-	struct smb_charger *chg = container_of(work, struct smb_charger,
-					check_init_boot.work);
-	first_boot_flag = true;
-	if (chg->usb_psy)
-		power_supply_changed(chg->usb_psy);
-}
 
 static void smblib_micro_usb_plugin(struct smb_charger *chg, bool vbus_rising)
 {
@@ -6307,8 +6298,6 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 
 		/* Schedule work to enable parallel charger */
 		vote(chg->awake_votable, PL_DELAY_VOTER, true, 0);
-		if (!first_boot_flag)
-			schedule_delayed_work(&chg->check_init_boot, msecs_to_jiffies(18000));
 		queue_delayed_work(system_power_efficient_wq, &chg->pl_enable_work,
 					msecs_to_jiffies(PL_DELAY_MS));
 		queue_delayed_work(system_power_efficient_wq, &chg->charger_type_recheck,
@@ -7132,7 +7121,6 @@ static void typec_src_removal(struct smb_charger *chg)
 
 	cancel_delayed_work_sync(&chg->pl_enable_work);
 	cancel_delayed_work_sync(&chg->raise_qc3_vbus_work);
-	cancel_delayed_work_sync(&chg->check_init_boot);
 
 	/* reset input current limit voters */
 	vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
@@ -9127,7 +9115,6 @@ int smblib_init(struct smb_charger *chg)
 					smblib_pr_lock_clear_work);
 	setup_timer(&chg->apsd_timer, apsd_timer_cb, (unsigned long)chg);
 
-	INIT_DELAYED_WORK(&chg->check_init_boot, smb_check_init_boot);
 	if (chg->wa_flags & CHG_TERMINATION_WA) {
 		INIT_WORK(&chg->chg_termination_work,
 					smblib_chg_termination_work);
@@ -9285,7 +9272,6 @@ int smblib_deinit(struct smb_charger *chg)
 		cancel_delayed_work_sync(&chg->usbov_dbc_work);
 		cancel_delayed_work_sync(&chg->role_reversal_check);
 		cancel_delayed_work_sync(&chg->pr_swap_detach_work);
-		cancel_delayed_work_sync(&chg->check_init_boot);
 		power_supply_unreg_notifier(&chg->nb);
 		smblib_destroy_votables(chg);
 		qcom_step_chg_deinit();
