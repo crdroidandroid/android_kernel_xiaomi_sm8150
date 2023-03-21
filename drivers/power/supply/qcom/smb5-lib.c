@@ -2589,23 +2589,6 @@ int smblib_get_prop_batt_iterm(struct smb_charger *chg,
 	return rc;
 }
 
-static int smblib_set_wdog_bark_timer(struct smb_charger *chg,
-					int wdog_timer)
-{
-	u8 val = 0;
-	int rc;
-
-	val = (ilog2(wdog_timer / 16) << BARK_WDOG_TIMEOUT_SHIFT)
-			& BARK_WDOG_TIMEOUT_MASK;
-	rc = smblib_masked_write(chg, SNARL_BARK_BITE_WD_CFG_REG,
-			BARK_WDOG_TIMEOUT_MASK, val);
-	if (rc < 0) {
-		pr_err("Couldn't configue WD config rc=%d\n", rc);
-		return rc;
-	}
-	return rc;
-}
-
 int smblib_get_prop_batt_charge_done(struct smb_charger *chg,
 					union power_supply_propval *val)
 {
@@ -2623,8 +2606,6 @@ int smblib_get_prop_batt_charge_done(struct smb_charger *chg,
 	val->intval = (stat == TERMINATE_CHARGE);
 
 	if (val->intval == 1) {
-		/* when charge done, set bark timer to 128s to decrease wakeups */
-		smblib_set_wdog_bark_timer(chg, BARK_TIMER_LONG);
 		vote(chg->awake_votable, CHG_AWAKE_VOTER, false, 0);
 		vote(chg->awake_votable, DC_AWAKE_VOTER, false, 0);
 	}
@@ -7256,9 +7237,6 @@ static void typec_src_removal(struct smb_charger *chg)
 	if (chg->use_extcon)
 		smblib_notify_device_mode(chg, false);
 
-	/* when src removal, set bark timer back to default 16s */
-	smblib_set_wdog_bark_timer(chg, BARK_TIMER_NORMAL);
-
 	chg->typec_legacy = false;
 	pr_debug("%s:", __func__);
 	if (chg->pd_verifed)
@@ -7754,8 +7732,6 @@ irqreturn_t dc_plugin_irq_handler(int irq, void *data)
 
 		schedule_work(&chg->dcin_aicl_work);
 	} else {
-		/* when dc plug out, set bark timer back to default 16s */
-		smblib_set_wdog_bark_timer(chg, BARK_TIMER_NORMAL);
 		vote(chg->awake_votable, DC_AWAKE_VOTER, false, 0);
 		vote(chg->dc_icl_votable, DCIN_ADAPTER_VOTER, true, 100000);
 		chg->flag_dc_present = 0;

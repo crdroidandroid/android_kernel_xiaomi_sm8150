@@ -142,10 +142,6 @@ enum print_reason {
 #define TYPE_RECHECK_TIME_5S	5000
 #define TYPE_RECHECK_COUNT	3
 
-/* wdog bark timer */
-#define BARK_TIMER_LONG		128
-#define BARK_TIMER_NORMAL		16
-
 enum hvdcp3_type {
 	HVDCP3_NONE = 0,
 	HVDCP3_CLASSA_18W,
