@@ -6241,11 +6241,6 @@ void smblib_usb_plugin_hard_reset_locked(struct smb_charger *chg)
 
 	if (vbus_rising) {
 		vote(chg->awake_votable, CHG_AWAKE_VOTER, true, 0);
-		/* when vbus present, enable batt_temp irq wakeup */
-		if (chg->irq_info[BAT_TEMP_IRQ].irq && !chg->batt_temp_irq_enabled) {
-			enable_irq_wake(chg->irq_info[BAT_TEMP_IRQ].irq);
-			chg->batt_temp_irq_enabled = true;
-		}
 		/* Remove FCC_STEPPER 1.5A init vote to allow FCC ramp up */
 		if (chg->fcc_stepper_enable)
 			vote(chg->fcc_votable, FCC_STEPPER_VOTER, false, 0);
@@ -6272,11 +6267,6 @@ void smblib_usb_plugin_hard_reset_locked(struct smb_charger *chg)
 			chg->cc_un_compliant_detected = false;
 		}
 
-		/* when vbus absent, disable batt_temp irq wakeup */
-		if (chg->irq_info[BAT_TEMP_IRQ].irq && chg->batt_temp_irq_enabled) {
-			disable_irq_wake(chg->irq_info[BAT_TEMP_IRQ].irq);
-			chg->batt_temp_irq_enabled = false;
-		}
 		vote(chg->awake_votable, CHG_AWAKE_VOTER, false, 0);
 
 		/* Force 1500mA FCC on USB removal if fcc stepper is enabled */
@@ -6310,11 +6300,6 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 						chg->chg_freq.freq_removal);
 
 	if (vbus_rising) {
-		/* when vbus present, enable batt_temp irq wakeup */
-		if (chg->irq_info[BAT_TEMP_IRQ].irq && !chg->batt_temp_irq_enabled) {
-			enable_irq_wake(chg->irq_info[BAT_TEMP_IRQ].irq);
-			chg->batt_temp_irq_enabled = true;
-		}
 		if (smblib_get_prop_dfp_mode(chg) != POWER_SUPPLY_TYPEC_NONE
 				&& smblib_get_prop_dfp_mode(chg)
 					!= POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER) {
@@ -6350,11 +6335,6 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 		queue_delayed_work(system_power_efficient_wq, &chg->cc_un_compliant_charge_work,
 					msecs_to_jiffies(CC_UN_COMPLIANT_START_DELAY_MS));
 	} else {
-		/* when vbus absent, disable batt_temp irq wakeup */
-		if (chg->irq_info[BAT_TEMP_IRQ].irq && chg->batt_temp_irq_enabled) {
-			disable_irq_wake(chg->irq_info[BAT_TEMP_IRQ].irq);
-			chg->batt_temp_irq_enabled = false;
-		}
 		if (chg->fake_usb_insertion) {
 			chg->fake_usb_insertion = false;
 			return;
