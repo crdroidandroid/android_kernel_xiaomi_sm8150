@@ -4720,7 +4720,6 @@ static void throttle_cfs_rq(struct cfs_rq *cfs_rq)
 
 	if (!dequeue)
 		return false;  /* Throttle no longer required. */
->>>>>>> 7c8bd348c707 (BACKPORT: sched/fair: Start tracking SCHED_IDLE tasks count in cfs_rq)
 
 	se = cfs_rq->tg->se[cpu_of(rq_of(cfs_rq))];
 
@@ -9390,10 +9389,6 @@ int can_migrate_task(struct task_struct *p, struct lb_env *env)
 		return 0;
 
 	if (!cpumask_test_cpu(env->dst_cpu, &p->cpus_allowed)) {
-
-	/* Disregard pcpu kthreads; they are where they need to be. */
-	if ((p->flags & PF_KTHREAD) && kthread_is_per_cpu(p))
-		return 0;
 
 		int cpu;
 
