@@ -30,7 +30,6 @@
 #ifndef SYSCALL_ALIAS
 #define SYSCALL_ALIAS(a, name) \
 	long a(void) __attribute__((alias(__stringify(name))))
-	>>>>>>> 3fbb6eeaa111 (sys_ni: Fix cond_syscall() alias for LTO)
 #endif
 
 #define __page_aligned_data	__section(.data..page_aligned) __aligned(PAGE_SIZE)
