@@ -450,6 +450,12 @@ static int f2fs_move_inline_dirents(struct inode *dir, struct page *ipage,
 	 */
 	memset(dentry_blk, 0, F2FS_BLKSIZE);
 
+	/*
+	 * Start by zeroing the full block, to ensure that all unused space is
+	 * zeroed and no uninitialized memory is leaked to disk.
+	 */
+	memset(dentry_blk, 0, F2FS_BLKSIZE);
+
 	make_dentry_ptr_inline(dir, &src, inline_dentry);
 	make_dentry_ptr_block(dir, &dst, dentry_blk);
 
