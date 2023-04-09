@@ -888,14 +888,16 @@ int smb5_config_iterm(struct smb_charger *chg, int hi_thresh, int low_thresh)
 static int set_ln8000_fv(struct smb_charger *chg) {
 	int rc;
 	union power_supply_propval val;
+
 	if (!chg->cp_psy) {
 		chg->cp_psy = power_supply_get_by_name("bq2597x-standalone");
-		if (!chg->cp_psy){
+
+		if (!chg->cp_psy)
 			chg->cp_psy = power_supply_get_by_name("ln8000");
-			if (!chg->cp_psy){
-				pr_err("cp_psy not found\n");
-				return 0;
-			}
+
+		if (!chg->cp_psy) {
+			pr_err("cp_psy not found\n");
+			return 0;
 		}
 	}
 
@@ -910,6 +912,21 @@ static int set_ln8000_fv(struct smb_charger *chg) {
 		vote(chg->fv_votable, BATT_LN8000_VOTER, true, 4470000);
 	}
 	return 0;
+}
+
+static bool is_bq25970_available(struct smb_charger *chg)
+{
+	struct power_supply *psy = power_supply_get_by_name("bq2597x-standalone");
+	bool available = !!psy;
+
+	if (available) {
+		if (!chg->cp_psy)
+			chg->cp_psy = psy;
+
+		power_supply_put(psy);
+	}
+
+	return available;
 }
 
 int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable)
@@ -2573,7 +2590,7 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 	u8 stat;
 	int rc, suspend = 0;
 
-	if (chg->use_bq_pump && (get_client_vote_locked(chg->usb_icl_votable,
+	if (chg->use_bq_pump  && is_bq25970_available(chg) && (get_client_vote_locked(chg->usb_icl_votable,
 					MAIN_CHG_VOTER) == MAIN_CHARGER_STOP_ICL)) {
 		val->intval = POWER_SUPPLY_STATUS_CHARGING;
 		return 0;
@@ -2768,20 +2785,6 @@ int smblib_get_prop_batt_charge_type(struct smb_charger *chg,
 	}
 
 	return rc;
-}
-
-static bool is_bq25970_available(struct smb_charger *chg)
-{
-	if (!chg->cp_psy)
-		chg->cp_psy = power_supply_get_by_name("bq2597x-standalone");
-
-	if (!chg->cp_psy)
-		chg->cp_psy = power_supply_get_by_name("ln8000");
-
-	if (!chg->cp_psy)
-		return false;
-
-	return true;
 }
 
 int smblib_get_prop_batt_health(struct smb_charger *chg,
@@ -3142,7 +3145,7 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 		return rc;
 	}
 
-	if (chg->use_bq_pump)
+	if (chg->use_bq_pump && is_bq25970_available(chg))
 		chg->bq_input_suspend = !!(val->intval);
 
 	power_supply_changed(chg->batt_psy);
@@ -3420,7 +3423,7 @@ static int smblib_therm_charging(struct smb_charger *chg)
 		thermal_icl_ua = chg->thermal_mitigation_qc2[chg->system_temp_level];
 		break;
 	case POWER_SUPPLY_TYPE_USB_HVDCP_3:
-		if (chg->use_bq_pump) {
+		if (chg->use_bq_pump && is_bq25970_available(chg)) {
 			thermal_fcc_ua =
 				chg->thermal_fcc_qc3_cp[chg->system_temp_level];
 		} else {
@@ -3446,7 +3449,7 @@ static int smblib_therm_charging(struct smb_charger *chg)
 				chg->thermal_fcc_qc3_cp[chg->system_temp_level];
 		break;
 	case POWER_SUPPLY_TYPE_USB_PD:
-		if (chg->use_bq_pump) {
+		if (chg->use_bq_pump && is_bq25970_available(chg)) {
 			if (chg->pps_thermal_level < 0)
 					chg->pps_thermal_level = chg->system_temp_level;
 			pr_err("chg->pps_thermal_level=%d,chg->system_temp_level=%d\n", chg->pps_thermal_level, chg->system_temp_level);
@@ -3509,7 +3512,7 @@ static int smblib_therm_charging(struct smb_charger *chg)
 
 		if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3
 				|| chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3P5
-				|| ((chg->cp_reason == POWER_SUPPLY_CP_PPS || chg->use_bq_pump)
+				|| ((chg->cp_reason == POWER_SUPPLY_CP_PPS || (chg->use_bq_pump && is_bq25970_available(chg)))
 				&& chg->real_charger_type == POWER_SUPPLY_TYPE_USB_PD)) {
 			/* if use qc3 or pps charge with cp, also limit icl when high level */
 			if (chg->system_temp_level >= ICL_LIMIT_LEVEL_THR)
@@ -3606,7 +3609,7 @@ int smblib_set_prop_system_temp_level(struct smb_charger *chg,
 
 	chg->system_temp_level = val->intval;
 
-	if (!chg->use_bq_pump) {
+	if (!(chg->use_bq_pump && is_bq25970_available(chg))) {
 		if (chg->system_temp_level >= (chg->thermal_levels - 1)) {
 			if (!chg->cp_disable_votable)
 				chg->cp_disable_votable = find_votable("CP_DISABLE");
@@ -3619,11 +3622,11 @@ int smblib_set_prop_system_temp_level(struct smb_charger *chg,
 
 	vote(chg->chg_disable_votable, THERMAL_DAEMON_VOTER, false, 0);
 
-	if (!chg->use_bq_pump && chg->cp_disable_votable)
+	if (!(chg->use_bq_pump && is_bq25970_available(chg)) && chg->cp_disable_votable)
 		vote(chg->cp_disable_votable, THERMAL_DAEMON_VOTER, false, 0);
 
 #ifdef CONFIG_THERMAL
-	if (chg->use_bq_pump
+	if (chg->use_bq_pump && is_bq25970_available(chg)
 			&& chg->real_charger_type == POWER_SUPPLY_TYPE_USB_PD) {
 		if (chg->pps_fcc_therm_work_disabled) {
 			chg->pps_thermal_level = chg->system_temp_level;
@@ -3830,7 +3833,7 @@ int smblib_dp_dm(struct smb_charger *chg, int val)
 	union power_supply_propval pval;
 	u8 stat;
 
-	if (chg->use_bq_pump) {
+	if (chg->use_bq_pump && is_bq25970_available(chg)) {
 		pr_info("dp_dm is controled by our self\n");
 		return rc;
 	}
@@ -4083,7 +4086,7 @@ int smblib_dp_dm_bq(struct smb_charger *chg, int val)
 		 * if use class_a qc, and slave ic is charge pump, should restore
 		 * icl to 2.4A when charge pump is not working for class_a qc
 		 */
-		if (chg->is_qc_class_a && chg->use_bq_pump) {
+		if (chg->is_qc_class_a && chg->use_bq_pump && is_bq25970_available(chg)) {
 			if (chg->pulse_cnt < HIGH_NUM_PULSE_THR
 					 && chg->high_vbus_detected) {
 				vote(chg->usb_icl_votable, QC_A_CP_ICL_MAX_VOTER, false,
@@ -4373,7 +4376,7 @@ out:
 		 */
 		if (chg->thermal_status == TEMP_SHUT_DOWN_SMB)
 			goto exit;
-		if (chg->use_bq_pump)
+		if (chg->use_bq_pump && is_bq25970_available(chg))
 			chg->bq_input_suspend = !!suspend_input;
 
 		/* Suspend input if SHDN threshold reached */
@@ -4727,7 +4730,7 @@ int smblib_get_prop_usb_online(struct smb_charger *chg,
 		return rc;
 	}
 
-	if (chg->use_bq_pump) {
+	if (chg->use_bq_pump && is_bq25970_available(chg)) {
 		rc = smblib_get_prop_usb_present(chg, &pval);
 		if (rc < 0) {
 			smblib_err(chg, "Couldn't get usb present rc = %d\n", rc);
@@ -4736,7 +4739,7 @@ int smblib_get_prop_usb_online(struct smb_charger *chg,
 
 		usb_present = pval.intval;
 
-		if (usb_present && chg->use_bq_pump
+		if (usb_present && chg->use_bq_pump && is_bq25970_available(chg)
 					&& (get_client_vote_locked(chg->usb_icl_votable,
 							MAIN_CHG_VOTER) == MAIN_CHARGER_STOP_ICL)) {
 			val->intval = true;
@@ -6084,7 +6087,7 @@ int smblib_set_prop_pd_active(struct smb_charger *chg,
 
 	smblib_apsd_enable(chg, !chg->pd_active);
 
-	if (!chg->pd && chg->use_bq_pump) {
+	if (!chg->pd && chg->use_bq_pump && is_bq25970_available(chg)) {
 		chg->pd = devm_usbpd_get_by_phandle(chg->dev,
 				"qcom,usbpd-phandle");
 		if (IS_ERR_OR_NULL(chg->pd))
@@ -6962,9 +6965,14 @@ static int check_reduce_fcc_condition(struct smb_charger *chg)
 
 	if (!chg->cp_psy) {
 		chg->cp_psy = power_supply_get_by_name("bq2597x-standalone");
+
 		if (!chg->cp_psy)
+			chg->cp_psy = power_supply_get_by_name("ln8000");
+
+		if (!chg->cp_psy) {
 			pr_err("cp_psy not found\n");
 			return 0;
+		}
 	}
 
 	rc = power_supply_get_property(chg->cp_psy,
@@ -7200,7 +7208,7 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 					msecs_to_jiffies(CHARGER_RECHECK_DELAY_MS));
 		schedule_delayed_work(&chg->cc_un_compliant_charge_work,
 					msecs_to_jiffies(CC_UN_COMPLIANT_START_DELAY_MS));
-		if (chg->use_bq_pump)
+		if (chg->use_bq_pump && is_bq25970_available(chg))
 			schedule_delayed_work(&chg->reduce_fcc_work,
 						msecs_to_jiffies(ESR_WORK_TIME_180S));
 	} else {
@@ -7215,7 +7223,7 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 		}
 
 		cancel_delayed_work_sync(&chg->charger_type_recheck);
-		if (chg->use_bq_pump) {
+		if (chg->use_bq_pump && is_bq25970_available(chg)) {
 			cancel_delayed_work_sync(&chg->reduce_fcc_work);
 			vote(chg->fcc_votable, ESR_WORK_VOTER, false, 0);
 		}
@@ -7369,7 +7377,7 @@ static void smblib_raise_qc3_vbus_work(struct work_struct *work)
 		if (chg->pd_hard_reset) {
 			if (chg->detect_low_power_qc3_charger)
 				chg->detect_low_power_qc3_charger = false;
-			if (chg->use_bq_pump)
+			if (chg->use_bq_pump && is_bq25970_available(chg))
 				vote(chg->usb_icl_votable, HVDCP3_START_ICL_VOTER, false, 0);
 			pr_info("pd hard reset, no need to raise vbus now\n");
 			return;
@@ -7442,10 +7450,9 @@ static void smblib_raise_qc3_vbus_work(struct work_struct *work)
 			}
 		}
 
-	if (chg->use_bq_pump)
+	if (chg->use_bq_pump && is_bq25970_available(chg)) {
 		vote(chg->usb_icl_votable, HVDCP3_START_ICL_VOTER, false, 0);
-
-	if (!chg->use_bq_pump) {
+	} else {
 		/* select charge pump as second charger */
 		rc = smblib_select_sec_charger(chg, POWER_SUPPLY_CHARGER_SEC_CP,
 						POWER_SUPPLY_CP_HVDCP3, false);
@@ -7559,7 +7566,7 @@ static void smblib_handle_hvdcp_3p0_auth_done(struct smb_charger *chg,
 
 	/* for QC3, switch to CP if present */
 	if ((apsd_result->bit & QC_3P0_BIT)
-			&& (chg->sec_cp_present || chg->use_bq_pump)) {
+			&& (chg->sec_cp_present || (chg->use_bq_pump && is_bq25970_available(chg)))) {
 		if (!chg->qc_class_ab) {
 			rc = smblib_select_sec_charger(chg, POWER_SUPPLY_CHARGER_SEC_CP,
 						POWER_SUPPLY_CP_HVDCP3, false);
@@ -7569,7 +7576,7 @@ static void smblib_handle_hvdcp_3p0_auth_done(struct smb_charger *chg,
 		} else {
 			if (!chg->detect_low_power_qc3_charger &&
 					(!chg->qc3p5_supported || !chg->qc3p5_authenticated)) {
-				if (!chg->use_bq_pump)
+				if (!(chg->use_bq_pump && is_bq25970_available(chg)))
 					vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
 							HVDCP_START_CURRENT_UA);
 				else {
@@ -7623,7 +7630,7 @@ static void smblib_handle_hvdcp_check_timeout(struct smb_charger *chg,
 					vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
 						HVDCP2_CURRENT_UA);
 				} else {
-					if (chg->six_pin_step_charge_enable || chg->use_bq_pump)
+					if (chg->six_pin_step_charge_enable || (chg->use_bq_pump && is_bq25970_available(chg)))
 						vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
 							HVDCP_CLASS_B_CURRENT_UA);
 					else
@@ -8138,7 +8145,7 @@ static void typec_src_removal(struct smb_charger *chg)
 	vote(chg->fcc_votable, PD_VERIFED_VOTER, true, PD_UNVERIFED_CURRENT);
 	vote(chg->usb_icl_votable, QC_A_CP_ICL_MAX_VOTER, false, 0);
 	vote(chg->usb_icl_votable, QC2_UNSUPPORTED_VOTER, false, 0);
-	if (chg->use_bq_pump) {
+	if (chg->use_bq_pump && is_bq25970_available(chg)) {
 		vote(chg->usb_icl_votable, HVDCP3_START_ICL_VOTER, false, 0);
 		vote(chg->usb_icl_votable, MAIN_CHG_VOTER, false, 0);
 		vote(chg->fcc_votable, SLOWLY_CHARGING_VOTER, false, 0);
