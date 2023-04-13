@@ -1251,16 +1251,17 @@ out:
 static int __zram_bvec_read(struct zram *zram, struct page *page, u32 index,
 				struct bio *bio, bool partial_io)
 {
-        struct zcomp_strm *zstrm;
-	struct zram_entry *entry;
+	int ret;
+	unsigned long handle;
 	unsigned int size;
 	void *src, *dst;
-	int ret;
 
 	zram_slot_lock(zram, index);
 	if (zram_test_flag(zram, index, ZRAM_WB)) {
 		struct bio_vec bvec;
+
 		zram_slot_unlock(zram, index);
+
 		bvec.bv_page = page;
 		bvec.bv_len = PAGE_SIZE;
 		bvec.bv_offset = 0;
@@ -1268,11 +1269,13 @@ static int __zram_bvec_read(struct zram *zram, struct page *page, u32 index,
 				zram_get_element(zram, index),
 				bio, partial_io);
 	}
-	entry = zram_get_entry(zram, index);
-	if (!entry || zram_test_flag(zram, index, ZRAM_SAME)) {
+
+	handle = zram_get_handle(zram, index);
+	if (!handle || zram_test_flag(zram, index, ZRAM_SAME)) {
 		unsigned long value;
 		void *mem;
-		value = entry ? zram_get_element(zram, index) : 0;
+
+		value = handle ? zram_get_element(zram, index) : 0;
 		mem = kmap_atomic(page);
 		zram_fill_page(mem, PAGE_SIZE, value);
 		kunmap_atomic(mem);
@@ -1282,28 +1285,27 @@ static int __zram_bvec_read(struct zram *zram, struct page *page, u32 index,
 
 	size = zram_get_obj_size(zram, index);
 
-	if (size != PAGE_SIZE)
-		zstrm = zcomp_stream_get(zram->comp);
-
-	src = zs_map_object(zram->mem_pool,
-			    zram_entry_handle(zram, entry), ZS_MM_RO);
+	src = zs_map_object(zram->mem_pool, handle, ZS_MM_RO);
 	if (size == PAGE_SIZE) {
 		dst = kmap_atomic(page);
 		memcpy(dst, src, PAGE_SIZE);
 		kunmap_atomic(dst);
 		ret = 0;
 	} else {
+		struct zcomp_strm *zstrm = zcomp_stream_get(zram->comp);
 
 		dst = kmap_atomic(page);
 		ret = zcomp_decompress(zstrm, src, size, dst);
 		kunmap_atomic(dst);
 		zcomp_stream_put(zram->comp);
 	}
-	zs_unmap_object(zram->mem_pool, zram_entry_handle(zram, entry));
+	zs_unmap_object(zram->mem_pool, handle);
 	zram_slot_unlock(zram, index);
+
 	/* Should NEVER happen. Return bio error if it does. */
 	if (WARN_ON(ret))
 		pr_err("Decompression failed! err=%d, page=%u\n", ret, index);
+
 	return ret;
 }
 
