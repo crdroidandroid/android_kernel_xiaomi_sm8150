@@ -69,8 +69,6 @@ struct overheat_info {
 	time_t trip_time;
 	time_t hysteresis_time;
 
-	int begin_temp;
-	int clear_temp;
 	int overheat_work_delay_ms;
 	int polling_freq;
 	int check_status;
@@ -139,22 +137,6 @@ static inline int get_dts_vars(struct overheat_info *ovh_info)
 	struct device *dev = ovh_info->dev;
 	struct device_node *node = dev->of_node;
 	int ret;
-
-	ret = of_property_read_u32(node, "google,begin-mitigation-temp",
-				   &ovh_info->begin_temp);
-	if (ret < 0) {
-		dev_err(ovh_info->dev,
-			"cannot read begin-mitigation-temp, ret=%d\n", ret);
-		return ret;
-	}
-
-	ret = of_property_read_u32(node, "google,end-mitigation-temp",
-				   &ovh_info->clear_temp);
-	if (ret < 0) {
-		dev_err(ovh_info->dev,
-			"cannot read end-mitigation-temp, ret=%d\n", ret);
-		return ret;
-	}
 
 	ret = of_property_read_u32(node, "google,port-overheat-work-interval",
 				   &ovh_info->overheat_work_delay_ms);
@@ -266,7 +248,7 @@ static int update_usb_status(struct overheat_info *ovh_info)
 
 	/* Port is too hot to safely check the connected status. */
 	if (ovh_info->overheat_mitigation &&
-	    ovh_info->temp > ovh_info->clear_temp)
+	    ovh_info->throttle_state != USB_NO_LIMIT)
 		return -EBUSY;
 
 	if (ovh_info->overheat_mitigation) {
@@ -344,7 +326,6 @@ static inline int get_usb_port_temp(struct overheat_info *ovh_info)
 	if (temp == -EINVAL || temp == -ENODATA)
 		return temp;
 
-	dev_info(ovh_info->dev, "Update USB port temp:%d\n", temp);
 	if (temp > ovh_info->max_temp)
 		ovh_info->max_temp = temp;
 
@@ -378,6 +359,7 @@ static void port_overheat_work(struct work_struct *work)
 			container_of(work, struct overheat_info,
 				     port_overheat_work.work);
 	int ret = 0;
+	unsigned long throttle_state = ovh_info->throttle_state;
 
 	// Take a wake lock to ensure we poll the temp regularly
 	if (!ovh_info->overheat_work_running)
@@ -392,17 +374,17 @@ static void port_overheat_work(struct work_struct *work)
 		goto rerun;
 
 	if (ovh_info->overheat_mitigation && (!mitigation_enabled ||
-	    (ovh_info->temp < ovh_info->clear_temp && ovh_info->usb_replug))) {
+	    (throttle_state == USB_NO_LIMIT && ovh_info->usb_replug))) {
 		dev_err(ovh_info->dev, "Port overheat mitigated\n");
 		resume_usb(ovh_info);
 	} else if (!ovh_info->overheat_mitigation &&
-		 mitigation_enabled && ovh_info->temp > ovh_info->begin_temp) {
+		 mitigation_enabled && throttle_state != USB_NO_LIMIT) {
 		dev_err(ovh_info->dev, "Port overheat triggered\n");
 		suspend_usb(ovh_info);
 		goto rerun;
 	}
 
-	if (ovh_info->overheat_mitigation || ovh_info->throttle_state)
+	if (ovh_info->overheat_mitigation)
 		goto rerun;
 	// Do not run again, USB port isn't overheated
 	ovh_info->overheat_work_running = false;
