@@ -194,23 +194,41 @@ unsigned int capacity_margin				= 1280;
 
 /* Migration margins */
 unsigned int sysctl_sched_capacity_margin_up[MAX_MARGIN_LEVELS] = {
-			[0 ... MAX_MARGIN_LEVELS-1] = 1078}; /* ~5% margin */
+	[0 ... MAX_MARGIN_LEVELS - 1] = 1078
+}; /* ~5% margin */
 unsigned int sysctl_sched_capacity_margin_down[MAX_MARGIN_LEVELS] = {
-	[0 ... MAX_MARGIN_LEVELS-1] = 1205}; /* ~15% margin */
+	[0 ... MAX_MARGIN_LEVELS - 1] = 1205
+}; /* ~15% margin */
 unsigned int sysctl_sched_capacity_margin_up_boosted[MAX_MARGIN_LEVELS] = {
-	[0 ... MAX_MARGIN_LEVELS-1] = 1280}; /* ~20% margin */
+	[0 ... MAX_MARGIN_LEVELS-1] = 1078
+}; /* ~5% margin */
 unsigned int sysctl_sched_capacity_margin_down_boosted[MAX_MARGIN_LEVELS] = {
-	[0 ... MAX_MARGIN_LEVELS-1] = 1280}; /* ~20% margin */
+	1205, 1078
+}; /* ~15% margin for big, ~5% margin for big+ */
 
+#if NR_CPUS == 8
 unsigned int sched_capacity_margin_up[NR_CPUS] = {
-	[0 ... NR_CPUS-1] = 1078}; /* ~5% margin */
+	1280, 1280, 1280, 1280, 1280, 1280, 1280, 1078
+}; /* ~20% margin for small and big, 5% for big+ */
 unsigned int sched_capacity_margin_down[NR_CPUS] = {
-	[0 ... NR_CPUS-1] = 1205}; /* ~15% margin */
+	[0 ... NR_CPUS-1] = 1280
+}; /* ~20% margin */
+unsigned int sched_capacity_margin_up_boosted[NR_CPUS] = {
+	1280, 1280, 1280, 1280, 1280, 1280, 1280, 1078
+}; /* ~20% margin for small and big, 5% for big+ */
+unsigned int sched_capacity_margin_down_boosted[NR_CPUS] = {
+	1280, 1280, 1280, 1280, 1575, 1575, 1575, 1280
+}; /* not used for small cores, ~35% margin for big, ~20% margin for big+ */
+#else
+unsigned int sched_capacity_margin_up[NR_CPUS] = {
+	[0 ... NR_CPUS-1] = 1280}; /* ~20% margin */
+unsigned int sched_capacity_margin_down[NR_CPUS] = {
+	[0 ... NR_CPUS-1] = 1280}; /* ~20% margin */
 unsigned int sched_capacity_margin_up_boosted[NR_CPUS] = {
 	[0 ... NR_CPUS-1] = 1280}; /* ~20% margin */
 unsigned int sched_capacity_margin_down_boosted[NR_CPUS] = {
 	[0 ... NR_CPUS-1] = 1280}; /* ~20% margin */
-
+#endif
 
 #ifdef CONFIG_SCHED_WALT
 /* 1ms default for 20ms window size scaled to 1024 */
@@ -3913,6 +3931,8 @@ static inline void util_est_enqueue(struct cfs_rq *cfs_rq,
 	trace_sched_util_est_cpu(cpu_of(rq_of(cfs_rq)), cfs_rq);
 }
 
+#define UTIL_EST_MARGIN (SCHED_CAPACITY_SCALE / 100)
+
 /*
  * Check if a (signed) value is within a specified (unsigned) margin,
  * based on the observation that:
@@ -3929,7 +3949,7 @@ static inline bool within_margin(int value, int margin)
 static void
 util_est_dequeue(struct cfs_rq *cfs_rq, struct task_struct *p, bool task_sleep)
 {
-	long last_ewma_diff;
+	long last_ewma_diff, last_enqueued_diff;
 	struct util_est ue;
 	int cpu;
 
@@ -3959,6 +3979,8 @@ util_est_dequeue(struct cfs_rq *cfs_rq, struct task_struct *p, bool task_sleep)
 	if (ue.enqueued & UTIL_AVG_UNCHANGED)
 		return;
 
+	last_enqueued_diff = ue.enqueued;
+
 	/*
 	 * Reset EWMA on utilization increases, the moving average is used only
 	 * to smooth utilization decreases.
@@ -3972,12 +3994,17 @@ util_est_dequeue(struct cfs_rq *cfs_rq, struct task_struct *p, bool task_sleep)
 	}
 
 	/*
-	 * Skip update of task's estimated utilization when its EWMA is
+	 * Skip update of task's estimated utilization when its members are
 	 * already ~1% close to its last activation value.
 	 */
 	last_ewma_diff = ue.enqueued - ue.ewma;
-	if (within_margin(last_ewma_diff, (SCHED_CAPACITY_SCALE / 100)))
+	last_enqueued_diff -= ue.enqueued;
+	if (within_margin(last_ewma_diff, UTIL_EST_MARGIN)) {
+		if (!within_margin(last_enqueued_diff, UTIL_EST_MARGIN))
+			goto done;
+
 		return;
+	}
 
 	/*
 	 * To avoid overestimation of actual task utilization, skip updates if
@@ -7533,7 +7560,7 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 			 * accounting. However, the blocked utilization may be zero.
 			 */
 			wake_util = cpu_util_without(i, p);
-			new_util = wake_util + task_util_est(p);
+			new_util = wake_util + uclamp_task_util(p);
 			spare_wake_cap = capacity_orig_of(i) - wake_util;
 
 			if (spare_wake_cap > most_spare_wake_cap) {
@@ -8148,7 +8175,7 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 	struct energy_env *eenv;
 	struct cpumask *rtg_target = find_rtg_target(p);
 	struct find_best_target_env fbt_env;
-	bool need_idle = wake_to_idle(p);
+	bool need_idle = wake_to_idle(p) || uclamp_latency_sensitive(p);
 	int placement_boost = task_boost_policy(p);
 	u64 start_t = 0;
 	int next_cpu = -1, backup_cpu = -1;

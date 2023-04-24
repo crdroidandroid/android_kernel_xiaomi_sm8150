@@ -642,7 +642,7 @@ int bL_cpufreq_register(struct cpufreq_arm_bL_ops *ops)
 
 	ret = cpufreq_register_driver(&bL_cpufreq_driver);
 	if (ret) {
-		pr_info("%s: Failed registering platform driver: %s, err: %d\n",
+		pr_debug("%s: Failed registering platform driver: %s, err: %d\n",
 				__func__, ops->name, ret);
 		arm_bL_ops = NULL;
 	} else {
@@ -651,7 +651,7 @@ int bL_cpufreq_register(struct cpufreq_arm_bL_ops *ops)
 			cpufreq_unregister_driver(&bL_cpufreq_driver);
 			arm_bL_ops = NULL;
 		} else {
-			pr_info("%s: Registered platform driver: %s\n",
+			pr_debug("%s: Registered platform driver: %s\n",
 					__func__, ops->name);
 		}
 	}
@@ -673,7 +673,7 @@ void bL_cpufreq_unregister(struct cpufreq_arm_bL_ops *ops)
 	__bLs_unregister_notifier();
 	cpufreq_unregister_driver(&bL_cpufreq_driver);
 	bL_switcher_put_enabled();
-	pr_info("%s: Un-registered platform driver: %s\n", __func__,
+	pr_debug("%s: Un-registered platform driver: %s\n", __func__,
 			arm_bL_ops->name);
 	arm_bL_ops = NULL;
 }

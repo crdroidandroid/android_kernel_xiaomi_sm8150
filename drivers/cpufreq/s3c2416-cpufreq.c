@@ -358,12 +358,12 @@ static int s3c2416_cpufreq_driver_init(struct cpufreq_policy *policy)
 	 */
 	rate = clk_get_rate(msysclk);
 	if (rate == 800 * 1000 * 1000) {
-		pr_info("cpufreq: msysclk running at %lukHz, using S3C2416 frequency table\n",
+		pr_debug("cpufreq: msysclk running at %lukHz, using S3C2416 frequency table\n",
 			rate / 1000);
 		s3c_freq->freq_table = s3c2416_freq_table;
 		policy->cpuinfo.max_freq = 400000;
 	} else if (rate / 1000 == 534000) {
-		pr_info("cpufreq: msysclk running at %lukHz, using S3C2450 frequency table\n",
+		pr_debug("cpufreq: msysclk running at %lukHz, using S3C2450 frequency table\n",
 			rate / 1000);
 		s3c_freq->freq_table = s3c2450_freq_table;
 		policy->cpuinfo.max_freq = 534000;

@@ -277,7 +277,7 @@ static int __init powernow_k6_init(void)
 		return -ENODEV;
 
 	if (!request_region(POWERNOW_IOPORT, 16, "PowerNow!")) {
-		pr_info("PowerNow IOPORT region already used\n");
+		pr_debug("PowerNow IOPORT region already used\n");
 		return -EIO;
 	}
 

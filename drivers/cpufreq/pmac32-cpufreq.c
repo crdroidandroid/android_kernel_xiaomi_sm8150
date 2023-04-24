@@ -686,8 +686,8 @@ out:
 	pmac_cpu_freqs[CPUFREQ_HIGH].frequency = hi_freq;
 	ppc_proc_freq = cur_freq * 1000ul;
 
-	pr_info("Registering PowerMac CPU frequency driver\n");
-	pr_info("Low: %d Mhz, High: %d Mhz, Boot: %d Mhz\n",
+	pr_debug("Registering PowerMac CPU frequency driver\n");
+	pr_debug("Low: %d Mhz, High: %d Mhz, Boot: %d Mhz\n",
 		low_freq/1000, hi_freq/1000, cur_freq/1000);
 
 	return cpufreq_register_driver(&pmac_cpufreq_driver);
