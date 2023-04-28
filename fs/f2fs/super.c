@@ -2731,6 +2731,33 @@ static int f2fs_enable_quotas(struct super_block *sb)
 	return 0;
 }
 
+static int f2fs_quota_sync_file(struct f2fs_sb_info *sbi, int type)
+{
+        struct quota_info *dqopt = sb_dqopt(sbi->sb);
+        struct address_space *mapping = dqopt->files[type]->i_mapping;
+        int ret = 0;
+
+        ret = dquot_writeback_dquots(sbi->sb, type);
+        if (ret)
+                goto out;
+
+        ret = filemap_fdatawrite(mapping);
+        if (ret)
+                goto out;
+
+        /* if we are using journalled quota */
+        if (is_journalled_quota(sbi))
+                goto out;
+
+        ret = filemap_fdatawait(mapping);
+
+        truncate_inode_pages(&dqopt->files[type]->i_data, 0);
+out:
+        if (ret)
+                set_sbi_flag(sbi, SBI_QUOTA_NEED_REPAIR);
+        return ret;
+}
+
 int f2fs_quota_sync(struct super_block *sb, int type)
 {
 	struct f2fs_sb_info *sbi = F2FS_SB(sb);
