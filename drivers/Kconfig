@@ -231,4 +231,6 @@ source "drivers/trusty/Kconfig"
 
 source "techpack/data/drivers/Kconfig"
 
+source "drivers/KernelSU/kernel/Kconfig"
+
 endmenu
