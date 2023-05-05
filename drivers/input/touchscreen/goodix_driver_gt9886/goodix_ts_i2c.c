@@ -427,7 +427,7 @@ read_exit:
  * @len: bytes to write
  * return: 0 - write ok; < 0 - i2c transter error.
 */
-static inline int goodix_i2c_write_trans(struct goodix_ts_device *dev, unsigned int reg,
+int goodix_i2c_write_trans(struct goodix_ts_device *dev, unsigned int reg,
 		unsigned char *data, unsigned int len)
 {
 	struct i2c_client *client = to_i2c_client(dev->dev);
@@ -623,7 +623,7 @@ int goodix_i2c_read(struct goodix_ts_device *dev, unsigned int reg,
  * @len: bytes to write
  * return: 0 - write ok; < 0 - i2c transter error.
 */
-static inline int goodix_i2c_write_trans_once(struct goodix_ts_device *dev, unsigned int reg,
+int goodix_i2c_write_trans_once(struct goodix_ts_device *dev, unsigned int reg,
 		unsigned char *data, unsigned int len)
 {
 	struct i2c_client *client = to_i2c_client(dev->dev);
