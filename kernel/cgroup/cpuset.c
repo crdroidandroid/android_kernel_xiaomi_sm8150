@@ -2139,11 +2139,11 @@ static void uclamp_set(struct kernfs_open_file *of,
 		{"top-app",    	     	"10", "max", 1, 1},  // 10-100%
 		{"foreground", 	     	"10", "80",  1, 0},  // 10-80%
 		{"background", 	     	"0",  "50",  0, 0},  // 0-50%
-		{"system-background", 	"0",  "50",  0, 0},  // 0-60%
+		{"system-background", 	"0",  "50",  0, 0},  // 0-50%
 		{"restricted",          "0",  "20",  0, 0},  // 0-20%
-		{"display",             "20", "100", 1, 1},
+		{"display",             "20", "100", 1, 0},  // 20-100%
 		{"camera-daemon",       "20", "max", 1, 1},  // 20-100%
-		{"game",                "80", "max", 1, 1},
+		{"game",                "50", "max", 1, 1},  // 80-100%
 	};
 
 	for (i = 0; i < ARRAY_SIZE(tgts); i++) {
