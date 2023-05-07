@@ -194,8 +194,8 @@ static void scan_and_kill(void)
 
 	/* Populate the victims array with tasks sorted by adj and then size */
 	pages_found = find_victims(&nr_found);
-	if (unlikely(!pages_found)) {
-		printk_once("No processes available to kill!\n");
+	if (unlikely(!nr_found)) {
+		pr_err_ratelimited("No processes available to kill!\n");
 		return;
 	}
 
