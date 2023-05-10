@@ -207,8 +207,6 @@ int dsi_display_set_backlight(struct drm_connector *connector,
 		goto error;
 	}
 
-	panel->bl_config.bl_level = bl_lvl;
-
 	/* scale backlight */
 	bl_scale = panel->bl_config.bl_scale;
 	bl_temp = bl_lvl * bl_scale / MAX_BL_SCALE_LEVEL;
@@ -231,6 +229,18 @@ int dsi_display_set_backlight(struct drm_connector *connector,
 	if (rc)
 		pr_debug("unable to set backlight\n");
 
+	if (bl_lvl > 2047 && panel->bl_config.bl_level <= 2047)
+	{
+		panel->hbm_mode = 1;
+		rc = dsi_panel_apply_hbm_mode(panel);
+	}
+	else if (bl_lvl <= 2047 && panel->bl_config.bl_level > 2047)
+	{
+		panel->hbm_mode = 0;
+		rc = dsi_panel_apply_hbm_mode(panel);
+	}
+
+	panel->bl_config.bl_level = bl_lvl;
 	rc = dsi_display_clk_ctrl(dsi_display->dsi_clk_handle,
 			DSI_CORE_CLK, DSI_CLK_OFF);
 	if (rc) {
