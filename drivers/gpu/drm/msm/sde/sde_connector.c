@@ -102,6 +102,9 @@ static int sde_backlight_device_update_status(struct backlight_device *bd)
 		bl_lvl = 0;
 	}
 
+	if (bl_lvl > 2047)
+		bl_lvl = 4095;
+
 	if (!c_conn->allow_bl_update) {
 		c_conn->unset_bl_level = bl_lvl;
 		return 0;
