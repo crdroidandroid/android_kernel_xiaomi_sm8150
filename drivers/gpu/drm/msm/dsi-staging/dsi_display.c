@@ -5127,6 +5127,9 @@ static ssize_t sysfs_hbm_write(struct device *dev,
 	if (!display->panel)
 		return -EINVAL;
 
+        if (display->panel->bl_config.bl_level > 2047)
+                return count;
+
 	ret = kstrtoint(buf, 10, &hbm_mode);
 	if (ret) {
 		pr_debug("kstrtoint failed. ret=%d\n", ret);
