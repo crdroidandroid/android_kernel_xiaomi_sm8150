@@ -15,12 +15,12 @@
 		compatible = "operating-points-v2";
 		opp-810000000 {
 			opp-hz = /bits/ 64 <810000000>;
-			opp-microvolt = <RPMH_REGULATOR_LEVEL_NOM_L2>;
+			opp-microvolt = <RPMH_REGULATOR_LEVEL_TURBO>;
 		};
 
 		opp-765000000 {
 			opp-hz = /bits/ 64 <765000000>;
-			opp-microvolt = <RPMH_REGULATOR_LEVEL_NOM_L1>;
+			opp-microvolt = <RPMH_REGULATOR_LEVEL_NOM_L2>;
 		};
 
 		opp-675000000 {
@@ -35,7 +35,7 @@
 
 		opp-499200000 {
 			opp-hz = /bits/ 64 <499200000>;
-			opp-microvolt = <RPMH_REGULATOR_LEVEL_LOW_SVS_L1>;
+			opp-microvolt = <RPMH_REGULATOR_LEVEL_LOW_SVS_L2>;
 		};
 
 		opp-427000000 {
@@ -45,7 +45,7 @@
 
 		opp-345000000 {
 			opp-hz = /bits/ 64 <345000000>;
-			opp-microvolt = <RPMH_REGULATOR_LEVEL_MIN_SVS>;
+			opp-microvolt = <RPMH_REGULATOR_LEVEL_LOW_SVS_D1>;
 		};
 
 		opp-257000000 {
