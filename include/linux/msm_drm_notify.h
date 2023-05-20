@@ -45,4 +45,6 @@ struct msm_drm_notifier {
 
 int msm_drm_register_client(struct notifier_block *nb);
 int msm_drm_unregister_client(struct notifier_block *nb);
+
+int dsi_panel_backlight_get(void);
 #endif
