@@ -608,6 +608,13 @@ static int dsi_panel_wled_register(struct dsi_panel *panel,
 	return 0;
 }
 
+static int saved_backlight = -1;
+
+int dsi_panel_backlight_get(void)
+{
+                return saved_backlight;
+}
+
 static int dsi_panel_update_backlight(struct dsi_panel *panel,
 	u32 bl_lvl)
 {
