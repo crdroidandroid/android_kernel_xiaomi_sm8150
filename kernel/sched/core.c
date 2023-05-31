@@ -3264,7 +3264,7 @@ static void __sched_fork(unsigned long clone_flags, struct task_struct *p)
 	p->last_sleep_ts		= 0;
 
 	p->se.vlag			= 0;
-	p->se.slice			= sysctl_sched_min_granularity;
+	p->se.slice			= sysctl_sched_base_slice;
 
 	INIT_LIST_HEAD(&p->se.group_node);
 
