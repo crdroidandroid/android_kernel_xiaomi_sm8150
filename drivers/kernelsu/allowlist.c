@@ -6,6 +6,7 @@
 #include "linux/list.h"
 #include "linux/printk.h"
 #include "linux/slab.h"
+#include "linux/types.h"
 #include "linux/version.h"
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
 #include "linux/compiler_types.h"
@@ -17,9 +18,10 @@
 #include "allowlist.h"
 
 #define FILE_MAGIC 0x7f4b5355 // ' KSU', u32
-#define FILE_FORMAT_VERSION 2 // u32
+#define FILE_FORMAT_VERSION 3 // u32
 
 #define KSU_APP_PROFILE_PRESERVE_UID 9999 // NOBODY_UID
+#define KSU_DEFAULT_SELINUX_DOMAIN "u:r:su:s0"
 
 static DEFINE_MUTEX(allowlist_mutex);
 
@@ -36,7 +38,7 @@ static void init_default_profiles()
 	memset(&default_root_profile.capabilities, 0xff,
 	       sizeof(default_root_profile.capabilities));
 	default_root_profile.namespaces = 0;
-	strcpy(default_root_profile.selinux_domain, "su");
+	strcpy(default_root_profile.selinux_domain, KSU_DEFAULT_SELINUX_DOMAIN);
 
 	// This means that we will umount modules by default!
 	default_non_root_profile.umount_modules = true;
@@ -76,6 +78,7 @@ static void ksu_grant_root_to_shell()
 		.current_uid = 2000,
 	};
 	strcpy(profile.key, "com.android.shell");
+	strcpy(profile.rp_config.profile.selinux_domain, KSU_DEFAULT_SELINUX_DOMAIN);
 	ksu_set_app_profile(&profile, false);
 }
 #endif
@@ -101,11 +104,40 @@ exit:
 	return found;
 }
 
+static bool profile_valid(struct app_profile *profile)
+{
+	if (!profile) {
+		return false;
+	}
+
+	if (profile->version < KSU_APP_PROFILE_VER) {
+		pr_info("Unsupported profile version: %d\n", profile->version);
+		return false;
+	}
+
+	if (profile->allow_su) {
+		if (profile->rp_config.profile.groups_count > KSU_MAX_GROUPS) {
+			return false;
+		}
+
+		if (strlen(profile->rp_config.profile.selinux_domain) == 0) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 bool ksu_set_app_profile(struct app_profile *profile, bool persist)
 {
 	struct perm_data *p = NULL;
 	struct list_head *pos = NULL;
 	bool result = false;
+
+	if (!profile_valid(profile)) {
+		pr_err("Failed to set app profile: invalid profile!\n");
+		return false;
+	}
 
 	list_for_each (pos, &allow_list) {
 		p = list_entry(pos, struct perm_data, list);
