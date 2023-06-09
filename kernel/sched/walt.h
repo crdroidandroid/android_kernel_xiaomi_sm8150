@@ -22,8 +22,8 @@
 /* Default window size (in ns) = 12ms */
 #define DEFAULT_SCHED_RAVG_WINDOW 12000000
 
-/* Max window size (in ns) = 1s */
-#define MAX_SCHED_RAVG_WINDOW 1000000000
+/* Max window size (in ns) = 600ms */
+#define MAX_SCHED_RAVG_WINDOW 600000000
 #define NR_WINDOWS_PER_SEC (NSEC_PER_SEC / DEFAULT_SCHED_RAVG_WINDOW)
 #define MAX_NR_CLUSTERS			3
 
@@ -42,7 +42,7 @@
 #define for_each_related_thread_group(grp) \
 	list_for_each_entry(grp, &active_related_thread_groups, list)
 
-#define NEW_TASK_ACTIVE_TIME 100000000
+#define NEW_TASK_ACTIVE_TIME 80000000
 
 extern unsigned int sched_ravg_window;
 extern unsigned int new_sched_ravg_window;
