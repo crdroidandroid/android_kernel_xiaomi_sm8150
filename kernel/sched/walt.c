@@ -3279,7 +3279,7 @@ fill_util:
 		data->ta_util_pct[i] = div64_u64(cluster->aggr_grp_load * 1024 *
 				       100, (u64)sched_ravg_window * scale);
 
-		scale = arch_scale_freq_capacity(fcpu);
+		scale = arch_scale_freq_capacity(NULL, fcpu);
 		data->cur_cap_pct[i] = (scale * 100)/1024;
 		i++;
 	}
