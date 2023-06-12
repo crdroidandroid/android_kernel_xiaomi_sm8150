@@ -2719,6 +2719,36 @@ add_task_to_group(struct task_struct *p, struct related_thread_group *grp)
 	return 0;
 }
 
+#ifdef CONFIG_UCLAMP_TASK_GROUP
+static inline bool uclamp_task_colocated(struct task_struct *p)
+{
+	struct cgroup_subsys_state *css;
+	struct task_group *tg;
+	bool colocate;
+
+	rcu_read_lock();
+	css = task_css(p, cpu_cgrp_id);
+	if (!css) {
+		rcu_read_unlock();
+		return false;
+	}
+	tg = container_of(css, struct task_group, css);
+	if (tg->latency_sensitive == 1)
+		colocate = true;
+	else
+		colocate = false;
+
+	rcu_read_unlock();
+
+	return colocate;
+}
+#else
+static inline bool uclamp_task_colocated(struct task_struct *p)
+{
+	return schedtune_task_colocated(p);
+}
+#endif /* CONFIG_UCLAMP_TASK_GROUP */
+
 void add_new_task_to_grp(struct task_struct *new)
 {
 	unsigned long flags;
@@ -2726,8 +2756,13 @@ void add_new_task_to_grp(struct task_struct *new)
 	struct task_struct *leader = new->group_leader;
 	unsigned int leader_grp_id = sched_get_group_id(leader);
 
-	if (!sysctl_sched_enable_thread_grouping &&
-	    leader_grp_id != DEFAULT_CGROUP_COLOC_ID)
+	/*
+	 * If the task does not belong to colocated schedtune
+	 * cgroup, nothing to do. We are checking this without
+	 * lock. Even if there is a race, it will be added
+	 * to the co-located cgroup via cgroup attach.
+	 */
+	if (!uclamp_task_colocated(new))
 		return;
 
 	if (thread_group_leader(new))
@@ -2750,7 +2785,7 @@ void add_new_task_to_grp(struct task_struct *new)
 	 * this function. It's also possible that the leader has exited
 	 * the group. In either case, there is nothing else to do.
 	 */
-	if (!grp || new->grp) {
+	if (!uclamp_task_colocated(new) || new->grp) {
 		write_unlock_irqrestore(&related_thread_group_lock, flags);
 		return;
 	}
