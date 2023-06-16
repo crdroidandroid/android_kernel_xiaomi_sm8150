@@ -5018,14 +5018,14 @@ void show_free_areas(unsigned int filter, nodemask_t *nodemask)
 		global_zone_page_state(NR_BOUNCE),
 		global_zone_page_state(NR_FREE_PAGES),
 		free_pcp,
-		global_zone_page_state(NR_FREE_CMA_PAGES));
+		global_zone_page_state(NR_FREE_CMA_PAGES),
 #if IS_ENABLED(CONFIG_ZSMALLOC)
-		global_page_state(NR_ZSPAGES),
+		global_zone_page_state(NR_ZSPAGES),
 #else
 		0UL,
 #endif
 		global_node_page_state(NR_ION_HEAP),
-		global_node_page_state(NR_INDIRECTLY_RECLAIMABLE_BYTES)
+		global_node_page_state(NR_KERNEL_MISC_RECLAIMABLE)
 							>> PAGE_SHIFT);
 
 	for_each_online_pgdat(pgdat) {
