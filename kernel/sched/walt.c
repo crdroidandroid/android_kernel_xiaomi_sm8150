@@ -3346,6 +3346,7 @@ int walt_proc_update_handler(struct ctl_table *table, int write,
 
 static void walt_init_once(void)
 {
+	unsigned int init_task_load_pct;
 	init_irq_work(&walt_migration_irq_work, walt_irq_work);
 	init_irq_work(&walt_cpufreq_irq_work, walt_irq_work);
 	walt_rotate_work_init();
@@ -3353,8 +3354,6 @@ static void walt_init_once(void)
 	walt_cpu_util_freq_divisor =
 	    (sched_ravg_window >> SCHED_CAPACITY_SHIFT) * 100;
 	walt_scale_demand_divisor = sched_ravg_window >> SCHED_CAPACITY_SHIFT;
-
-	unsigned int init_task_load_pct;
 
 	switch (kp_active_mode()) {
 	case 3:
