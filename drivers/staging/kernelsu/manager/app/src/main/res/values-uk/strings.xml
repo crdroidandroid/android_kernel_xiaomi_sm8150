@@ -1,4 +1,6 @@
 <resources>
+    <string name="app_name" translatable="false">KernelSU</string>
+
     <string name="home">Головна</string>
     <string name="home_not_installed">Не встановлено</string>
     <string name="home_click_to_install">Натисніть щоб встановити</string>
@@ -8,16 +10,10 @@
     <string name="home_module_count">Модулі: %d</string>
     <string name="home_unsupported">Не підтримується</string>
     <string name="home_unsupported_reason">KernelSU підтримує лише ядра GKI</string>
-    <string name="home_copied_to_clipboard">Скопійовано в буфер обміну</string>
-    <string name="home_support">Підтримка</string>
 
     <string name="home_kernel">Ядро</string>
-    <string name="home_arch">Архітектура</string>
     <string name="home_manager_version">Версія менеджера</string>
-    <string name="home_api">Рівень API</string>
-    <string name="home_abi">ABI</string>
     <string name="home_fingerprint">Відбиток</string>
-    <string name="home_securitypatch">Патч безпеки</string>
 
     <string name="home_selinux_status">Статус SELinux</string>
     <string name="selinux_status_disabled">Вимкнено</string>
@@ -25,8 +21,6 @@
     <string name="selinux_status_permissive">Дозвільний</string>
     <string name="selinux_status_unknown">Невідомо</string>
     <string name="superuser">Суперкористувачі</string>
-    <string name="superuser_failed_to_grant_root">Не вдалося надати root-доступ для %d</string>
-    <string name="superuser_allow_root_confirm">Ви впевнені, що хочете надати root-доступ для %s?</string>
     <string name="module_failed_to_enable">Не вдалося ввімкнути модуль: %s</string>
     <string name="module_failed_to_disable">Не вдалося вимкнути модуль: %s</string>
     <string name="module_empty">Немає встановлених модулів</string>
@@ -43,7 +37,6 @@
     <string name="reboot_download">Перезавантажити до Download</string>
     <string name="reboot_edl">Перезавантажити до EDL</string>
     <string name="about">Про додаток</string>
-    <string name="require_kernel_version_8">Потрібна версія KernelSU 8+</string>
     <string name="module_uninstall_confirm">Ви впевнені, що хочете видалити модуль %s?</string>
     <string name="module_uninstall_success">%s видалено</string>
     <string name="module_uninstall_failed">Не вдалося видалити: %s</string>
@@ -58,8 +51,27 @@
     <string name="reboot_to_apply">Перезавантажте, щоб застосувати</string>
     <string name="module_magisk_conflict">Модулі вимкнено, оскільки вони конфліктують із модулями Magisk!</string>
     <string name="home_learn_kernelsu">Дізнайтеся про KernelSU</string>
+    <string name="home_learn_kernelsu_url">https://kernelsu.org/guide/what-is-kernelsu.html</string>
     <string name="home_click_to_learn_kernelsu">Дізнайтеся, як інсталювати KernelSU і використовувати модулі</string>
-    <string name="home_support_title">Підтримайте нас</string>
-    <string name="home_support_content">KernelSU є і завжди буде безкоштовним і з відкритим кодом. Однак Ви можете показати нам, що Вам не байдуже, зробивши пожертву.</string>
+    <string name="home_support_title">Підтримати нас</string>
+    <string name="home_support_content">KernelSU є, і завжди буде безкоштовним та з відкритим кодом. Однак, якщо вам не байдуже, можете зробити невеличке пожертвування.</string>
     <string name="about_source_code"><![CDATA[Переглянути вихідний код на %1$s<br/>Приєднуйтесь до нашого каналу %2$s]]></string>
+    <string name="profile">Профіль додатка</string>
+    <string name="profile_default">Типовий</string>
+    <string name="profile_template">Шаблон</string>
+    <string name="profile_custom">Власний</string>
+    <string name="profile_name">Назва профілю</string>
+    <string name="profile_namespace">Монтування простору імен</string>
+    <string name="profile_namespace_inherited">Наслідуваний</string>
+    <string name="profile_namespace_global">Глобальний</string>
+    <string name="profile_namespace_individual">Індивідуальний</string>
+    <string name="profile_groups">Групи</string>
+    <string name="profile_capabilities">Можливості</string>
+    <string name="profile_selinux_context">Контекст SELinux</string>
+    <string name="profile_umount_modules">Розмонтувати модулі</string>
+    <string name="failed_to_update_app_profile">Не вдалося оновити профіль додатка для %s</string>
+    <string name="require_kernel_version">Поточна версія ядра %d занизька для належної роботи менджера. Будь ласка, оновіть до версії %d або вище!</string>
+    <string name="settings_umount_modules_default">Розмонтувати модулі за замовчуванням</string>
+    <string name="settings_umount_modules_default_summary">Загальне значення за замовчуванням для \"Розмонтувати модулі\" у профілях додатків. Якщо ввімкнено, буде видалено всі модифікації модулів у системі для додатків, які не мають встановленого профілю.</string>
+    <string name="profile_umount_modules_summary">Увімкнення даної опції дозволить KernelSU відновити для цього додатка будь-які файли, змінені модулями.</string>
 </resources>

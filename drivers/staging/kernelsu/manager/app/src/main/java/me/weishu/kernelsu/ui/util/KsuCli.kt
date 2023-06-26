@@ -71,7 +71,7 @@ fun getModuleCount(): Int {
 }
 
 fun getSuperuserCount(): Int {
-    return Natives.getAllowList().size
+    return Natives.allowList.size
 }
 
 fun toggleModule(id: String, enable: Boolean): Boolean {
@@ -139,5 +139,15 @@ fun hasMagisk(): Boolean {
     val shell = getRootShell()
     val result = shell.newJob().add("nsenter --mount=/proc/1/ns/mnt which magisk").exec()
     Log.i(TAG, "has magisk: ${result.isSuccess}")
+    return result.isSuccess
+}
+
+fun isSepolicyValid(rules: String?): Boolean {
+    if (rules == null) {
+        return true
+    }
+    val shell = getRootShell()
+    val result =
+        shell.newJob().add("ksud sepolicy check '$rules'").to(ArrayList(), null).exec()
     return result.isSuccess
 }

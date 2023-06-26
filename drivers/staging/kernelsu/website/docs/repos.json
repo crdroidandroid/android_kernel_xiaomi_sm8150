@@ -9,9 +9,16 @@
     {
         "maintainer": "diphons",
         "maintainer_link": "https://github.com/diphons",
-        "kernel_name": "D8G_Kernel_ROG",
-        "kernel_link": "https://github.com/diphons/D8G_Kernel_Vayuasu/tree/main",
+        "kernel_name": "D8G_Kernel_SM8150",
+        "kernel_link": "https://github.com/diphons/D8G_Kernel_SM8150/tree/13",
         "devices": "Poco X3 Pro: Vayu | Bhima"
+    },
+    {
+        "maintainer": "diphons",
+        "maintainer_link": "https://github.com/diphons",
+        "kernel_name": "D8G_Kernel_SDM845",
+        "kernel_link": "https://github.com/diphons/D8G_Kernel/tree/main",
+        "devices": "Poco F1 | MI8 | MiMix2S"
     },
     {
         "maintainer": "SpectreDev-007",
@@ -98,11 +105,11 @@
         "devices": "Mi 8 (dipper) for LineageOS"
     },
     {
-        "maintainer": "WeeAris",
-        "maintainer_link": "https://github.com/WeeAris",
-        "kernel_name": "Realking_su_xiaomi_sm8250",
-        "kernel_link": "https://github.com/WeeAris/Realking_su_xiaomi_sm8250",
-        "devices": "Apollo(Redmi K30S Ultra/Mi 10T/Mi 10T Pro)\uff0cAlioth(Redmi K40/POCO F3/Mi 11X)\uff0cMunch(Redmi K40S/POCO F4), repo for AOSP only."
+        "maintainer": "Rohail33",
+        "maintainer_link": "https://github.com/Rohail33",
+        "kernel_name": "RealKing Kernel",
+        "kernel_link": "https://github.com/Rohail33/Realking_kernel_sm8250",
+        "devices": "Apollo(Redmi K30S Ultra/Mi 10T/Mi 10T Pro)\uff0cAlioth(Redmi K40/POCO F3/Mi 11X)\uff0cMunch(Redmi K40S/POCO F4), both MIUI and AOSP."
     },
     {
         "maintainer": "lateautumn233",
@@ -164,7 +171,7 @@
         "maintainer": "SoDebug",
         "maintainer_link": "https://github.com/SoDebug",
         "kernel_name": "kernel_xiaomi_raphael",
-        "kernel_link": "https://github.com/SoDebug/kernel_xiaomi_raphael",
+        "kernel_link": "https://github.com/SoDebug/KernelSU_Kernel_Raphael",
         "devices": "Xiaomi Redmi K20 Pro / Mi 9T Pro (raphael)"
     },
     {
@@ -264,5 +271,89 @@
         "kernel_name": "android_kernel_samsung_sm8250",
         "kernel_link": "https://github.com/bggRGjQaUbCoE/android_kernel_samsung_sm8250",
         "devices": "Samsung Galaxy S20+ 5G (y2q)"
+    },
+    {
+        "maintainer": "SOVIET-ANDROID",
+        "maintainer_link": "https://github.com/SOVIET-ANDROID",
+        "kernel_name": "kernel_xiaomi_raphael",
+        "kernel_link": "https://github.com/SOVIET-ANDROID/kernel_xiaomi_raphael",
+        "devices": "XK20 Pro Raphael  DSP & A only SAR support "
+    },
+    {
+        "maintainer": "AkariOficial",
+        "maintainer_link": "https://github.com/AkariOficial",
+        "kernel_name": "kernel_Moe_ginkgo",
+        "kernel_link": "https://github.com/AkariOficial/kernel_Moe_ginkgo",
+        "devices": "Xiaomi Redmi Note 8 (Ginkgo)"
+    },
+    {
+        "maintainer": "Coconutat",
+        "maintainer_link": "https://github.com/Coconutat",
+        "kernel_name": "android_kernel_huawei_vtr_emui9_KernelSU",
+        "kernel_link": "https://github.com/Coconutat/android_kernel_huawei_vtr_emui9_KernelSU",
+        "devices": "Huawei P10,P10 Plus,Mate9,Mate9 Pro(Kirin960 Series),Stable For GSI"
+    },
+    {
+        "maintainer": "dabao1955",
+        "maintainer_link": "https://github.com/dabao1955",
+        "kernel_name": "android_kernel_OPPO_PEQM00",
+        "kernel_link": "https://github.com/dabao1955/android_kernel_OPPO_PEQM00",
+        "devices": "MediaTek devices in the OPPO Reno series on ColorOS13.x"
+    },
+    {
+        "maintainer": "Aflaungos",
+        "maintainer_link": "https://github.com/Aflaungos",
+        "kernel_name": "android_kernel_motorola_msm8998",
+        "kernel_link": "https://github.com/Aflaungos/android_kernel_motorola_msm8998",
+        "devices": "Moto G6 Plus (evert)"
+    },
+    {
+        "maintainer": "TheNoFace",
+        "maintainer_link": "https://github.com/TheNoFace",
+        "kernel_name": "kernel_oneplus_msm8998",
+        "kernel_link": "https://github.com/TheNoFace/kernel_oneplus_msm8998/tree/pe-13-ksu",
+        "devices": "OnePlus 5/5T (cheeseburger/dumpling)"
+    },
+    {
+        "maintainer": "Nipin NA (Joker-V2)",
+        "maintainer_link": "https://github.com/Joker-V2",
+        "kernel_name": "Xcalibur kernel (violet)",
+        "kernel_link": "https://github.com/Joker-V2/kernel_xiaomi_violet/tree/kernelsu",
+        "devices": "Xiaomi Redmi Note 7 Pro (violet)"
+    },
+    {
+        "maintainer": "Sr-Han",
+        "maintainer_link": "https://github.com/Sr-Han",
+        "kernel_name": "kernel_xiaomi_mojito.git",
+        "kernel_link": "https://github.com/Sr-Han/kernel_xiaomi_mojito.git",
+        "devices": "Redmi Note 10 (Sunny/Mojito)"
+    },
+    {
+        "maintainer": "dabao1955",
+        "maintainer_link": "https://github.com/dabao1955",
+        "kernel_name": "android_kernel_OPPO_OP4ED5",
+        "kernel_link": "https://github.com/dabao1955/android_kernel_OPPO_OP4ED5",
+        "devices": "OPPO Reno6 on ColorOS11.x/ColorOS12.x\uff0ckernel version4.14.186+"
+    },
+    {
+        "maintainer": "rushiranpise",
+        "maintainer_link": "https://github.com/rushiranpise",
+        "kernel_name": "android_kernel_samsung_exynos9610_mint",
+        "kernel_link": "https://github.com/rushiranpise/android_kernel_samsung_exynos9610_mint",
+        "devices": "Kernel 4.14.194 exynos9610 Non-GKI Device, Added KernelSu using manual method"
+    },
+    {
+        "maintainer": "CN-Scars",
+        "maintainer_link": "https://github.com/CN-Scars",
+        "kernel_name": "pixel_experience_kernel_xiaomi_sm8250_kernelSU",
+        "kernel_link": "https://github.com/CN-Scars/pixel_experience_kernel_xiaomi_sm8250_kernelSU",
+        "devices": "Pixel Experience Kernel 4.19.282 for Xiaomi Redmi K40S / Xiaomi Poco F4 (munch)"
+    },
+    {
+        "maintainer": "exer",
+        "maintainer_link": "https://github.com/ekkusa",
+        "kernel_name": "Miyo Toku",
+        "kernel_link": "https://github.com/Miiyo/android_kernel_sony_sdm845/tree/KSU/Toku",
+        "devices": "Sony Tama (akari, apollo, aurora, akatsuki) (Linux 4.9)"
     }
 ]

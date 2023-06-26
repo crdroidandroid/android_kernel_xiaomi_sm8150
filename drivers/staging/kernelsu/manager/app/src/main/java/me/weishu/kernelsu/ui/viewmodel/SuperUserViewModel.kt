@@ -6,6 +6,7 @@ import android.content.ServiceConnection
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.os.IBinder
+import android.os.Parcelable
 import android.os.SystemClock
 import android.util.Log
 import androidx.compose.runtime.derivedStateOf
@@ -16,6 +17,7 @@ import androidx.lifecycle.ViewModel
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.parcelize.Parcelize
 import me.weishu.kernelsu.IKsuInterface
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.ksuApp
@@ -34,14 +36,32 @@ class SuperUserViewModel : ViewModel() {
         private var apps by mutableStateOf<List<AppInfo>>(emptyList())
     }
 
-    class AppInfo(
+    @Parcelize
+    data class AppInfo(
         val label: String,
-        val packageName: String,
-        val icon: PackageInfo,
-        val uid: Int,
-        val onAllowList: Boolean,
-        val onDenyList: Boolean
-    )
+        val packageInfo: PackageInfo,
+        val profile: Natives.Profile?,
+    ) : Parcelable {
+        val packageName: String
+            get() = packageInfo.packageName
+        val uid: Int
+            get() = packageInfo.applicationInfo.uid
+
+        val allowSu: Boolean
+            get() = profile != null && profile.allowSu
+        val hasCustomProfile: Boolean
+            get() {
+                if (profile == null) {
+                    return false
+                }
+
+                return if (profile.allowSu) {
+                    !profile.rootUseDefault
+                } else {
+                    !profile.nonRootUseDefault
+                }
+            }
+    }
 
     var search by mutableStateOf("")
     var showSystemApps by mutableStateOf(false)
@@ -51,8 +71,8 @@ class SuperUserViewModel : ViewModel() {
     private val sortedList by derivedStateOf {
         val comparator = compareBy<AppInfo> {
             when {
-                it.onAllowList -> 0
-                it.onDenyList -> 1
+                it.allowSu -> 0
+                it.hasCustomProfile -> 1
                 else -> 2
             }
         }.then(compareBy(Collator.getInstance(Locale.getDefault()), AppInfo::label))
@@ -67,7 +87,7 @@ class SuperUserViewModel : ViewModel() {
                 .toPinyinString(it.label).contains(search)
         }.filter {
             it.uid == 2000 // Always show shell
-                    || showSystemApps || it.icon.applicationInfo.flags.and(ApplicationInfo.FLAG_SYSTEM) == 0
+                    || showSystemApps || it.packageInfo.applicationInfo.flags.and(ApplicationInfo.FLAG_SYSTEM) == 0
         }
     }
 
@@ -107,13 +127,9 @@ class SuperUserViewModel : ViewModel() {
         val result = connectKsuService {
             Log.w(TAG, "KsuService disconnected")
         }
-        
+
         withContext(Dispatchers.IO) {
             val pm = ksuApp.packageManager
-            val allowList = Natives.getAllowList().toSet()
-            val denyList = Natives.getDenyList().toSet()
-            Log.i(TAG, "allowList: $allowList")
-            Log.i(TAG, "denyList: $denyList")
             val start = SystemClock.elapsedRealtime()
 
             val binder = result.first
@@ -128,13 +144,11 @@ class SuperUserViewModel : ViewModel() {
             apps = packages.map {
                 val appInfo = it.applicationInfo
                 val uid = appInfo.uid
+                val profile = Natives.getAppProfile(it.packageName, uid)
                 AppInfo(
                     label = appInfo.loadLabel(pm).toString(),
-                    packageName = it.packageName,
-                    icon = it,
-                    uid = uid,
-                    onAllowList = uid in allowList,
-                    onDenyList = uid in denyList
+                    packageInfo = it,
+                    profile = profile,
                 )
             }.filter { it.packageName != ksuApp.packageName }
             Log.i(TAG, "load cost: ${SystemClock.elapsedRealtime() - start}")

@@ -1,5 +1,6 @@
 #include "asm/current.h"
 #include "linux/string.h"
+#include "linux/compat.h"
 #include "linux/cred.h"
 #include "linux/dcache.h"
 #include "linux/err.h"
@@ -51,9 +52,9 @@ static struct work_struct stop_vfs_read_work;
 static struct work_struct stop_execve_hook_work;
 static struct work_struct stop_input_hook_work;
 #else
-static bool vfs_read_hook = true;
-static bool execveat_hook = true;
-static bool input_hook = true;
+bool ksu_vfs_read_hook __read_mostly = true;
+bool ksu_execveat_hook __read_mostly = true;
+bool ksu_input_hook __read_mostly = true;
 #endif
 
 void on_post_fs_data(void)
@@ -107,7 +108,13 @@ static const char __user *get_user_arg_ptr(struct user_arg_ptr argv, int nr)
 /*
  * count() counts the number of strings in array ARGV.
  */
-static int count(struct user_arg_ptr argv, int max)
+
+ /*
+ * Make sure old GCC compiler can use __maybe_unused,
+ * Test passed in 4.4.x ~ 4.9.x when use GCC.
+ */
+
+static int __maybe_unused count(struct user_arg_ptr argv, int max)
 {
 	int i = 0;
 
@@ -137,7 +144,7 @@ int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
 			     void *argv, void *envp, int *flags)
 {
 #ifndef CONFIG_KPROBES
-	if (!execveat_hook) {
+	if (!ksu_execveat_hook) {
 		return 0;
 	}
 #endif
@@ -156,8 +163,9 @@ int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
 		return 0;
 	}
 
-	if (!memcmp(filename->name, system_bin_init,
-		    sizeof(system_bin_init) - 1)) {
+	if (unlikely(!memcmp(filename->name, system_bin_init,
+		    sizeof(system_bin_init) - 1))) {
+#ifdef __aarch64__
 		// /system/bin/init executed
 		struct user_arg_ptr *ptr = (struct user_arg_ptr*) argv;
 		int argc = count(*ptr, MAX_ARG_STRINGS);
@@ -183,10 +191,23 @@ int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
 				pr_err("/system/bin/init parse args err!\n");
 			}
 		}
+#else
+		// The argument parse is incorrect becuase of the struct user_arg_ptr has 16bytes
+		// and it is passed by value(not pointer), in arm64, it is correct becuase the register
+		// is just arranged correct accidentally, but is not correct in x86_64
+		// i have no device to test, so revert it for x86_64
+		static int init_count = 0;
+		if (++init_count == 2) {
+			// 1: /system/bin/init selinux_setup
+			// 2: /system/bin/init second_stage
+			pr_info("/system/bin/init second_stage executed\n");
+			apply_kernelsu_rules();
+		}
+#endif
 	}
 
-	if (first_app_process &&
-	    !memcmp(filename->name, app_process, sizeof(app_process) - 1)) {
+	if (unlikely(first_app_process &&
+	    !memcmp(filename->name, app_process, sizeof(app_process) - 1))) {
 		first_app_process = false;
 		pr_info("exec app_process, /data prepared, second_stage: %d\n", init_second_stage_executed);
 		on_post_fs_data(); // we keep this for old ksud
@@ -229,7 +250,7 @@ int ksu_handle_vfs_read(struct file **file_ptr, char __user **buf_ptr,
 			size_t *count_ptr, loff_t **pos)
 {
 #ifndef CONFIG_KPROBES
-	if (!vfs_read_hook) {
+	if (!ksu_vfs_read_hook) {
 		return 0;
 	}
 #endif
@@ -330,7 +351,7 @@ int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code,
 				  int *value)
 {
 #ifndef CONFIG_KPROBES
-	if (!input_hook) {
+	if (!ksu_input_hook) {
 		return 0;
 	}
 #endif
@@ -448,7 +469,7 @@ static void stop_vfs_read_hook()
 	bool ret = schedule_work(&stop_vfs_read_work);
 	pr_info("unregister vfs_read kprobe: %d!\n", ret);
 #else
-	vfs_read_hook = false;
+	ksu_vfs_read_hook = false;
 #endif
 }
 
@@ -458,7 +479,7 @@ static void stop_execve_hook()
 	bool ret = schedule_work(&stop_execve_hook_work);
 	pr_info("unregister execve kprobe: %d!\n", ret);
 #else
-	execveat_hook = false;
+	ksu_execveat_hook = false;
 #endif
 }
 
@@ -473,7 +494,7 @@ static void stop_input_hook()
 	bool ret = schedule_work(&stop_input_hook_work);
 	pr_info("unregister input kprobe: %d!\n", ret);
 #else
-	input_hook = false;
+	ksu_input_hook = false;
 #endif
 }
 

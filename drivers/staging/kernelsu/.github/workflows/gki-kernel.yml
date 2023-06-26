@@ -45,6 +45,10 @@ on:
         description: >
           Artifact name of prebuilt ksud to be embedded
           for example: ksud-aarch64-linux-android
+      debug:
+        required: false
+        type: boolean
+        default: false
     secrets:
       BOOT_SIGN_KEY:
         required: false
@@ -86,11 +90,18 @@ jobs:
           git clone https://gerrit.googlesource.com/git-repo
           mkdir android-kernel && cd android-kernel
           ../git-repo/repo init --depth=1 --u https://android.googlesource.com/kernel/manifest -b common-${{ inputs.tag }}
+          REMOTE_BRANCH=$(git ls-remote https://android.googlesource.com/kernel/common ${{ inputs.tag }})
+          if grep -q deprecated <<< $REMOTE_BRANCH; then
+            echo "Found deprecated branch: ${{ inputs.tag }}"
+            sed -i 's/"${{ inputs.tag }}"/"deprecated\/${{ inputs.tag }}"/g' .repo/manifests/default.xml
+            cat .repo/manifests/default.xml
+          fi
           ../git-repo/repo sync -j$(nproc --all)
 
       - name: Setup KernelSU
         env:
           PATCH_PATH: ${{ inputs.patch_path }}
+          IS_DEBUG_KERNEL: ${{ inputs.debug }}
         run: |
           cd $GITHUB_WORKSPACE/android-kernel
           echo "[+] KernelSU setup"
@@ -103,6 +114,13 @@ jobs:
           grep -q "kernelsu" $DRIVER_MAKEFILE || echo "obj-y += kernelsu/" >> $DRIVER_MAKEFILE
           echo "[+] Apply KernelSU patches"
           cd $GKI_ROOT/common/ && git apply $GITHUB_WORKSPACE/KernelSU/.github/patches/$PATCH_PATH/*.patch
+          echo "[+] Patch script/setlocalversion"
+          sed -i 's/-dirty//g' $GKI_ROOT/common/scripts/setlocalversion
+
+          if [ "$IS_DEBUG_KERNEL" = "true" ]; then
+            echo "[+] Enable debug features for kernel"
+            echo "ccflags-y += -DCONFIG_KSU_DEBUG" >> $GITHUB_WORKSPACE/KernelSU/kernel/Makefile
+          fi
           echo "[+] KernelSU setup done."
 
       - name: Symbol magic

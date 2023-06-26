@@ -102,6 +102,9 @@ static int sde_backlight_device_update_status(struct backlight_device *bd)
 		bl_lvl = 0;
 	}
 
+	if (bl_lvl > 2047)
+		bl_lvl = 4095;
+
 	if (!c_conn->allow_bl_update) {
 		c_conn->unset_bl_level = bl_lvl;
 		return 0;
@@ -626,6 +629,9 @@ static void sde_connector_pre_update_fod_hbm(struct sde_connector *c_conn)
 	dsi_panel_set_fod_hbm(panel, status);
 
 	dsi_panel_set_fod_ui(panel, status);
+
+	if (!status)
+		_sde_connector_update_bl_scale(c_conn);
 }
 
 int sde_connector_pre_kickoff(struct drm_connector *connector)

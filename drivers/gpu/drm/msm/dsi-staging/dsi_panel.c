@@ -705,9 +705,7 @@ u8 dsi_panel_get_fod_dim_alpha(struct dsi_panel *panel)
 {
 	u8 alpha;
 
-	mutex_lock(&panel->panel_lock);
 	alpha = panel->fod_dim_alpha - panel->dc_dim_alpha;
-	mutex_unlock(&panel->panel_lock);
 
 	alpha = alpha < 1 ? 1 : alpha;
 
@@ -718,9 +716,7 @@ u8 dsi_panel_get_dc_dim_alpha(struct dsi_panel *panel)
 {
 	u8 alpha;
 
-	mutex_lock(&panel->panel_lock);
 	alpha = panel->dc_dim_alpha;
-	mutex_unlock(&panel->panel_lock);
 
 	return alpha;
 }
@@ -5056,9 +5052,7 @@ int dsi_panel_apply_hbm_mode(struct dsi_panel *panel)
 		type = type_map[0];
 	}
 
-	mutex_lock(&panel->panel_lock);
 	rc = dsi_panel_tx_cmd_set(panel, type);
-	mutex_unlock(&panel->panel_lock);
 
 	return rc;
 }
