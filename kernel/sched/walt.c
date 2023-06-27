@@ -2741,7 +2741,7 @@ static inline bool uclamp_task_colocated(struct task_struct *p)
 		return false;
 	}
 	tg = container_of(css, struct task_group, css);
-	if (tg->latency_sensitive == 1 || tg->boosted == 1)
+	if (tg->latency_sensitive == 1)
 		colocate = true;
 	else
 		colocate = false;
