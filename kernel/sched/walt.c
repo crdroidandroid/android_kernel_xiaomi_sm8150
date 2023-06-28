@@ -2108,6 +2108,28 @@ void mark_task_starting(struct task_struct *p)
 	update_task_cpu_cycles(p, cpu_of(rq), wallclock);
 }
 
+#define pct_to_min_scaled(tunable) \
+		div64_u64(((u64)sched_ravg_window * tunable) << 10, \
+			   (u64)sched_cluster[0]->load_scale_factor)
+
+static inline void walt_update_group_thresholds(void)
+{
+	switch (kp_active_mode()) {
+	case 3:
+		sched_group_upmigrate = pct_to_min_scaled(90);
+		sched_group_downmigrate = pct_to_min_scaled(70);
+		break;
+	case 1:
+		sched_group_upmigrate = pct_to_min_scaled(115);
+		sched_group_downmigrate = pct_to_min_scaled(100);
+		break;
+	default:
+		sched_group_upmigrate = pct_to_min_scaled(95);
+		sched_group_downmigrate = pct_to_min_scaled(85);
+		break;
+	}
+}
+
 static cpumask_t all_cluster_cpus = CPU_MASK_NONE;
 DECLARE_BITMAP(all_cluster_ids, NR_CPUS);
 struct sched_cluster *sched_cluster[NR_CPUS];
