@@ -52,39 +52,7 @@ static inline bool is_isolated_uid(uid_t uid)
 		appid <= LAST_APP_ZYGOTE_ISOLATED_UID);
 }
 
-static void setup_groups(struct root_profile *profile, struct cred *cred)
-{
-	if (profile->groups_count > KSU_MAX_GROUPS) {
-		pr_warn("Failed to setgroups, too large group: %d!\n",
-			profile->uid);
-		return;
-	}
-
-	u32 ngroups = profile->groups_count;
-	struct group_info *group_info = groups_alloc(ngroups);
-	if (!group_info) {
-		pr_warn("Failed to setgroups, ENOMEM for: %d\n", profile->uid);
-		return;
-	}
-
-	for (int i = 0; i < ngroups; i++) {
-		gid_t gid = profile->groups[i];
-		kgid_t kgid = make_kgid(current_user_ns(), gid);
-		if (!gid_valid(kgid)) {
-			pr_warn("Failed to setgroups, invalid gid: %d\n", gid);
-			put_group_info(group_info);
-			return;
-		}
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
-		group_info->gid[i] = kgid;
-#else
-		GROUP_AT(group_info, i) = kgid;
-#endif
-	}
-
-	groups_sort(group_info);
-	set_groups(cred, group_info);
-}
+static struct group_info root_groups = { .usage = ATOMIC_INIT(2) };
 
 static void setup_groups(struct root_profile *profile, struct cred *cred)
 {
@@ -507,12 +475,7 @@ static bool should_umount(struct path *path)
 
 	if (path->mnt && path->mnt->mnt_sb && path->mnt->mnt_sb->s_type) {
 		const char *fstype = path->mnt->mnt_sb->s_type->name;
-		if (strcmp(fstype, "overlay") == 0) {
-			return ksu_uid_should_umount(current_uid().val);
-		}
-#ifdef CONFIG_KSU_DEBUG
-		pr_info("uid: %d should not umount!\n", current_uid().val);
-#endif
+		return strcmp(fstype, "overlay") == 0;
 	}
 	return false;
 }
