@@ -2073,11 +2073,11 @@ static inline void walt_update_group_thresholds(void)
 	switch (kp_active_mode()) {
 	case 3:
 		sched_group_upmigrate = pct_to_min_scaled(90);
-		sched_group_downmigrate = pct_to_min_scaled(75);
+		sched_group_downmigrate = pct_to_min_scaled(70);
 		break;
 	case 1:
-		sched_group_upmigrate = pct_to_min_scaled(105);
-		sched_group_downmigrate = pct_to_min_scaled(97);
+		sched_group_upmigrate = pct_to_min_scaled(115);
+		sched_group_downmigrate = pct_to_min_scaled(100);
 		break;
 	default:
 		sched_group_upmigrate = pct_to_min_scaled(95);
