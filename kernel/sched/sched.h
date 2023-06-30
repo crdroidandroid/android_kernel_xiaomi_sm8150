@@ -2692,6 +2692,7 @@ walt_task_in_cum_window_demand(struct rq *rq, struct task_struct *p)
 
 #endif /* CONFIG_SCHED_WALT */
 
+extern int kp_active_mode(void);
 #ifdef CONFIG_UCLAMP_TASK_GROUP
 static inline bool uclamp_latency_sensitive(struct task_struct *p)
 {
@@ -2702,6 +2703,9 @@ static inline bool uclamp_latency_sensitive(struct task_struct *p)
 		return false;
 
 	if (!strlen(css->cgroup->kn->name))
+		return 0;
+
+	if (kp_active_mode() == 1)
 		return 0;
 
 	tg = container_of(css, struct task_group, css);
@@ -2718,6 +2722,9 @@ static inline bool uclamp_boosted(struct task_struct *p)
 		return false;
 
 	if (!strlen(css->cgroup->kn->name))
+		return 0;
+
+	if (kp_active_mode() == 1)
 		return 0;
 
 	tg = container_of(css, struct task_group, css);

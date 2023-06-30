@@ -333,6 +333,7 @@ extern pgprot_t protection_map[16];
 /* Speculative fault, not holding mmap_sem */
 #define FAULT_FLAG_SPECULATIVE	0x200
 #define FAULT_FLAG_PREFAULT_OLD 0x400   /* Make faultaround ptes old */
+#define FAULT_FLAG_INTERRUPTIBLE		0x800
 
 #define FAULT_FLAG_TRACE \
 	{ FAULT_FLAG_WRITE,		"WRITE" }, \
@@ -343,7 +344,8 @@ extern pgprot_t protection_map[16];
 	{ FAULT_FLAG_TRIED,		"TRIED" }, \
 	{ FAULT_FLAG_USER,		"USER" }, \
 	{ FAULT_FLAG_REMOTE,		"REMOTE" }, \
-	{ FAULT_FLAG_INSTRUCTION,	"INSTRUCTION" }
+	{ FAULT_FLAG_INSTRUCTION,	"INSTRUCTION" }, \
+	{ FAULT_FLAG_INTERRUPTIBLE,	"INTERRUPTIBLE" }
 
 /*
  * vm_fault is filled by the the pagefault handler and passed to the vma's
@@ -1451,6 +1453,13 @@ static inline void unmap_shared_mapping_range(struct address_space *mapping,
 #ifdef CONFIG_SPECULATIVE_PAGE_FAULT
 static inline void vm_write_begin(struct vm_area_struct *vma)
 {
+	/*
+	 * Isolated vma might be freed without exclusive mmap_lock but
+	 * speculative page fault handler still needs to know it was changed.
+	 */
+	if (!RB_EMPTY_NODE(&vma->vm_rb))
+		WARN_ON_ONCE(!rwsem_is_locked(&(vma->vm_mm)->mmap_sem));
+
 	write_seqcount_begin(&vma->vm_sequence);
 }
 static inline void vm_write_begin_nested(struct vm_area_struct *vma,
