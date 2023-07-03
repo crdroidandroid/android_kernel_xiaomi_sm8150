@@ -17,7 +17,7 @@ export THINLTO_CACHE=~/ltocache/
 DEFCONFIG="raphael_defconfig"
 
 # Kernel Details
-VER="R4.0-STANDALONE-DSP"
+VER="R4.1-STANDALONE-DSP"
 
 # Paths
 KERNEL_DIR=`pwd`
