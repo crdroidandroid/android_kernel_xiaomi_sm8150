@@ -69,6 +69,9 @@ module_param(wake_boost_duration, short, 0644);
 static bool input_boost_enable = true;
 module_param(input_boost_enable, bool, 0644);
 
+#if(CONFIG_INPUT_BOOST_DURATION_MS != 0)
+unsigned long last_input_time;
+#endif
 
 enum {
 	SCREEN_OFF,
@@ -343,6 +346,10 @@ static void cpu_input_boost_input_event(struct input_handle *handle,
 	struct boost_drv *b = handle->handler->private;
 
 	__cpu_input_boost_kick(b);
+
+#if(CONFIG_INPUT_BOOST_DURATION_MS != 0)
+	last_input_time = jiffies;
+#endif
 }
 
 static int cpu_input_boost_input_connect(struct input_handler *handler,
