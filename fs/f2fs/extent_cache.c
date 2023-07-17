@@ -199,7 +199,7 @@ static struct rb_entry *__lookup_rb_tree_slow(struct rb_root_cached *root,
 	return NULL;
 }
 
-static struct rb_entry *f2fs_lookup_rb_tree(struct rb_root_cached *root,
+struct rb_entry *f2fs_lookup_rb_tree(struct rb_root_cached *root,
 				struct rb_entry *cached_re, unsigned int ofs)
 {
 	struct rb_entry *re;
@@ -211,7 +211,7 @@ static struct rb_entry *f2fs_lookup_rb_tree(struct rb_root_cached *root,
 	return re;
 }
 
-static struct rb_node **f2fs_lookup_rb_tree_for_insert(struct f2fs_sb_info *sbi,
+struct rb_node **f2fs_lookup_rb_tree_for_insert(struct f2fs_sb_info *sbi,
 				struct rb_root_cached *root,
 				struct rb_node **parent,
 				unsigned int ofs, bool *leftmost)
@@ -245,7 +245,7 @@ static struct rb_node **f2fs_lookup_rb_tree_for_insert(struct f2fs_sb_info *sbi,
  * in order to simplify the insertion after.
  * tree must stay unchanged between lookup and insertion.
  */
-static struct rb_entry *f2fs_lookup_rb_tree_ret(struct rb_root_cached *root,
+struct rb_entry *f2fs_lookup_rb_tree_ret(struct rb_root_cached *root,
 				struct rb_entry *cached_re,
 				unsigned int ofs,
 				struct rb_entry **prev_entry,
@@ -316,6 +316,36 @@ lookup_neighbors:
 		*next_entry = rb_entry_safe(tmp_node, struct rb_entry, rb_node);
 	}
 	return re;
+}
+
+bool f2fs_check_rb_tree_consistence(struct f2fs_sb_info *sbi,
+				struct rb_root_cached *root)
+{
+#ifdef CONFIG_F2FS_CHECK_FS
+	struct rb_node *cur = rb_first_cached(root), *next;
+	struct rb_entry *cur_re, *next_re;
+
+	if (!cur)
+		return true;
+
+	while (cur) {
+		next = rb_next(cur);
+		if (!next)
+			return true;
+
+		cur_re = rb_entry(cur, struct rb_entry, rb_node);
+		next_re = rb_entry(next, struct rb_entry, rb_node);
+
+		if (cur_re->ofs + cur_re->len > next_re->ofs) {
+			f2fs_info(sbi, "inconsistent rbtree, cur(%u, %u) next(%u, %u)",
+				  cur_re->ofs, cur_re->len,
+				  next_re->ofs, next_re->len);
+			return false;
+		}
+		cur = next;
+	}
+#endif
+	return true;
 }
 
 static struct kmem_cache *extent_tree_slab;
