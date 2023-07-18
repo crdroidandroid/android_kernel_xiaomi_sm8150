@@ -479,11 +479,11 @@ static u32  top_task_load(struct rq *rq)
 		if (!test_bit(msb, rq->top_tasks_bitmap[prev]))
 			return 0;
 		else
-			return sched_load_granule;
+			return (sched_ravg_window / NUM_LOAD_INDICES);
 	} else if (index == NUM_LOAD_INDICES - 1) {
 		return sched_ravg_window;
 	} else {
-		return (index + 1) * sched_load_granule;
+		return (index + 1) * (sched_ravg_window / NUM_LOAD_INDICES);
 	}
 }
 
@@ -685,7 +685,7 @@ static inline void inter_cluster_migration_fixup
 
 static u32 load_to_index(u32 load)
 {
-	u32 index = load / sched_load_granule;
+	u32 index = load / (sched_ravg_window / NUM_LOAD_INDICES);
 
 	return min(index, (u32)(NUM_LOAD_INDICES - 1));
 }
