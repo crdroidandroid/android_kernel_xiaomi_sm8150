@@ -22,6 +22,7 @@
 #include <linux/syscore_ops.h>
 #include <linux/cpufreq.h>
 #include <linux/list_sort.h>
+#include <linux/module.h>
 #include <linux/jiffies.h>
 #include <linux/sched/stat.h>
 #include <trace/events/sched.h>
@@ -2068,24 +2069,6 @@ void mark_task_starting(struct task_struct *p)
 		div64_u64(((u64)sched_ravg_window * tunable) << 10, \
 			   (u64)sched_cluster[0]->load_scale_factor)
 
-static inline void walt_update_group_thresholds(void)
-{
-	switch (kp_active_mode()) {
-	case 3:
-		sched_group_upmigrate = pct_to_min_scaled(90);
-		sched_group_downmigrate = pct_to_min_scaled(70);
-		break;
-	case 1:
-		sched_group_upmigrate = pct_to_min_scaled(115);
-		sched_group_downmigrate = pct_to_min_scaled(100);
-		break;
-	default:
-		sched_group_upmigrate = pct_to_min_scaled(95);
-		sched_group_downmigrate = pct_to_min_scaled(85);
-		break;
-	}
-}
-
 static cpumask_t all_cluster_cpus = CPU_MASK_NONE;
 DECLARE_BITMAP(all_cluster_ids, NR_CPUS);
 struct sched_cluster *sched_cluster[NR_CPUS];
@@ -2271,7 +2254,6 @@ static void update_all_clusters_stats(void)
 
 	max_possible_capacity = highest_mpc;
 	min_max_possible_capacity = lowest_mpc;
-	walt_update_group_thresholds();
 
 	__update_min_max_capacity();
 	release_rq_locks_irqrestore(cpu_possible_mask, &flags);
@@ -2918,8 +2900,6 @@ void update_cpu_cluster_capacity(const cpumask_t *cpus)
 	}
 
 	__update_min_max_capacity();
-	if (cpumask_intersects(cpus, &sched_cluster[0]->cpus))
-		walt_update_group_thresholds();
 
 	release_rq_locks_irqrestore(cpu_possible_mask, &flags);
 }
@@ -3166,14 +3146,75 @@ done:
 	return ret;
 }
 
-static void walt_init_window_dep(void);
-static void walt_tunables_fixup(void)
+extern unsigned int KP_MODE_CHANGE;
+extern int kp_notifier_register_client(struct notifier_block *nb);
+extern int kp_notifier_unregister_client(struct notifier_block *nb);
+
+static int kp_mode_notifier_callback(struct notifier_block *nb, unsigned long event, void *data)
 {
-	walt_update_group_thresholds();
-	walt_init_window_dep();
+	int cpu;
+	unsigned int profile_mode = (unsigned int)data;
+	if (event == KP_MODE_CHANGE) {
+		for_each_cpu(cpu, cpu_possible_mask)
+			raw_spin_lock(&cpu_rq(cpu)->lock);
+
+		switch (profile_mode) {
+		case 1:
+			sched_ravg_window = 16000000;
+			sched_group_upmigrate = pct_to_min_scaled(90);
+			sched_group_upmigrate = pct_to_min_scaled(115);
+			sched_init_task_load_windows =
+				div64_u64((u64)5 *
+					(u64)sched_ravg_window, 100);
+			sched_init_task_load_windows_scaled =
+				scale_demand(sched_init_task_load_windows);
+			break;
+		case 3:
+			sched_ravg_window == 3000000;
+			sched_group_upmigrate = pct_to_min_scaled(90);
+			sched_group_downmigrate = pct_to_min_scaled(70);
+			sched_init_task_load_windows =
+				div64_u64((u64)25 *
+					(u64)sched_ravg_window, 100);
+			sched_init_task_load_windows_scaled =
+				scale_demand(sched_init_task_load_windows);
+			break;
+		default:
+			sched_ravg_window == 6000000;
+			sched_group_upmigrate = pct_to_min_scaled(95);
+			sched_group_downmigrate = pct_to_min_scaled(85);
+			sched_init_task_load_windows =
+				div64_u64((u64)15 *
+					(u64)sched_ravg_window, 100);
+			sched_init_task_load_windows_scaled =
+				scale_demand(sched_init_task_load_windows);
+			break;
+		}
+		for_each_cpu(cpu, cpu_possible_mask)
+			raw_spin_unlock(&cpu_rq(cpu)->lock);
+
+	}
+	return NOTIFY_OK;
 }
 
-extern int kp_active_mode(void);
+static struct notifier_block kp_mode_notifier = {
+	.notifier_call = kp_mode_notifier_callback,
+};
+
+static int __init walt_kp_init(void)
+{
+	// Register the driver module as a client of the Kprofiles event notifier
+	kp_notifier_register_client(&kp_mode_notifier);
+
+	return 0;
+}
+
+static void __exit walt_kp_exit(void)
+{
+	// Unregister the driver module as a client of the Kprofiles event notifier
+	kp_notifier_unregister_client(&kp_mode_notifier);
+}
+
 /*
  * Runs in hard-irq context. This should ideally run just after the latest
  * window roll-over.
@@ -3252,35 +3293,6 @@ void walt_irq_work(struct irq_work *irq_work)
 				cpufreq_update_util(cpu_rq(cpu), flag |
 							SCHED_CPUFREQ_CONTINUE);
 			i++;
-		}
-	}
-
-	/*
-	 * If the window change request is in pending, good place to
-	 * change sched_ravg_window since all rq locks are acquired.
-	 */
-	if (!is_migration) {
-		if ((kp_active_mode() == 3 && sched_ravg_window != 3000000) ||
-			(kp_active_mode() == 1 && sched_ravg_window != 12000000) ||
-			((kp_active_mode() == 0 || kp_active_mode() == 2) &&
-			sched_ravg_window != 6000000)) {
-			switch (kp_active_mode()) {
-			case 1:
-				new_sched_ravg_window == 16000000;
-			case 3:
-				new_sched_ravg_window == 3000000;
-			default:
-				new_sched_ravg_window == 6000000;
-			}
-		}
-
-		if (sched_ravg_window != new_sched_ravg_window) {
-			printk_deferred("ALERT: changing window size from %u to %u at %lu\n",
-					sched_ravg_window,
-					new_sched_ravg_window,
-					sched_ktime_clock());
-			sched_ravg_window = new_sched_ravg_window;
-			walt_tunables_fixup();
 		}
 	}
 
@@ -3371,8 +3383,6 @@ int walt_proc_group_thresholds_handler(struct ctl_table *table, int write,
 {
 	int ret;
 	static DEFINE_MUTEX(mutex);
-	struct rq *rq = cpu_rq(cpumask_first(cpu_possible_mask));
-	unsigned long flags;
 
 	mutex_lock(&mutex);
 	ret = proc_dointvec_minmax(table, write, buffer, lenp, ppos);
@@ -3380,16 +3390,6 @@ int walt_proc_group_thresholds_handler(struct ctl_table *table, int write,
 		mutex_unlock(&mutex);
 		return ret;
 	}
-
-	/*
-	 * The load scale factor update happens with all
-	 * rqs locked. so acquiring 1 CPU rq lock and
-	 * updating the thresholds is sufficient for
-	 * an atomic update.
-	 */
-	raw_spin_lock_irqsave(&rq->lock, flags);
-	walt_update_group_thresholds();
-	raw_spin_unlock_irqrestore(&rq->lock, flags);
 
 	mutex_unlock(&mutex);
 
@@ -3402,22 +3402,8 @@ static void walt_init_once(void)
 	    (sched_ravg_window >> SCHED_CAPACITY_SHIFT) * 100;
 	walt_scale_demand_divisor = sched_ravg_window >> SCHED_CAPACITY_SHIFT;
 
-	unsigned int init_task_load_pct;
-
-	switch (kp_active_mode()) {
-	case 3:
-		init_task_load_pct = 25;
-		break;
-	case 1:
-		init_task_load_pct = 5;
-		break;
-	default:
-		init_task_load_pct = 15;
-		break;
-	}
-
 	sched_init_task_load_windows =
-		div64_u64((u64)init_task_load_pct *
+		div64_u64((u64)15 *
 			  (u64)sched_ravg_window, 100);
 	sched_init_task_load_windows_scaled =
 		scale_demand(sched_init_task_load_windows);
@@ -3478,3 +3464,5 @@ void walt_sched_init_rq(struct rq *rq)
 	rq->cum_window_demand_scaled = 0;
 	rq->notif_pending = false;
 }
+module_init(walt_kp_init);
+module_exit(walt_kp_exit);
