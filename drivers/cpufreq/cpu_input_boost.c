@@ -185,7 +185,7 @@ static void __cpu_input_boost_kick(struct boost_drv *b)
 	if (!input_boost_duration || !input_boost_enable)
 		return;
 
-	if (kp_active_mode() != 3)
+	if (kp_active_mode() == 1 && !test_bit(INPUT_BOOST, &b->state))
 		return;
 
 	set_bit(INPUT_BOOST, &b->state);
@@ -211,7 +211,7 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 	if (test_bit(SCREEN_OFF, &b->state))
 		return;
 
-	if (kp_active_mode() != 3 && !always)
+	if (kp_active_mode() == 1 && !always && !test_bit(MAX_BOOST, &b->state))
 		return;
 
 	do {
