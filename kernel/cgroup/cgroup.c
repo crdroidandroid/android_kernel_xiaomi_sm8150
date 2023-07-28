@@ -4859,10 +4859,10 @@ static struct cftype cgroup_base_files[] = {
  * and thus involve punting to css->destroy_work adding two additional
  * steps to the already complex sequence.
  */
-static void css_free_rwork_fn(struct work_struct *work)
+static void css_free_work_fn(struct work_struct *work)
 {
-	struct cgroup_subsys_state *css = container_of(to_rcu_work(work),
-				struct cgroup_subsys_state, destroy_rwork);
+	struct cgroup_subsys_state *css =
+		container_of(work, struct cgroup_subsys_state, destroy_work);
 	struct cgroup_subsys *ss = css->ss;
 	struct cgroup *cgrp = css->cgroup;
 
@@ -4906,6 +4906,15 @@ static void css_free_rwork_fn(struct work_struct *work)
 			cgroup_destroy_root(cgrp->root);
 		}
 	}
+}
+
+static void css_free_rcu_fn(struct rcu_head *rcu_head)
+{
+	struct cgroup_subsys_state *css =
+		container_of(rcu_head, struct cgroup_subsys_state, rcu_head);
+
+	INIT_WORK(&css->destroy_work, css_free_work_fn);
+	queue_work(cgroup_destroy_wq, &css->destroy_work);
 }
 
 static void css_release_work_fn(struct work_struct *work)
@@ -4956,8 +4965,7 @@ static void css_release_work_fn(struct work_struct *work)
 
 	mutex_unlock(&cgroup_mutex);
 
-	INIT_RCU_WORK(&css->destroy_rwork, css_free_rwork_fn);
-	queue_rcu_work(cgroup_destroy_wq, &css->destroy_rwork);
+	call_rcu(&css->rcu_head, css_free_rcu_fn);
 }
 
 static void css_release(struct percpu_ref *ref)
@@ -5091,8 +5099,7 @@ static struct cgroup_subsys_state *css_create(struct cgroup *cgrp,
 err_list_del:
 	list_del_rcu(&css->sibling);
 err_free_css:
-	INIT_RCU_WORK(&css->destroy_rwork, css_free_rwork_fn);
-	queue_rcu_work(cgroup_destroy_wq, &css->destroy_rwork);
+	call_rcu(&css->rcu_head, css_free_rcu_fn);
 	return ERR_PTR(err);
 }
 
