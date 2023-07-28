@@ -10,6 +10,7 @@
 #include <linux/kthread.h>
 #include <linux/msm_drm_notify.h>
 #include <linux/slab.h>
+#include <linux/event_tracking.h>
 #include <uapi/linux/sched/types.h>
 
 #if(CONFIG_INPUT_BOOST_DURATION_MS == 0)

@@ -32,6 +32,7 @@
 #include <drm/drm_print.h>
 #include <linux/cpu_input_boost.h>
 #include <linux/devfreq_boost.h>
+#include <linux/event_tracking.h>
 #include <linux/pm_qos.h>
 #include <linux/sync_file.h>
 

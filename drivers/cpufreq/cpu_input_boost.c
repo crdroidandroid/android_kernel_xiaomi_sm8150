@@ -14,6 +14,7 @@
 #include <linux/slab.h>
 #include <linux/version.h>
 #include <drm/drm_panel.h>
+#include <linux/event_tracking.h>
 
 /* The sched_param struct is located elsewhere in newer kernels */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
