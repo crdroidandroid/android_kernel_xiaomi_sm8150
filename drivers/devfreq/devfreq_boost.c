@@ -83,13 +83,11 @@ void devfreq_boost_kick(enum df_device device)
 }
 
 static void __devfreq_boost_kick_max(struct boost_dev *b,
-				     unsigned int duration_ms,
-				     bool always)
+				     unsigned int duration_ms)
 {
 	unsigned long boost_jiffies, curr_expires, new_expires;
 
-	if (!READ_ONCE(b->df) || test_bit(SCREEN_OFF, &b->state) ||
-		(kp_active_mode() == 1 && !always))
+	if (!READ_ONCE(b->df) || test_bit(SCREEN_OFF, &b->state) || kp_active_mode() == 1)
 		return;
 
 	boost_jiffies = msecs_to_jiffies(duration_ms);
@@ -112,11 +110,11 @@ static void __devfreq_boost_kick_max(struct boost_dev *b,
 	}
 }
 
-void devfreq_boost_kick_max(enum df_device device, unsigned int duration_ms, bool always)
+void devfreq_boost_kick_max(enum df_device device, unsigned int duration_ms)
 {
 	struct df_boost_drv *d = &df_boost_drv_g;
 
-	__devfreq_boost_kick_max(d->devices + device, duration_ms, always);
+	__devfreq_boost_kick_max(&d->devices[device], duration_ms);
 }
 
 void devfreq_register_boost_device(enum df_device device, struct devfreq *df)
@@ -212,8 +210,7 @@ static int msm_drm_notifier_cb(struct notifier_block *nb,
 		if (*blank == MSM_DRM_BLANK_UNBLANK) {
 			clear_bit(SCREEN_OFF, &b->state);
 			__devfreq_boost_kick_max(b,
-				CONFIG_DEVFREQ_WAKE_BOOST_DURATION_MS,
-				false);
+				CONFIG_DEVFREQ_WAKE_BOOST_DURATION_MS);
 		} else {
 			set_bit(SCREEN_OFF, &b->state);
 			wake_up(&b->boost_waitq);
