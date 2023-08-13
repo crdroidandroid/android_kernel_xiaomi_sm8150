@@ -17,11 +17,6 @@
 #ifdef CONFIG_SCHED_WALT
 
 #include <linux/sched/sysctl.h>
-/* Default window size (in ns) = 12ms */
-#define DEFAULT_SCHED_RAVG_WINDOW 12000000
-
-/* Max window size (in ns) = 600ms */
-#define NR_WINDOWS_PER_SEC (NSEC_PER_SEC / DEFAULT_SCHED_RAVG_WINDOW)
 
 #define WINDOW_STATS_RECENT		0
 #define WINDOW_STATS_MAX		1
