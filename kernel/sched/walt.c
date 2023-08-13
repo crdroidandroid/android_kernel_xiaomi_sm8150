@@ -3275,35 +3275,6 @@ void walt_irq_work(struct irq_work *irq_work)
 		}
 	}
 
-	/*
-	 * If the window change request is in pending, good place to
-	 * change sched_ravg_window since all rq locks are acquired.
-	 */
-	if (!is_migration) {
-		if ((kp_active_mode() == 3 && sched_ravg_window != 3000000) ||
-			(kp_active_mode() == 1 && sched_ravg_window != 12000000) ||
-			((kp_active_mode() == 0 || kp_active_mode() == 2) &&
-			sched_ravg_window != 6000000)) {
-			switch (kp_active_mode()) {
-			case 1:
-				new_sched_ravg_window == 16000000;
-			case 3:
-				new_sched_ravg_window == 3000000;
-			default:
-				new_sched_ravg_window == 6000000;
-			}
-		}
-
-		if (sched_ravg_window != new_sched_ravg_window) {
-			printk_deferred("ALERT: changing window size from %u to %u at %lu\n",
-					sched_ravg_window,
-					new_sched_ravg_window,
-					sched_ktime_clock());
-			sched_ravg_window = new_sched_ravg_window;
-			walt_tunables_fixup();
-		}
-	}
-
 	for_each_cpu(cpu, cpu_possible_mask)
 		raw_spin_unlock(&cpu_rq(cpu)->lock);
 
