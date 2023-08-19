@@ -5,6 +5,7 @@
  */
 #include "internal.h"
 #include <linux/pagevec.h>
+#include <linux/xarray.h>
 
 struct page *erofs_allocpage(struct list_head *pool, gfp_t gfp)
 {
@@ -19,18 +20,6 @@ struct page *erofs_allocpage(struct list_head *pool, gfp_t gfp)
 	}
 	return page;
 }
-
-#if (EROFS_PCPUBUF_NR_PAGES > 0)
-static struct {
-	u8 data[PAGE_SIZE * EROFS_PCPUBUF_NR_PAGES];
-} ____cacheline_aligned_in_smp erofs_pcpubuf[NR_CPUS];
-
-void *erofs_get_pcpubuf(unsigned int pagenr)
-{
-	preempt_disable();
-	return &erofs_pcpubuf[smp_processor_id()].data[pagenr * PAGE_SIZE];
-}
-#endif
 
 #ifdef CONFIG_EROFS_FS_ZIP
 /* global shrink count (for all mounted EROFS instances) */
