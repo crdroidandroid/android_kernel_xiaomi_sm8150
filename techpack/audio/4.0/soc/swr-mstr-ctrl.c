@@ -2997,6 +2997,7 @@ static int swrm_runtime_suspend(struct device *dev)
 	struct swr_master *mstr = &swrm->master;
 	struct swr_device *swr_dev;
 	int current_state = 0;
+	struct irq_data *irq_data = NULL;
 
 	trace_printk("%s: pm_runtime: suspend state: %d\n",
 		__func__, swrm->state);
@@ -3101,7 +3102,9 @@ static int swrm_runtime_suspend(struct device *dev)
 
 		if (swrm->clk_stop_mode0_supp) {
 			if (swrm->wake_irq > 0) {
-				enable_irq(swrm->wake_irq);
+				irq_data = irq_get_irq_data(swrm->wake_irq);
+				if (irq_data && irqd_irq_disabled(irq_data))
+					enable_irq(swrm->wake_irq);
 			} else if (swrm->ipc_wakeup) {
 				msm_aud_evt_blocking_notifier_call_chain(
 					SWR_WAKE_IRQ_REGISTER, (void *)swrm);
@@ -3204,8 +3207,8 @@ static int swrm_alloc_port_mem(struct device *dev, struct swr_mstr_ctrl *swrm,
 				u32 uc, u32 size)
 {
 	if (!swrm->port_param) {
-		swrm->port_param = devm_kzalloc(dev,
-					sizeof(swrm->port_param) * SWR_UC_MAX,
+		swrm->port_param = devm_kcalloc(dev,
+					SWR_UC_MAX, sizeof(swrm->port_param),
 					GFP_KERNEL);
 		if (!swrm->port_param)
 			return -ENOMEM;

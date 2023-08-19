@@ -71,7 +71,7 @@ void tty_buffer_unlock_exclusive(struct tty_port *port)
 	atomic_dec(&buf->priority);
 	mutex_unlock(&buf->lock);
 	if (restart)
-		queue_work(system_unbound_wq, &buf->work);
+		kthread_queue_work(&port->worker, &buf->work);
 }
 EXPORT_SYMBOL_GPL(tty_buffer_unlock_exclusive);
 
@@ -132,6 +132,8 @@ void tty_buffer_free_all(struct tty_port *port)
 	buf->tail = &buf->sentinel;
 
 	atomic_set(&buf->mem_used, 0);
+	if (!IS_ERR_OR_NULL(port->worker_thread))
+		kthread_stop(port->worker_thread);
 }
 
 /**
@@ -471,7 +473,7 @@ receive_buf(struct tty_port *port, struct tty_buffer *head, int count)
  *		 'consumer'
  */
 
-static void flush_to_ldisc(struct work_struct *work)
+static void flush_to_ldisc(struct kthread_work *work)
 {
 	struct tty_port *port = container_of(work, struct tty_port, buf.work);
 	struct tty_bufhead *buf = &port->buf;
@@ -542,7 +544,7 @@ void tty_flip_buffer_push(struct tty_port *port)
 	struct tty_bufhead *buf = &port->buf;
 
 	tty_flip_buffer_commit(buf->tail);
-	queue_work(system_unbound_wq, &buf->work);
+	kthread_queue_work(&port->worker, &buf->work);
 }
 EXPORT_SYMBOL(tty_flip_buffer_push);
 
@@ -572,7 +574,7 @@ int tty_insert_flip_string_and_push_buffer(struct tty_port *port,
 		tty_flip_buffer_commit(buf->tail);
 	spin_unlock_irqrestore(&port->lock, flags);
 
-	queue_work(system_unbound_wq, &buf->work);
+	kthread_queue_work(&port->worker, &buf->work);
 
 	return size;
 }
@@ -596,8 +598,17 @@ void tty_buffer_init(struct tty_port *port)
 	init_llist_head(&buf->free);
 	atomic_set(&buf->mem_used, 0);
 	atomic_set(&buf->priority, 0);
-	INIT_WORK(&buf->work, flush_to_ldisc);
 	buf->mem_limit = TTYB_DEFAULT_MEM_LIMIT;
+	kthread_init_work(&buf->work, flush_to_ldisc);
+	kthread_init_worker(&port->worker);
+	port->worker_thread = kthread_run(kthread_worker_fn, &port->worker,
+					  "tty_worker_thread");
+	if (IS_ERR(port->worker_thread))
+		/*
+		 * Not good, we can't unwind, this tty is going to be really
+		 * sad...
+		 */
+		pr_err("Unable to start tty_worker_thread\n");
 }
 
 /**
@@ -625,15 +636,15 @@ void tty_buffer_set_lock_subclass(struct tty_port *port)
 
 bool tty_buffer_restart_work(struct tty_port *port)
 {
-	return queue_work(system_unbound_wq, &port->buf.work);
+	return kthread_queue_work(&port->worker, &port->buf.work);
 }
 
 bool tty_buffer_cancel_work(struct tty_port *port)
 {
-	return cancel_work_sync(&port->buf.work);
+	return kthread_cancel_work_sync(&port->buf.work);
 }
 
 void tty_buffer_flush_work(struct tty_port *port)
 {
-	flush_work(&port->buf.work);
+	kthread_flush_work(&port->buf.work);
 }

@@ -805,6 +805,7 @@ struct task_struct {
 	atomic_t			usage;
 	/* Per task flags (PF_*), defined further below: */
 	unsigned int			flags;
+	unsigned int			pc_flags;
 	unsigned int			ptrace;
 
 #ifdef CONFIG_SMP
@@ -818,14 +819,6 @@ struct task_struct {
 	unsigned long			wakee_flip_decay_ts;
 	struct task_struct		*last_wakee;
 
-	/*
-	 * recent_used_cpu is initially set as the last CPU used by a task
-	 * that wakes affine another task. Waker/wakee relationships can
-	 * push tasks around a CPU where each wakeup moves to the next one.
-	 * Tracking a recently used CPU allows a quick search for a recently
-	 * used CPU that may be idle.
-	 */
-	int				recent_used_cpu;
 	int				wake_cpu;
 #endif
 	int				on_rq;
@@ -1678,6 +1671,14 @@ extern struct pid *cad_pid;
 #define PF_MUTEX_TESTER		0x20000000	/* Thread belongs to the rt mutex tester */
 #define PF_FREEZER_SKIP		0x40000000	/* Freezer should not count it as freezable */
 #define PF_SUSPEND_TASK		0x80000000      /* This thread called freeze_processes() and should not be frozen */
+
+/*
+ * Perf critical flags
+ */
+#define PC_LITTLE_AFFINE		0x00000001
+#define PC_PERF_AFFINE			0x00000002
+#define PC_PRIME_AFFINE			0x00000004
+#define PC_HP_AFFINE			0x00000008
 
 /*
  * Only the _current_ task can read/write to tsk->flags, but other

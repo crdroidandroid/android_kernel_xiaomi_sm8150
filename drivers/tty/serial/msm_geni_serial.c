@@ -117,7 +117,7 @@
 #define UART_CORE2X_VOTE	(5000)
 #define UART_CONSOLE_CORE2X_VOTE (960)
 
-#define WAKEBYTE_TIMEOUT_MSEC	(100)
+#define WAKEBYTE_TIMEOUT_MSEC	(2000)
 #define WAIT_XFER_MAX_ITER	(2)
 #define WAIT_XFER_MAX_TIMEOUT_US	(10000)
 #define WAIT_XFER_MIN_TIMEOUT_US	(9000)
@@ -147,10 +147,14 @@
  */
 #define POLL_ITERATIONS		1000
 
+#ifdef CONFIG_IPC_LOGGING
 #define IPC_LOG_MSG(ctx, x...) do { \
 	if (ctx) \
 		ipc_log_string(ctx, x); \
 } while (0)
+#else
+#define IPC_LOG_MSG(x, y...) // no-ops
+#endif
 
 #define DMA_RX_BUF_SIZE		(2048)
 #define UART_CONSOLE_RX_WM	(2)
@@ -505,12 +509,12 @@ static void wait_for_transfers_inflight(struct uart_port *uport)
 		}
 	}
 	if (check_transfers_inflight(uport)) {
-		u32 geni_status = geni_read_reg_nolog(uport->membase,
+		u32 __maybe_unused geni_status = geni_read_reg_nolog(uport->membase,
 								SE_GENI_STATUS);
 		u32 geni_ios = geni_read_reg_nolog(uport->membase, SE_GENI_IOS);
-		u32 rx_fifo_status = geni_read_reg_nolog(uport->membase,
+		u32 __maybe_unused rx_fifo_status = geni_read_reg_nolog(uport->membase,
 							SE_GENI_RX_FIFO_STATUS);
-		u32 rx_dma =
+		u32 __maybe_unused rx_dma =
 			geni_read_reg_nolog(uport->membase, SE_DMA_RX_LEN_IN);
 		CTS = geni_ios & BIT(1); // b[1] = UART CTS <- Peer RFR
 		RX = geni_ios & BIT(0);  // b[0] = UART RX <- Peer TX
@@ -609,7 +613,7 @@ static int msm_geni_serial_ioctl(struct uart_port *uport, unsigned int cmd,
 
 static void msm_geni_serial_break_ctl(struct uart_port *uport, int ctl)
 {
-	struct msm_geni_serial_port *port = GET_DEV_PORT(uport);
+	struct msm_geni_serial_port __maybe_unused *port = GET_DEV_PORT(uport);
 
 	if (!uart_console(uport) && device_pending_suspend(uport)) {
 		IPC_LOG_MSG(port->ipc_log_misc,
@@ -774,7 +778,7 @@ static int msm_geni_serial_power_on(struct uart_port *uport)
 
 static void msm_geni_serial_power_off(struct uart_port *uport)
 {
-	struct msm_geni_serial_port *port = GET_DEV_PORT(uport);
+	struct msm_geni_serial_port __maybe_unused *port = GET_DEV_PORT(uport);
 	int usage_count = atomic_read(&uport->dev->power.usage_count);
 
 	if (!usage_count) {
@@ -1392,7 +1396,7 @@ static void stop_tx_sequencer(struct uart_port *uport)
 
 static void msm_geni_serial_stop_tx(struct uart_port *uport)
 {
-	struct msm_geni_serial_port *port = GET_DEV_PORT(uport);
+	struct msm_geni_serial_port __maybe_unused *port = GET_DEV_PORT(uport);
 
 	if (!uart_console(uport) && device_pending_suspend(uport)) {
 		dev_err(uport->dev, "%s.Device is suspended.\n", __func__);
@@ -1609,7 +1613,7 @@ exit_rx_seq:
 
 static void msm_geni_serial_stop_rx(struct uart_port *uport)
 {
-	struct msm_geni_serial_port *port = GET_DEV_PORT(uport);
+	struct msm_geni_serial_port __maybe_unused *port = GET_DEV_PORT(uport);
 	int ret;
 
 	if (!uart_console(uport) && device_pending_suspend(uport)) {
@@ -2272,8 +2276,6 @@ static void msm_geni_serial_shutdown(struct uart_port *uport)
 		console_stop(uport->cons);
 		disable_irq(uport->irq);
 	} else {
-		msm_geni_serial_power_on(uport);
-		wait_for_transfers_inflight(uport);
 		msm_geni_serial_stop_tx(uport);
 	}
 
@@ -2440,7 +2442,8 @@ static int msm_geni_serial_startup(struct uart_port *uport)
 		enable_irq(uport->irq);
 
 	if (msm_port->wakeup_irq > 0) {
-		ret = request_irq(msm_port->wakeup_irq, msm_geni_wakeup_isr,
+		ret = request_threaded_irq(msm_port->wakeup_irq, NULL,
+				msm_geni_wakeup_isr,
 				IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
 				"hs_uart_wakeup", uport);
 		if (unlikely(ret)) {
@@ -3037,6 +3040,7 @@ static void console_unregister(struct uart_driver *drv)
 }
 #endif /* defined(CONFIG_SERIAL_CORE_CONSOLE) || defined(CONFIG_CONSOLE_POLL) */
 
+#if defined(CONFIG_DEBUG_FS) && defined(CONFIG_IPC_LOGGING)
 static void msm_geni_serial_debug_init(struct uart_port *uport, bool console)
 {
 	struct msm_geni_serial_port *msm_port = GET_DEV_PORT(uport);
@@ -3105,6 +3109,11 @@ static void msm_geni_serial_debug_init(struct uart_port *uport, bool console)
 		}
 	}
 }
+#else
+static void msm_geni_serial_debug_init(struct uart_port *uport, bool console)
+{
+}
+#endif
 
 static void msm_geni_serial_cons_pm(struct uart_port *uport,
 		unsigned int new_state, unsigned int old_state)
@@ -3739,8 +3748,8 @@ static void msm_geni_serial_ssr_down(struct device *dev)
 	port->uart_ssr.is_ssr_down = true;
 	ret = pm_runtime_force_suspend(uport->dev);
 	if (ret) {
-		dev_err(uport->dev, "%s:force suspend failed %d\n", __func__,
-			ret);
+		dev_err(uport->dev, "%s:force suspend failed %d\n",
+						ret, __func__);
 		goto exit;
 	}
 

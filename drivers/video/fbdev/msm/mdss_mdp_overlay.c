@@ -6270,7 +6270,7 @@ static int __vsync_retire_setup(struct msm_fb_data_type *mfd)
 {
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
 	char name[24];
-	struct sched_param param = { .sched_priority = 5 };
+	struct sched_param param = { .sched_priority = 17 };
 
 	snprintf(name, sizeof(name), "mdss_fb%d_retire", mfd->index);
 	mfd->mdp_sync_pt_data.timeline_retire = mdss_create_timeline(name);
@@ -6291,7 +6291,7 @@ static int __vsync_retire_setup(struct msm_fb_data_type *mfd)
 		kthread_init_work(&mdp5_data->vsync_work,
 			__vsync_retire_work_handler);
 
-		mdp5_data->thread = kthread_run(kthread_worker_fn,
+		mdp5_data->thread = kthread_run_perf_critical(cpu_perf_mask kthread_worker_fn,
 					&mdp5_data->worker,
 					"vsync_retire_work");
 		if (IS_ERR(mdp5_data->thread)) {

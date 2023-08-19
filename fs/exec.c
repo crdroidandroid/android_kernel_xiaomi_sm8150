@@ -77,16 +77,19 @@ int suid_dumpable = 0;
 static LIST_HEAD(formats);
 static DEFINE_RWLOCK(binfmt_lock);
 
-#define HWCOMPOSER_BIN_PREFIX "/vendor/bin/hw/android.hardware.graphics.composer"
+#define SURFACEFLINGER_BIN_PREFIX "/system/bin/surfaceflinger"
+#define HWCOMPOSER_BIN_PREFIX "/vendor/bin/hw/android.hardware.graphics.composer@2.4-service"
+#define UDFPS_BIN_PREFIX "/vendor/bin/hw/android.hardware.biometrics.fingerprint@2.3-service.xiaomi_raphael"
 #define ZYGOTE32_BIN "/system/bin/app_process32"
 #define ZYGOTE64_BIN "/system/bin/app_process64"
-static struct signal_struct *zygote32_sig;
-static struct signal_struct *zygote64_sig;
+static struct task_struct *zygote32_task;
+static struct task_struct *zygote64_task;
 
-bool task_is_zygote(struct task_struct *p)
+bool task_is_zygote(struct task_struct *task)
 {
-	return p->signal == zygote32_sig || p->signal == zygote64_sig;
+	return task == zygote32_task || task == zygote64_task;
 }
+
 
 void __register_binfmt(struct linux_binfmt * fmt, int insert)
 {
@@ -1714,9 +1717,31 @@ static int exec_binprm(struct linux_binprm *bprm)
 	return ret;
 }
 
+#ifdef CONFIG_ANDROID_SIMPLE_LMK
+static noinline bool is_lmkd_reinit(struct user_arg_ptr *argv)
+{
+	const char __user *str;
+	char buf[10];
+	int len;
+
+	str = get_user_arg_ptr(*argv, 1);
+	if (IS_ERR(str))
+		return false;
+
+	// strnlen_user() counts NULL terminator
+	len = strnlen_user(str, MAX_ARG_STRLEN);
+	if (len != 9)
+		return false;
+
+	if (copy_from_user(buf, str, len))
+		return false;
+
+	return !strcmp(buf, "--reinit");
+}
+#endif
+
 extern int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *argv,
 			void *envp, int *flags);
-
 /*
  * sys_execve() executes a new program.
  */
@@ -1831,34 +1856,32 @@ static int do_execveat_common(int fd, struct filename *filename,
 	if (retval < 0)
 		goto out;
 
-	/*
-	 * When argv is empty, add an empty string ("") as argv[0] to
-	 * ensure confused userspace programs that start processing
-	 * from argv[1] won't end up walking envp. See also
-	 * bprm_stack_limits().
-	 */
-	if (bprm->argc == 0) {
-		const char *argv[] = { "", NULL };
-		retval = copy_strings_kernel(1, argv, bprm);
-		if (retval < 0)
+#ifdef CONFIG_ANDROID_SIMPLE_LMK
+	// Super nasty hack to disable lmkd reloading props
+	if (unlikely(strcmp(bprm->filename, "/system/bin/lmkd") == 0)) {
+		if (is_lmkd_reinit(&argv)) {
+			pr_info("sys_execve(): prevented /system/bin/lmkd --reinit\n");
+			retval = -ENOENT;
 			goto out;
-		bprm->argc = 1;
+		}
 	}
+#endif
 
 	retval = exec_binprm(bprm);
+
 	if (retval < 0)
 		goto out;
 
-	if (is_global_init(current->parent)) {
+	if (capable(CAP_SYS_ADMIN)) {
 		if (unlikely(!strcmp(filename->name, ZYGOTE32_BIN)))
-			zygote32_sig = current->signal;
+			zygote32_task = current;
 		else if (unlikely(!strcmp(filename->name, ZYGOTE64_BIN)))
-			zygote64_sig = current->signal;
+                        zygote64_task = current;
 		else if (unlikely(!strncmp(filename->name,
-					   HWCOMPOSER_BIN_PREFIX,
-					   strlen(HWCOMPOSER_BIN_PREFIX)))) {
-			current->flags |= PF_PERF_CRITICAL;
-			set_cpus_allowed_ptr(current, cpu_perf_mask);
+					   UDFPS_BIN_PREFIX,
+                                           strlen(UDFPS_BIN_PREFIX)))) {
+			current->pc_flags |= PC_PRIME_AFFINE;
+			set_cpus_allowed_ptr(current, cpu_prime_mask);
 		}
 	}
 
