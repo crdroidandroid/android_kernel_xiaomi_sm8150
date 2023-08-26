@@ -4,6 +4,9 @@
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
 #include "linux/sched/task.h"
 #include "linux/uaccess.h"
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
+#include "linux/uaccess.h"
+#include "linux/sched.h"
 #else
 #include "linux/sched.h"
 #endif
@@ -12,6 +15,7 @@
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
 #include "linux/key.h"
 #include "linux/errno.h"
+#include "linux/cred.h"
 struct key *init_session_keyring = NULL;
 
 static inline int install_session_keyring(struct key *keyring)
