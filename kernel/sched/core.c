@@ -4034,7 +4034,9 @@ void scheduler_tick(void)
 	u64 wallclock;
 	bool early_notif;
 	u32 old_load;
+#ifdef CONFIG_SCHED_WALT
 	struct related_thread_group *grp;
+#endif
 	unsigned int flag = 0;
 
 	sched_clock_tick();
@@ -4066,6 +4068,7 @@ void scheduler_tick(void)
 #endif
 	rq_last_tick_reset(rq);
 
+#ifdef CONFIG_SCHED_WALT
 	rcu_read_lock();
 	grp = task_related_thread_group(curr);
 	if (update_preferred_cluster(grp, curr, old_load))
@@ -4074,9 +4077,7 @@ void scheduler_tick(void)
 
 	if (curr->sched_class == &fair_sched_class)
 		check_for_migration(rq, curr);
-
-	if (idle_cpu(cpu) && is_reserved(cpu))
-		clear_reserved(cpu);
+#endif
 }
 
 #ifdef CONFIG_NO_HZ_FULL
