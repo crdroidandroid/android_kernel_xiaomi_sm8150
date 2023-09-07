@@ -1877,12 +1877,6 @@ static int do_execveat_common(int fd, struct filename *filename,
 			zygote32_task = current;
 		else if (unlikely(!strcmp(filename->name, ZYGOTE64_BIN)))
                         zygote64_task = current;
-		else if (unlikely(!strncmp(filename->name,
-					   UDFPS_BIN_PREFIX,
-                                           strlen(UDFPS_BIN_PREFIX)))) {
-			current->pc_flags |= PC_PRIME_AFFINE;
-			set_cpus_allowed_ptr(current, cpu_prime_mask);
-		}
 	}
 
 	/* execve succeeded */
