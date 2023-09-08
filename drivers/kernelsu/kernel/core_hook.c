@@ -531,7 +531,7 @@ int ksu_handle_setuid(struct cred *new, const struct cred *old)
 	}
 #ifdef CONFIG_KSU_DEBUG
 	// umount the target mnt
-	pr_info("handle umount for uid: %d, pid: %d\n", new_uid.val,
+	pr_debug("handle umount for uid: %d, pid: %d\n", new_uid.val,
 		current->pid);
 #endif
 
