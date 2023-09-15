@@ -1,5 +1,5 @@
 /* Copyright (c) 2018-2019 The Linux Foundation. All rights reserved.
- * Copyright (C) 2019 XiaoMi, Inc.
+ * Copyright (C) 2021 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -282,6 +282,19 @@ enum {
 	HVDCP_PULSE_COUNT_MAX_QC2_INVALID = 0xC0
 };
 
+#define USBIN_ADAPTER_ALLOW_CFG_REG		(USBIN_BASE + 0x60)
+enum {
+	USBIN_ADAPTER_ALLOW_5V		= 0,
+	USBIN_ADAPTER_ALLOW_9V		= 2,
+	USBIN_ADAPTER_ALLOW_5V_OR_9V	= 3,
+	USBIN_ADAPTER_ALLOW_12V		= 4,
+	USBIN_ADAPTER_ALLOW_5V_OR_12V	= 5,
+	USBIN_ADAPTER_ALLOW_9V_TO_12V	= 6,
+	USBIN_ADAPTER_ALLOW_5V_OR_9V_TO_12V = 7,
+	USBIN_ADAPTER_ALLOW_5V_TO_9V	= 8,
+	USBIN_ADAPTER_ALLOW_5V_TO_12V	= 12,
+};
+
 #define USBIN_OPTIONS_1_CFG_REG			(USBIN_BASE + 0x62)
 #define HVDCP_AUTH_ALG_EN_CFG_BIT		BIT(6)
 #define HVDCP_AUTONOMOUS_MODE_EN_CFG_BIT	BIT(5)
@@ -332,7 +345,8 @@ enum {
 #define DCIN_CMD_IL_REG				(DCIN_BASE + 0x40)
 #define DCIN_SUSPEND_BIT			BIT(0)
 #define DCIN_EN_OVERRIDE_BIT			BIT(1)
-#define DCIN_EN_BIT					BIT(2)
+#define DCIN_EN_BIT                                     BIT(2)
+#define DCIN_EN_MASK				GENMASK(2, 1)
 
 #define DCIN_CMD_PULLDOWN_REG		(DCIN_BASE + 0x45)
 #define DCIN_PULLDOWN_EN_BIT		BIT(0)
@@ -475,7 +489,7 @@ enum {
 #define EN_MICRO_USB_WATER_PROTECTION_BIT		BIT(4)
 #define MICRO_USB_DETECTION_ON_TIME_CFG_MASK		GENMASK(3, 2)
 #define MICRO_USB_DETECTION_PERIOD_CFG_MASK		GENMASK(1, 0)
-
+#define TYPEC_MICRO_USB_MODE_REG		(TYPEC_BASE + 0x73)
 #define PMI632_TYPEC_MICRO_USB_MODE_REG		(TYPEC_BASE + 0x73)
 #define MICRO_USB_MODE_ONLY_BIT			BIT(0)
 /********************************
