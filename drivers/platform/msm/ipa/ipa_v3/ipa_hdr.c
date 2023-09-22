@@ -194,7 +194,7 @@ int __ipa_commit_hdr_v3_0(void)
 	u32 proc_ctx_size;
 	u32 proc_ctx_ofst;
 	u32 proc_ctx_size_ddr;
-	struct ipahal_imm_cmd_register_write reg_write_coal_close;
+	struct ipahal_imm_cmd_register_write reg_write_coal_close = { 0 };
 	struct ipahal_reg_valmask valmask;
 
 	memset(desc, 0, 3 * sizeof(struct ipa3_desc));
