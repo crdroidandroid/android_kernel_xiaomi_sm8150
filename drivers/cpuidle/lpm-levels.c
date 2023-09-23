@@ -51,6 +51,7 @@
 #elif defined(CONFIG_COMMON_CLK_MSM)
 #include "../../drivers/clk/msm/clock.h"
 #endif /* CONFIG_COMMON_CLK */
+#include "../../kernel/sched/sched.h"
 #define CREATE_TRACE_POINTS
 #include <trace/events/trace_msm_low_power.h>
 
@@ -640,7 +641,8 @@ static int cpu_power_select(struct cpuidle_device *dev,
 	struct power_params *pwr_params;
 	uint64_t bias_time = 0;
 
-	if ((sleep_disabled && !cpu_isolated(dev->cpu)) || sleep_us < 0)
+	if ((sleep_disabled && !cpu_isolated(dev->cpu)) ||
+	    is_reserved(dev->cpu) || sleep_us < 0)
 		return best_level;
 
 	idx_restrict = cpu->nlevels + 1;
