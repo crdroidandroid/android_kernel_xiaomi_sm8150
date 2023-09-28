@@ -27,6 +27,7 @@
 
 #define pr_fmt(fmt) "sbalance: " fmt
 
+#include <linux/cpufreq.h>
 #include <linux/freezer.h>
 #include <linux/irq.h>
 #include <linux/list_sort.h>
@@ -231,8 +232,11 @@ extern void balance_irqs(void)
 	 * interrupts. That way, time spent processing each interrupt is
 	 * considered when balancing.
 	 */
-	for_each_cpu(cpu, &cpus)
-		per_cpu(cpu_cap, cpu) = cpu_rq(cpu)->cpu_capacity;
+	for_each_cpu(cpu, &cpus) {
+		struct cpufreq_policy *policy = cpufreq_cpu_get(cpu);
+		per_cpu(cpu_cap, cpu) = arch_scale_cpu_capacity(NULL, cpu) *
+					policy->min / policy->max;
+	}
 
 	list_for_each_entry_rcu(bi, &bal_irq_list, node) {
 		if (!update_irq_data(bi, &cpu))
