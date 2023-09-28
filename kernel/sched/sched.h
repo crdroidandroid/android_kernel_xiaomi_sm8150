@@ -2229,16 +2229,14 @@ cpu_util_freq(int cpu, struct sched_walt_cpu_load *walt_load)
 
 #else
 
-static inline unsigned long cpu_util_rt(int cpu)
+static inline unsigned long cpu_util_rt(struct rq *rq)
 {
-	struct rt_rq *rt_rq = &(cpu_rq(cpu)->rt);
-
-	return rt_rq->avg.util_avg;
+	return rq->avg_rt.util_avg;
 }
 
 static inline unsigned long cpu_util(int cpu)
 {
-	return min(__cpu_util(cpu) + cpu_util_rt(cpu), capacity_orig_of(cpu));
+	return min(__cpu_util(cpu) + cpu_util_rt(cpu_rq(cpu)), capacity_orig_of(cpu));
 }
 
 static inline unsigned long
@@ -3291,11 +3289,6 @@ static inline bool is_min_capacity_cpu(int cpu)
 static inline int cpu_capacity(int cpu)
 {
 	return capacity_orig_of(cpu);
-}
-
-static inline unsigned long cpu_util_rt(struct rq *rq)
-{
-	return rq->avg_rt.util_avg;
 }
 #endif
 
