@@ -170,13 +170,10 @@ static void devfreq_update_boosts(struct boost_dev *b, unsigned long state)
 
 static int devfreq_boost_thread(void *data)
 {
-	static const struct sched_param sched_max_rt_prio = {
-		.sched_priority = MAX_RT_PRIO - 1
-	};
 	struct boost_dev *b = data;
 	unsigned long old_state = 0;
 
-	sched_setscheduler_nocheck(current, SCHED_FIFO, &sched_max_rt_prio);
+	sched_set_fifo(current);
 
 	while (1) {
 		bool should_stop = false;
