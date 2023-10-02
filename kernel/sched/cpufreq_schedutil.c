@@ -707,9 +707,7 @@ static void sugov_policy_free(struct sugov_policy *sg_policy)
 static int sugov_kthread_create(struct sugov_policy *sg_policy)
 {
 	struct task_struct *thread;
-	struct sched_param param = { .sched_priority = MAX_USER_RT_PRIO / 2 };
 	struct cpufreq_policy *policy = sg_policy->policy;
-	int ret;
 
 	/* kthread only required for slow path */
 	if (policy->fast_switch_enabled)
@@ -725,12 +723,7 @@ static int sugov_kthread_create(struct sugov_policy *sg_policy)
 		return PTR_ERR(thread);
 	}
 
-	ret = sched_setscheduler_nocheck(thread, SCHED_FIFO, &param);
-	if (ret) {
-		kthread_stop(thread);
-		pr_warn("%s: failed to set SCHED_FIFO\n", __func__);
-		return ret;
-	}
+	sched_set_fifo(thread);
 
 	sg_policy->thread = thread;
 
