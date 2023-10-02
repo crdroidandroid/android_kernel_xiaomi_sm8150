@@ -3958,7 +3958,6 @@ static int __init rcu_spawn_gp_kthread(void)
 	int kthread_prio_in = kthread_prio;
 	struct rcu_node *rnp;
 	struct rcu_state *rsp;
-	struct sched_param sp;
 	struct task_struct *t;
 
 	/* Force priority into range. */
@@ -3980,8 +3979,7 @@ static int __init rcu_spawn_gp_kthread(void)
 		raw_spin_lock_irqsave_rcu_node(rnp, flags);
 		rsp->gp_kthread = t;
 		if (kthread_prio) {
-			sp.sched_priority = kthread_prio;
-			sched_setscheduler_nocheck(t, SCHED_FIFO, &sp);
+			sched_set_fifo(t);
 		}
 		raw_spin_unlock_irqrestore_rcu_node(rnp, flags);
 		wake_up_process(t);
