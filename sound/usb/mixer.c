@@ -1642,12 +1642,12 @@ static int find_num_channels(struct mixer_build *state, int dir)
 static int parse_audio_feature_unit(struct mixer_build *state, int unitid,
 				    void *_ftr)
 {
-	int channels, i, j;
+	int channels = 0, i, j;
 	struct usb_audio_term iterm;
 	unsigned int master_bits, first_ch_bits;
 	int err, csize;
 	struct uac_feature_unit_descriptor *hdr = _ftr;
-	__u8 *bmaControls;
+	__u8 *bmaControls = NULL;
 
 	if (state->mixer->protocol == UAC_VERSION_1) {
 		if (hdr->bLength < 7) {
@@ -2443,7 +2443,7 @@ static int parse_audio_selector_unit(struct mixer_build *state, int unitid,
 		cval->control = (desc->bDescriptorSubtype == UAC2_CLOCK_SELECTOR) ?
 			UAC2_CX_CLOCK_SELECTOR : UAC2_SU_SELECTOR;
 
-	namelist = kmalloc(sizeof(char *) * desc->bNrInPins, GFP_KERNEL);
+	namelist = kmalloc_array(desc->bNrInPins, sizeof(char *), GFP_KERNEL);
 	if (!namelist) {
 		kfree(cval);
 		return -ENOMEM;

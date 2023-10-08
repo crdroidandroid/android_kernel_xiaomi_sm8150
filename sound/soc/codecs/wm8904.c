@@ -2023,8 +2023,9 @@ static void wm8904_handle_pdata(struct snd_soc_codec *codec)
 				     wm8904_get_drc_enum, wm8904_put_drc_enum);
 
 		/* We need an array of texts for the enum API */
-		wm8904->drc_texts = kmalloc(sizeof(char *)
-					    * pdata->num_drc_cfgs, GFP_KERNEL);
+		wm8904->drc_texts = kmalloc_array(pdata->num_drc_cfgs,
+						  sizeof(char *),
+						  GFP_KERNEL);
 		if (!wm8904->drc_texts)
 			return;
 
@@ -2260,6 +2261,9 @@ static int wm8904_i2c_probe(struct i2c_client *i2c,
 	/* Use normal bias source */
 	regmap_update_bits(wm8904->regmap, WM8904_BIAS_CONTROL_0,
 			    WM8904_POBCTRL, 0);
+
+	/* Fill the cache for the ADC test register */
+	regmap_read(wm8904->regmap, WM8904_ADC_TEST_0, &val);
 
 	/* Can leave the device powered off until we need it */
 	regcache_cache_only(wm8904->regmap, true);

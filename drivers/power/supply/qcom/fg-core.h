@@ -1,5 +1,5 @@
 /* Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
- * Copyright (C) 2019 XiaoMi, Inc.
+ * Copyright (C) 2021 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -343,6 +343,7 @@ struct fg_batt_props {
 	char		*batt_profile;
 	int		float_volt_uv;
 	int		vbatt_full_mv;
+	int		ffc_vbatt_full_mv;
 	int		fastchg_curr_ma;
 	int		nom_cap_uah;
 	int		*therm_coeffs;
@@ -350,6 +351,9 @@ struct fg_batt_props {
 	int		therm_pull_up_kohms;
 	int		*rslow_normal_coeffs;
 	int		*rslow_low_coeffs;
+	int		ffc_term_curr_ma;
+	int		ffc_low_temp_term_curr_ma;
+	int		ffc_high_temp_term_curr_ma;
 };
 
 struct fg_cyc_ctr_data {
@@ -498,6 +502,7 @@ struct fg_dev {
 	u32			mem_if_base;
 	u32			rradc_base;
 	u32			wa_flags;
+	int			cycle_count;
 	u32			esr_wakeup_ms;
 	u32			awake_status;
 	int			batt_id_ohms;
@@ -531,6 +536,7 @@ struct fg_dev {
 	bool			use_dma;
 	bool			qnovo_enable;
 	bool			empty_restart_fg;
+	bool			profile_already_find;
 	bool			input_present;
 	bool			batt_temp_low;
 	bool			shutdown_delay;
@@ -548,6 +554,10 @@ struct fg_dev {
 	struct work_struct	status_change_work;
 	struct work_struct	esr_sw_work;
 	struct delayed_work	sram_dump_work;
+	int			fake_authentic;
+	int			fake_chip_ok;
+	int			maxim_cycle_count;
+	int			batt_fake_temp;
 	struct work_struct	esr_filter_work;
 	struct alarm		esr_filter_alarm;
 	ktime_t			last_delta_temp_time;

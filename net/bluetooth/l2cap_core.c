@@ -347,7 +347,7 @@ static int l2cap_seq_list_init(struct l2cap_seq_list *seq_list, u16 size)
 	 */
 	alloc_size = roundup_pow_of_two(size);
 
-	seq_list->list = kmalloc(sizeof(u16) * alloc_size, GFP_KERNEL);
+	seq_list->list = kmalloc_array(alloc_size, sizeof(u16), GFP_KERNEL);
 	if (!seq_list->list)
 		return -ENOMEM;
 
@@ -5705,9 +5705,14 @@ static inline int l2cap_le_command_rej(struct l2cap_conn *conn,
 	if (!chan)
 		goto done;
 
+	chan = l2cap_chan_hold_unless_zero(chan);
+	if (!chan)
+		goto done;
+
 	l2cap_chan_lock(chan);
 	l2cap_chan_del(chan, ECONNREFUSED);
 	l2cap_chan_unlock(chan);
+	l2cap_chan_put(chan);
 
 done:
 	mutex_unlock(&conn->chan_lock);

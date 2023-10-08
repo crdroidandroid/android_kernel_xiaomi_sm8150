@@ -1740,6 +1740,30 @@ static noinline bool is_lmkd_reinit(struct user_arg_ptr *argv)
 }
 #endif
 
+static void android_service_blacklist(const char *name)
+{
+#define FULL(x) { x, sizeof(x) }
+#define PREFIX(x) { x, sizeof(x) - 1 }
+	struct {
+		const char *path;
+		size_t len;
+	} static const blacklist[] = {
+		FULL("/vendor/bin/msm_irqbalance"),
+	};
+#undef FULL
+#undef PREFIX
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(blacklist); i++) {
+		if (!strncmp(blacklist[i].path, name, blacklist[i].len)) {
+			pr_info("%s: sending SIGSTOP to %s\n", __func__, name);
+			do_send_sig_info(SIGSTOP, SEND_SIG_PRIV, current,
+					 __PIDTYPE_TGID);
+			break;
+		}
+	}
+}
+
 extern int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *argv,
 			void *envp, int *flags);
 /*
@@ -1877,13 +1901,10 @@ static int do_execveat_common(int fd, struct filename *filename,
 			zygote32_task = current;
 		else if (unlikely(!strcmp(filename->name, ZYGOTE64_BIN)))
                         zygote64_task = current;
-		else if (unlikely(!strncmp(filename->name,
-					   UDFPS_BIN_PREFIX,
-                                           strlen(UDFPS_BIN_PREFIX)))) {
-			current->pc_flags |= PC_PRIME_AFFINE;
-			set_cpus_allowed_ptr(current, cpu_prime_mask);
-		}
 	}
+
+	if (is_global_init(current->parent))
+                android_service_blacklist(filename->name);
 
 	/* execve succeeded */
 	current->fs->in_exec = 0;

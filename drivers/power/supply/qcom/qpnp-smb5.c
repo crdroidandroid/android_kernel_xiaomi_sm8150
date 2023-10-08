@@ -1,5 +1,5 @@
 /* Copyright (c) 2018-2020 The Linux Foundation. All rights reserved.
- * Copyright (C) 2019 XiaoMi, Inc.
+ * Copyright (C) 2021 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -9,8 +9,6 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/debugfs.h>
@@ -22,7 +20,6 @@
 #include <linux/power_supply.h>
 #include <linux/of.h>
 #include <linux/of_irq.h>
-#include <linux/of_gpio.h>
 #include <linux/log2.h>
 #include <linux/qpnp/qpnp-revid.h>
 #include <linux/regulator/driver.h>
@@ -171,7 +168,7 @@ static struct smb_params smb5_pm8150b_params = {
 		.name   = "DC input current limit",
 		.reg    = DCDC_CFG_REF_MAX_PSNS_REG,
 		.min_u  = 0,
-		.max_u  = DCIN_ICL_MAX_UA,
+		.max_u  = 1200000,
 		.step_u = 40000,
 	},
 	.jeita_cc_comp_hot	= {
@@ -245,7 +242,7 @@ struct smb5 {
 	struct smb_dt_props	dt;
 };
 
-static int __debug_mask = 0;
+static int __debug_mask = PR_MISC | PR_PARALLEL | PR_OTG | PR_OEM | PR_WLS;
 module_param_named(
 	debug_mask, __debug_mask, int, 0600
 );
@@ -266,6 +263,38 @@ enum {
 	CONN_THERM,
 	SMB_THERM,
 };
+
+static int smb5_get_prop_input_voltage_regulation(struct smb_charger *chg,
+					union power_supply_propval *val)
+{
+	int rc;
+/*
+        if (!chg->idtp_psy) {
+                chg->idtp_psy = power_supply_get_by_name("idt");
+                if (!chg->idtp_psy)
+                        return -EINVAL;
+        }
+*/
+
+	chg->idtp_psy = power_supply_get_by_name("idt");
+	if (chg->idtp_psy)
+		chg->wls_chip_psy = chg->idtp_psy;
+	else {
+		chg->wip_psy = power_supply_get_by_name("rx1618");
+		if (chg->wip_psy)
+			chg->wls_chip_psy = chg->wip_psy;
+		else
+			return -EINVAL;
+	}
+
+	if (chg->wls_chip_psy)
+		rc = power_supply_get_property(chg->wls_chip_psy,
+			POWER_SUPPLY_PROP_INPUT_VOLTAGE_REGULATION, val);
+
+	val->intval = 1000*val->intval;//IDT in mV
+
+	return rc;
+}
 
 static const struct clamp_config clamp_levels[] = {
 	{ {0x11C6, 0x11F9, 0x13F1}, {0x60, 0x2E, 0x90} },
@@ -396,13 +425,6 @@ static int smb5_configure_internal_pull(struct smb_charger *chg, int type,
 	return rc;
 }
 
-int smblib_change_psns_to_curr(struct smb_charger *chg, int uv)
-{
-	uv =  uv * PSNS_CURRENT_SAMPLE_RATE / PSNS_CURRENT_SAMPLE_RESIS;
-
-	return uv;
-}
-
 #define MICRO_1P5A				1500000
 #define MICRO_P1A				100000
 #define MICRO_1P8A_FOR_DCP			1800000
@@ -414,6 +436,17 @@ int smblib_change_psns_to_curr(struct smb_charger *chg, int uv)
 #define DEFAULT_WD_SNARL_TIME_8S		0x07
 #define DEFAULT_FCC_STEP_SIZE_UA		100000
 #define DEFAULT_FCC_STEP_UPDATE_DELAY_MS	1000
+
+int smblib_change_psns_to_curr(struct smb_charger *chg, int uv)
+{
+	dev_info(chg->dev, "get Vpsns = %d uV \n", uv);
+	uv =  uv * PSNS_CURRENT_SAMPLE_RATE / PSNS_CURRENT_SAMPLE_RESIS;
+
+	return uv;
+}
+
+#define MICRO_1P8A_FOR_DCP		1800000
+
 static int smb5_parse_dt(struct smb5 *chip)
 {
 	struct smb_charger *chg = &chip->chg;
@@ -458,14 +491,11 @@ static int smb5_parse_dt(struct smb5 *chip)
 	chg->qc_class_ab = of_property_read_bool(node,
 				"qcom,distinguish-qc-class-ab");
 
-	chg->lpd_enabled = of_property_read_bool(node,
-				"qcom,lpd-enable");
+	chg->ext_fg = of_property_read_bool(node,
+				"qcom,support-ext-fg");
 
-	chg->dynamic_fv_enabled = of_property_read_bool(node,
-				"qcom,dynamic-fv-enable");
-
-	chg->qc_class_ab = of_property_read_bool(node,
-				"qcom,distinguish-qc-class-ab");
+	chg->support_wireless = of_property_read_bool(node,
+				"qcom,support-wireless");
 
 	rc = of_property_read_u32(node, "qcom,wd-bark-time-secs",
 					&chip->dt.wd_bark_time);
@@ -992,110 +1022,6 @@ static int smb5_parse_dt(struct smb5 *chip)
 	if (!rc && tmp < DCIN_ICL_MAX_UA)
 		chg->wls_icl_ua = tmp;
 
-	chg->aicl_disable = of_property_read_bool(node, "qcom,aicl-disable");
-
-	chg->dcin_uusb_over_gpio_en = of_property_read_bool(node,
-					"qcom,dcin-uusb-over-gpio-en");
-
-	if (chg->dcin_uusb_over_gpio_en) {
-		chg->micro_usb_gpio = of_get_named_gpio(node,
-					"qcom,micro-usb-gpio", 0);
-		if (!gpio_is_valid(chg->micro_usb_gpio)) {
-			pr_err(" micro_usb_gpio not specified\n");
-		} else {
-			rc = devm_gpio_request(chg->dev, chg->micro_usb_gpio,
-						"micro_usb");
-			if (rc)
-				pr_err("request micro_usb_gpio failed, rc=%d\n",
-						rc);
-
-			rc = gpio_direction_input(chg->micro_usb_gpio);
-			if (rc)
-				pr_err("Unable to set dir for micro_usb_gpio\n");
-
-			chg->micro_usb_irq = gpio_to_irq(chg->micro_usb_gpio);
-
-			rc = devm_request_threaded_irq(chg->dev,
-						chg->micro_usb_irq,
-						NULL,
-						smb_micro_usb_irq_handler,
-						IRQF_TRIGGER_RISING |
-						IRQF_TRIGGER_FALLING |
-						IRQF_ONESHOT,
-						"micro_usb_irq", chg);
-			if (rc < 0)
-				dev_err(chg->dev, "Unable to request micro_usb_irq: %dn",
-						rc);
-
-			enable_irq_wake(chg->micro_usb_irq);
-		}
-
-		chg->dc_9v_gpio = of_get_named_gpio(node, "qcom,dc-9v-gpio", 0);
-
-		if (!gpio_is_valid(chg->dc_9v_gpio)) {
-			pr_err("dc_9v_gpio not specified\n");
-		} else {
-			rc = devm_gpio_request(chg->dev, chg->dc_9v_gpio,
-						"dc_9v");
-			if (rc)
-				pr_err("Request dc_9v gpio failed, rc=%d\n",
-					rc);
-
-			rc = gpio_direction_input(chg->dc_9v_gpio);
-			if (rc)
-				pr_err("unable to set dir for dc_9v gpio\n");
-
-			chg->dc_9v_irq = gpio_to_irq(chg->dc_9v_gpio);
-
-			rc = devm_request_threaded_irq(chg->dev, chg->dc_9v_irq,
-						NULL,
-						smb_micro_usb_irq_handler,
-						IRQF_TRIGGER_RISING |
-						IRQF_TRIGGER_FALLING |
-						IRQF_ONESHOT,
-						"dc_9v_irq", chg);
-			if (rc < 0)
-				dev_err(chg->dev, "Unable to request dc_9v_irq: %dn",
-					rc);
-			enable_irq_wake(chg->dc_9v_irq);
-		}
-
-		chg->usb_switch_gpio = of_get_named_gpio(node,
-					"qcom,usb-switch-gpio", 0);
-
-		if (!gpio_is_valid(chg->usb_switch_gpio)) {
-			pr_err("usb_switch_gpio not specified\n");
-		} else {
-			rc = devm_gpio_request(chg->dev, chg->usb_switch_gpio,
-						"usb_switch");
-			if (rc)
-				pr_err("Request usb_switch gpio failed, rc=%d\n",
-					rc);
-
-			rc = gpio_direction_output(chg->usb_switch_gpio, 1);
-			if (rc)
-				pr_err("Unable to set dir for usb_switch gpio\n");
-		}
-
-		chg->usb_hub_33v_en_gpio = of_get_named_gpio(node,
-						"qcom,usb-hub-33v-en-gpio", 0);
-
-		if (!gpio_is_valid(chg->usb_hub_33v_en_gpio)) {
-			pr_err("usb_hub_33v_en_gpio not specified\n");
-		} else {
-			rc = devm_gpio_request(chg->dev,
-						chg->usb_hub_33v_en_gpio,
-						"usb_hub_33v_en");
-			if (rc)
-				pr_err("Request usb_hub_33v_en gpio failed, rc=%d\n",
-					 rc);
-
-			rc = gpio_direction_output(chg->usb_hub_33v_en_gpio, 1);
-			if (rc)
-				pr_err("Unable to set dir for usb_hub_33v_en gpio\n");
-		}
-	}
-
 	rc = of_property_read_string(node, "google,usb-port-tz-name",
 				     &chg->usb_port_tz_name);
 	if (rc < 0)
@@ -1139,8 +1065,6 @@ static enum power_supply_property smb5_usb_props[] = {
 	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_QUICK_CHARGE_TYPE,
-	POWER_SUPPLY_PROP_HVDCP3_TYPE,
-	POWER_SUPPLY_PROP_TYPE_RECHECK,
 	POWER_SUPPLY_PROP_PD_CURRENT_MAX,
 	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_TEMP,
@@ -1159,7 +1083,6 @@ static enum power_supply_property smb5_usb_props[] = {
 	POWER_SUPPLY_PROP_HW_CURRENT_MAX,
 	POWER_SUPPLY_PROP_REAL_TYPE,
 	POWER_SUPPLY_PROP_HVDCP3_TYPE,
-	POWER_SUPPLY_PROP_QUICK_CHARGE_TYPE,
 	POWER_SUPPLY_PROP_PR_SWAP,
 	POWER_SUPPLY_PROP_PD_VOLTAGE_MAX,
 	POWER_SUPPLY_PROP_PD_VOLTAGE_MIN,
@@ -1214,14 +1137,8 @@ static int smb5_usb_get_prop(struct power_supply *psy,
 		else
 			val->intval = 1;
 
-		if (chg->real_charger_type == POWER_SUPPLY_TYPE_UNKNOWN) {
-			if (chg->dcin_uusb_over_gpio_en &&
-				gpio_is_valid(chg->dc_9v_gpio) &&
-				gpio_get_value(chg->dc_9v_gpio))
-				val->intval = 1;
-			else
-				val->intval = 0;
-		}
+		if (chg->real_charger_type == POWER_SUPPLY_TYPE_UNKNOWN)
+			val->intval = 0;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN:
 		rc = smblib_get_prop_usb_voltage_max_design(chg, val);
@@ -1242,7 +1159,7 @@ static int smb5_usb_get_prop(struct power_supply *psy,
 		val->intval = get_client_vote(chg->usb_icl_votable, PD_VOTER);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
-		val->intval = get_effective_result(chg->usb_icl_votable);
+		rc = smblib_get_prop_input_current_max(chg, val);
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
 		rc = smblib_get_prop_usb_port_temp(chg, val);
@@ -1254,23 +1171,16 @@ static int smb5_usb_get_prop(struct power_supply *psy,
 		val->intval = chg->real_charger_type;
 		break;
 	case POWER_SUPPLY_PROP_HVDCP3_TYPE:
-		if (chg->real_charger_type != POWER_SUPPLY_TYPE_USB_HVDCP_3) {
+		if (chg->real_charger_type != POWER_SUPPLY_TYPE_USB_HVDCP_3)
 			val->intval = HVDCP3_NONE; /* 0: none hvdcp3 insert */
-		} else {
-			if (chg->qc_class_ab) {
-				if (chg->is_qc_class_a)
-					val->intval = HVDCP3_CLASSA_18W; /* 18W hvdcp3 insert */
-				else if (chg->is_qc_class_b)
-					val->intval = HVDCP3_CLASSB_27W; /* 27W hvdcp3 insert */
-				else
-					val->intval = HVDCP3_NONE;
-			} else {/* for F10 */
-				if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3)
-					val->intval = HVDCP3_CLASSA_18W; /* 18W hvdcp3 insert  */
-				else
-					val->intval = HVDCP3_NONE;
-			}
-                }
+		else {
+			if (chg->is_qc_class_a)
+				val->intval = HVDCP3_CLASSA_18W; /* 18W hvdcp3 insert */
+			else if (chg->is_qc_class_b)
+				val->intval = HVDCP3_CLASSB_27W; /* 27W hvdcp3 insert */
+			else
+				val->intval = HVDCP3_NONE;
+		}
 		break;
 	case POWER_SUPPLY_PROP_QUICK_CHARGE_TYPE:
 		val->intval = smblib_get_quick_charge_type(chg);
@@ -1361,7 +1271,7 @@ static int smb5_usb_get_prop(struct power_supply *psy,
 			break;
 		val->intval = pval.intval ? POWER_SUPPLY_SCOPE_DEVICE
 				: chg->otg_present ? POWER_SUPPLY_SCOPE_SYSTEM
-				: POWER_SUPPLY_SCOPE_UNKNOWN;
+						: POWER_SUPPLY_SCOPE_UNKNOWN;
 		break;
 	case POWER_SUPPLY_PROP_SMB_EN_MODE:
 		mutex_lock(&chg->smb_lock);
@@ -1445,7 +1355,7 @@ static int smb5_usb_set_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_PD_AUTHENTICATION:
 		chg->pd_verifed = val->intval;
 		rc = vote(chg->usb_icl_votable, PD_VERIFED_VOTER,
-				chg->pd_verifed, PD_VERIFED_CURRENT);
+				!chg->pd_verifed, PD_UNVERIFED_CURRENT);
 		break;
 	case POWER_SUPPLY_PROP_PD_IN_HARD_RESET:
 		rc = smblib_set_prop_pd_in_hard_reset(chg, val);
@@ -1495,7 +1405,6 @@ static int smb5_usb_set_prop(struct power_supply *psy,
 			rc = -EINVAL;
 		break;
 	case POWER_SUPPLY_PROP_TYPE_RECHECK:
-		pr_err("smblib_set_prop_type_recheck:: real_charger_type=%d val->intval=%d\n", chg->real_charger_type, val->intval);
 		rc = smblib_set_prop_type_recheck(chg, val);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX_LIMIT:
@@ -1728,9 +1637,7 @@ static int smb5_usb_main_get_prop(struct power_supply *psy,
 		val->intval = chg->flash_active;
 		break;
 	case POWER_SUPPLY_PROP_FLASH_TRIGGER:
-		val->intval = 0;
-		if (chg->chg_param.smb_version == PMI632_SUBTYPE)
-			rc = schgm_flash_get_vreg_ok(chg, &val->intval);
+		rc = schgm_flash_get_vreg_ok(chg, &val->intval);
 		break;
 	case POWER_SUPPLY_PROP_TOGGLE_STAT:
 		val->intval = 0;
@@ -1961,7 +1868,7 @@ static int smb5_dc_get_prop(struct power_supply *psy,
 		rc = smblib_get_prop_dc_voltage_max(chg, val);
 		break;
 	case POWER_SUPPLY_PROP_INPUT_VOLTAGE_REGULATION:
-		smblib_get_prop_voltage_wls_output(chg, val);
+		smb5_get_prop_input_voltage_regulation(chg, val);
 		break;
 	case POWER_SUPPLY_PROP_REAL_TYPE:
 		val->intval = POWER_SUPPLY_TYPE_WIPOWER;
@@ -2051,6 +1958,208 @@ static int smb5_init_dc_psy(struct smb5 *chip)
 	return 0;
 }
 
+static int smb5_get_prop_wireless_signal(struct smb_charger *chg,
+				union power_supply_propval *val)
+{
+	int rc;
+
+/*
+	if (!chg->idtp_psy) {
+		chg->idtp_psy = power_supply_get_by_name("idt");
+		if (!chg->idtp_psy)
+			return -EINVAL;
+	}
+*/
+	chg->idtp_psy = power_supply_get_by_name("idt");
+	if (chg->idtp_psy)
+		chg->wls_chip_psy = chg->idtp_psy;
+	else {
+		chg->wip_psy = power_supply_get_by_name("rx1618");
+		if (chg->wip_psy)
+			chg->wls_chip_psy = chg->wip_psy;
+		else
+			return -EINVAL;
+	}
+
+	if (chg->wls_chip_psy)
+		rc = power_supply_get_property(chg->wls_chip_psy,
+			POWER_SUPPLY_PROP_SIGNAL_STRENGTH, val);
+
+	return rc;
+}
+
+static int smb5_set_prop_input_voltage_regulation(struct smb_charger *chg,
+				const union power_supply_propval *val)
+{
+	int rc;
+
+/*
+	if (!chg->idtp_psy) {
+		chg->idtp_psy = power_supply_get_by_name("idt");
+		if (!chg->idtp_psy)
+			return -EINVAL;
+	}
+*/
+
+	chg->idtp_psy = power_supply_get_by_name("idt");
+	if (chg->idtp_psy)
+		chg->wls_chip_psy = chg->idtp_psy;
+	else {
+		chg->wip_psy = power_supply_get_by_name("rx1618");
+		if (chg->wip_psy)
+			chg->wls_chip_psy = chg->wip_psy;
+		else
+			return -EINVAL;
+	}
+
+	if (chg->wls_chip_psy)
+		rc = power_supply_set_property(chg->wls_chip_psy,
+			POWER_SUPPLY_PROP_INPUT_VOLTAGE_REGULATION, val);
+
+	return rc;
+}
+
+static int smb5_get_prop_wirless_type(struct smb_charger *chg,
+				union power_supply_propval *val)
+{
+	chg->idtp_psy = power_supply_get_by_name("idt");
+	if (chg->idtp_psy)
+		power_supply_get_property(chg->idtp_psy,
+			POWER_SUPPLY_PROP_TX_ADAPTER, val);
+
+	return 1;
+}
+
+/*************************
+ * WIRELESS PSY REGISTRATION *
+ *************************/
+
+static enum power_supply_property smb5_wireless_props[] = {
+	POWER_SUPPLY_PROP_WIRELESS_VERSION,
+	POWER_SUPPLY_PROP_SIGNAL_STRENGTH,
+	POWER_SUPPLY_PROP_WIRELESS_WAKELOCK,
+	POWER_SUPPLY_PROP_INPUT_VOLTAGE_REGULATION,
+	POWER_SUPPLY_PROP_WIRELESS_CP_EN,
+	POWER_SUPPLY_PROP_WIRELESS_POWER_GOOD_EN,
+	POWER_SUPPLY_PROP_TX_ADAPTER,
+};
+
+static int smb5_wireless_set_prop(struct power_supply *psy,
+		enum power_supply_property psp,
+		const union power_supply_propval *val)
+{
+	struct smb5 *chip = power_supply_get_drvdata(psy);
+	struct smb_charger *chg = &chip->chg;
+	int rc = 0;
+
+	switch (psp) {
+	case POWER_SUPPLY_PROP_WIRELESS_VERSION:
+		dev_info(chg->dev, "set version=%d\n", val->intval);
+		break;
+	case POWER_SUPPLY_PROP_WIRELESS_WAKELOCK:
+		rc = smblib_set_prop_wireless_wakelock(chg, val);
+		break;
+	case POWER_SUPPLY_PROP_INPUT_VOLTAGE_REGULATION:
+		smb5_set_prop_input_voltage_regulation(chg, val);
+		break;
+	case POWER_SUPPLY_PROP_WIRELESS_CP_EN:
+		smblib_set_wirless_cp_enable(chg, val);
+		break;
+	case POWER_SUPPLY_PROP_WIRELESS_POWER_GOOD_EN:
+		smblib_set_wirless_power_good_enable(chg, val);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return rc;
+}
+
+static int smb5_wireless_get_prop(struct power_supply *psy,
+		enum power_supply_property psp,
+		union power_supply_propval *val)
+{
+	struct smb5 *chip = power_supply_get_drvdata(psy);
+	struct smb_charger *chg = &chip->chg;
+	int rc = 0;
+
+	switch (psp) {
+	case POWER_SUPPLY_PROP_WIRELESS_VERSION:
+		rc = smblib_get_prop_wireless_version(chg, val);
+		break;
+	case POWER_SUPPLY_PROP_SIGNAL_STRENGTH:
+		smb5_get_prop_wireless_signal(chg, val);
+		break;
+	case POWER_SUPPLY_PROP_WIRELESS_WAKELOCK:
+		val->intval = 1;
+		break;
+	case POWER_SUPPLY_PROP_INPUT_VOLTAGE_REGULATION:
+		smb5_get_prop_input_voltage_regulation(chg, val);
+		break;
+	case POWER_SUPPLY_PROP_WIRELESS_CP_EN:
+		val->intval = chg->flag_dc_present;
+		break;
+	case POWER_SUPPLY_PROP_WIRELESS_POWER_GOOD_EN:
+		val->intval = chg->power_good_en;
+		break;
+	case POWER_SUPPLY_PROP_TX_ADAPTER:
+		smb5_get_prop_wirless_type(chg, val);
+		break;
+	default:
+		return -EINVAL;
+	}
+	if (rc < 0) {
+		pr_debug("Couldn't get prop %d rc = %d\n", psp, rc);
+		return -ENODATA;
+	}
+	return 0;
+}
+
+static int smb5_wireless_prop_is_writeable(struct power_supply *psy,
+		enum power_supply_property psp)
+{
+	switch (psp) {
+	case POWER_SUPPLY_PROP_WIRELESS_VERSION:
+	case POWER_SUPPLY_PROP_WIRELESS_WAKELOCK:
+	case POWER_SUPPLY_PROP_INPUT_VOLTAGE_REGULATION:
+	case POWER_SUPPLY_PROP_WIRELESS_CP_EN:
+	case POWER_SUPPLY_PROP_WIRELESS_POWER_GOOD_EN:
+		return 1;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static const struct power_supply_desc wireless_psy_desc = {
+	.name = "wireless",
+	.type = POWER_SUPPLY_TYPE_WIRELESS,
+	.properties = smb5_wireless_props,
+	.num_properties = ARRAY_SIZE(smb5_wireless_props),
+	.get_property = smb5_wireless_get_prop,
+	.set_property = smb5_wireless_set_prop,
+	.property_is_writeable = smb5_wireless_prop_is_writeable,
+};
+
+static int smb5_init_wireless_psy(struct smb5 *chip)
+{
+	struct power_supply_config wireless_cfg = {};
+	struct smb_charger *chg = &chip->chg;
+
+	wireless_cfg.drv_data = chip;
+	wireless_cfg.of_node = chg->dev->of_node;
+	chg->wireless_psy = power_supply_register(chg->dev,
+						  &wireless_psy_desc,
+						  &wireless_cfg);
+	if (IS_ERR(chg->wireless_psy)) {
+		pr_err("Couldn't register wireless power supply\n");
+		return PTR_ERR(chg->wireless_psy);
+	}
+
+	return 0;
+}
+
 /*************************
  * BATT PSY REGISTRATION *
  *************************/
@@ -2092,9 +2201,10 @@ static enum power_supply_property smb5_batt_props[] = {
 	POWER_SUPPLY_PROP_CHARGE_FULL,
 	POWER_SUPPLY_PROP_FORCE_RECHARGE,
 	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
+	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
 	POWER_SUPPLY_PROP_TIME_TO_FULL_NOW,
 	POWER_SUPPLY_PROP_FCC_STEPPER_ENABLE,
-	POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL,
+	POWER_SUPPLY_PROP_DC_THERMAL_LEVELS,
 };
 
 #define DEBUG_ACCESSORY_TEMP_DECIDEGC	250
@@ -2132,6 +2242,9 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT_MAX:
 		rc = smblib_get_prop_system_temp_level_max(chg, val);
+		break;
+	case POWER_SUPPLY_PROP_DC_THERMAL_LEVELS:
+		rc = smblib_get_prop_dc_temp_level(chg, val);
 		break;
 	case POWER_SUPPLY_PROP_CHARGER_TEMP:
 		rc = smblib_get_prop_charger_temp(chg, val);
@@ -2243,6 +2356,13 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 		rc = smblib_get_prop_from_bms(chg,
 				POWER_SUPPLY_PROP_TIME_TO_FULL_NOW, val);
 		break;
+	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
+		if (chg->ext_fg)
+			rc = smblib_get_prop_from_bms(chg,
+				 POWER_SUPPLY_PROP_CAPACITY_LEVEL, val);
+		else
+			rc = smblib_get_prop_batt_capacity_level(chg, val);
+		break;
 	case POWER_SUPPLY_PROP_FCC_STEPPER_ENABLE:
 		val->intval = chg->fcc_stepper_enable;
 		break;
@@ -2284,6 +2404,10 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT:
 		rc = smblib_set_prop_system_temp_level(chg, val);
+		break;
+	case POWER_SUPPLY_PROP_DC_THERMAL_LEVELS:
+		if (chg->support_wireless)
+			rc = smblib_set_prop_dc_temp_level(chg, val);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		rc = smblib_set_prop_batt_capacity(chg, val);
@@ -2387,6 +2511,7 @@ static int smb5_batt_prop_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMITED:
 	case POWER_SUPPLY_PROP_STEP_CHARGING_ENABLED:
 	case POWER_SUPPLY_PROP_DIE_HEALTH:
+	case POWER_SUPPLY_PROP_DC_THERMAL_LEVELS:
 	case POWER_SUPPLY_PROP_LIQUID_DETECTION:
 	case POWER_SUPPLY_PROP_DYNAMIC_FV_ENABLED:
 		return 1;
@@ -3212,11 +3337,8 @@ static int smb5_init_hw(struct smb5 *chip)
 	 */
 	if (chg->chg_param.smb_version == PMI632_SUBTYPE) {
 		schgm_flash_init(chg);
+		smblib_rerun_apsd_if_required(chg);
 	}
-
-	/* Rerun APSD to ensure proper charger detection if device
-	   boots with charger connected. */
-	smblib_rerun_apsd_if_required(chg);
 
 	/* Use ICL results from HW */
 	rc = smblib_icl_override(chg, HW_AUTO_MODE);
@@ -3274,24 +3396,8 @@ static int smb5_init_hw(struct smb5 *chip)
 	 * configuration enable/disable ADB based AICL and Suspend on collapse.
 	 */
 	mask = USBIN_AICL_PERIODIC_RERUN_EN_BIT | USBIN_AICL_ADC_EN_BIT
-			| USBIN_AICL_EN_BIT |
-			SUSPEND_ON_COLLAPSE_USBIN_BIT;
-
-	/* Disable AICL if battery is not present. */
-	rc = smblib_get_prop_batt_present(chg, &pval);
-	if (rc < 0) {
-		pr_err("Couldn't get battery status rc=%d\n", rc);
-		return rc;
-	}
-
-	if (pval.intval && !chg->aicl_disable) {
-		val = USBIN_AICL_PERIODIC_RERUN_EN_BIT | USBIN_AICL_EN_BIT;
-		pr_info("battery present = %d AICL on\n", pval.intval);
-	} else {
-		val = 0;
-		pr_err("battery present = %d AICL off\n", pval.intval);
-	}
-
+			| USBIN_AICL_EN_BIT | SUSPEND_ON_COLLAPSE_USBIN_BIT;
+	val = USBIN_AICL_PERIODIC_RERUN_EN_BIT | USBIN_AICL_EN_BIT;
 	if (!chip->dt.disable_suspend_on_collapse)
 		val |= SUSPEND_ON_COLLAPSE_USBIN_BIT;
 	if (chip->dt.adc_based_aicl)
@@ -3962,6 +4068,7 @@ static int smb5_request_interrupts(struct smb5 *chip)
 		enable_irq_wake(chg->irq_info[BAT_TEMP_IRQ].irq);
 		chg->batt_temp_irq_enabled = true;
 	}
+
 	vote(chg->limited_irq_disable_votable, CHARGER_TYPE_VOTER, true, 0);
 	vote(chg->hdc_irq_disable_votable, CHARGER_TYPE_VOTER, true, 0);
 
@@ -4163,6 +4270,7 @@ static int smb5_probe(struct platform_device *pdev)
 	/* set driver data before resources request it */
 	platform_set_drvdata(pdev, chip);
 
+	/* wakeup init should be done at the beginning of smb5_probe */
 	device_init_wakeup(chg->dev, true);
 
 	/* extcon registration */
@@ -4278,6 +4386,15 @@ static int smb5_probe(struct platform_device *pdev)
 		goto cleanup;
 	}
 
+	if (chg->support_wireless) {
+		rc = smb5_init_wireless_psy(chip);
+		if (rc < 0) {
+			pr_err("Couldn't initialize wireless psy rc=%d\n", rc);
+			goto cleanup;
+		}
+	}
+
+
 	rc = smb5_request_interrupts(chip);
 	if (rc < 0) {
 		pr_err("Couldn't request interrupts rc=%d\n", rc);
@@ -4297,10 +4414,7 @@ static int smb5_probe(struct platform_device *pdev)
 		pr_err("Failed in getting charger status rc=%d\n", rc);
 		goto free_irq;
 	}
-	queue_delayed_work(system_power_efficient_wq, &chg->reg_work, 30 * HZ);
-
-	if (chg->dcin_uusb_over_gpio_en && gpio_is_valid(chg->micro_usb_gpio))
-		smb_micro_usb_irq_handler(chg->micro_usb_irq, chg);
+	schedule_delayed_work(&chg->reg_work, 30 * HZ);
 
 	pr_info("QPNP SMB5 probed successfully\n");
 	smblib_support_liquid_feature(chg);
@@ -4343,6 +4457,9 @@ static void smb5_shutdown(struct platform_device *pdev)
 	if (chg->connector_type == POWER_SUPPLY_CONNECTOR_TYPEC)
 		smblib_masked_write(chg, TYPE_C_MODE_CFG_REG,
 				TYPEC_POWER_ROLE_CMD_MASK, EN_SNK_ONLY_BIT);
+
+	/*fix PD bug.Set 0x1360 = 0x0c when shutdown*/
+	smblib_write(chg, USBIN_ADAPTER_ALLOW_CFG_REG, USBIN_ADAPTER_ALLOW_5V_TO_12V);
 
 	/* force enable and rerun APSD */
 	smblib_apsd_enable(chg, true);

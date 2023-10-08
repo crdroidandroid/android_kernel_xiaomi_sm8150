@@ -1485,7 +1485,7 @@ static int load_firmware(struct pci_dev *pdev,
 			goto errrelfw;
 		}
 
-		data = kmalloc(word_count * 2, GFP_KERNEL);
+		data = kmalloc_array(word_count, 2, GFP_KERNEL);
 		if (data == NULL) {
 			dev_err(&pdev->dev, "Card%d, firmware upload "
 				"failed, not enough memory\n", index + 1);
@@ -1545,7 +1545,7 @@ static unsigned int card_count;
 static int isicom_probe(struct pci_dev *pdev,
 	const struct pci_device_id *ent)
 {
-	unsigned int uninitialized_var(signature), index;
+	unsigned int signature, index;
 	int retval = -EPERM;
 	struct isi_board *board = NULL;
 
