@@ -46,7 +46,7 @@ static u64 parse_audio_format_i_type(struct snd_usb_audio *chip,
 				     struct audioformat *fp,
 				     unsigned int format, void *_fmt)
 {
-	int sample_width, sample_bytes;
+	int sample_width = 0, sample_bytes = 0;
 	u64 pcm_formats = 0;
 
 	switch (fp->protocol) {
@@ -210,7 +210,8 @@ static int parse_audio_format_rates_v1(struct snd_usb_audio *chip, struct audiof
 		 */
 		int r, idx;
 
-		fp->rate_table = kmalloc(sizeof(int) * nr_rates, GFP_KERNEL);
+		fp->rate_table = kmalloc_array(nr_rates, sizeof(int),
+					       GFP_KERNEL);
 		if (fp->rate_table == NULL)
 			return -ENOMEM;
 
@@ -437,7 +438,7 @@ static int parse_audio_format_rates_v2(struct snd_usb_audio *chip,
 		goto err_free;
 	}
 
-	fp->rate_table = kmalloc(sizeof(int) * fp->nr_rates, GFP_KERNEL);
+	fp->rate_table = kmalloc_array(fp->nr_rates, sizeof(int), GFP_KERNEL);
 	if (!fp->rate_table) {
 		ret = -ENOMEM;
 		goto err_free;

@@ -23,7 +23,7 @@ export CC=$HOME/toolchains/boolx-clang/bin/clang
 VER="V1.3-DSP"
 KERNEL_DIR=`pwd`
 REPACK_DIR=$HOME/AnyKernel3
-ZIP_MOVE=$HOME/Boolx-releases
+ZIP_MOVE=$HOME/Boolx
 BASE_AK_VER="Bool-X-Raphael-"
 DATE=`date +"%Y%m%d-%H%M"`
 AK_VER="$BASE_AK_VER$VER"
@@ -90,8 +90,8 @@ case "$cchoice" in
 		;;
 	x86|X86 )
 		echo
-		echo "Downloading Boolx-clang for Aarch64 host."
-		git clone https://gitlab.com/onettboots/boolx-clang.git -b Clang-16.0_x86 $TOOLCHAINS
+		echo "Downloading Boolx-clang for X86 host."
+		git clone https://gitlab.com/onettboots/boolx-clang.git -b Clang-17.0_x86 $TOOLCHAINS
 		break
 		;;
 	* )

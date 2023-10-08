@@ -1,5 +1,5 @@
 /* Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
- * Copyright (C) 2019 XiaoMi, Inc.
+ * Copyright (C) 2021 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1359,13 +1359,39 @@ static int usb_icl_vote_callback(struct votable *votable, void *data,
 	}
 
 	if (chip->cp_ilim_votable) {
-		vote(chip->cp_ilim_votable, ICL_CHANGE_VOTER, false, 0);
+		if (pval.intval != POWER_SUPPLY_CP_WIRELESS)
+			vote(chip->cp_ilim_votable, ICL_CHANGE_VOTER, true, icl_ua);
+		else
+			vote(chip->cp_ilim_votable, ICL_CHANGE_VOTER, false, 0);
 	}
 
 	/* Configure ILIM based on AICL result only if input mode is USBMID */
 	if (cp_get_parallel_mode(chip, PARALLEL_INPUT_MODE)
 					== POWER_SUPPLY_PL_USBMID_USBMID)
 		cp_configure_ilim(chip, ICL_CHANGE_VOTER, icl_ua);
+
+	if (!chip->usb_psy)
+		chip->usb_psy = power_supply_get_by_name("usb");
+	if (!chip->usb_psy) {
+		pr_err("Couldn't get usb psy\n");
+		return -ENODEV;
+	}
+
+	rc = power_supply_get_property(chip->usb_psy,
+				POWER_SUPPLY_PROP_SMB_EN_REASON, &pval);
+	if (rc < 0) {
+		pr_err("Couldn't get cp reason rc=%d\n", rc);
+		return rc;
+	}
+
+	if (chip->cp_ilim_votable) {
+		if (pval.intval != POWER_SUPPLY_CP_WIRELESS)
+			vote(chip->cp_ilim_votable, ICL_CHANGE_VOTER, true, icl_ua);
+		else
+			vote(chip->cp_ilim_votable, ICL_CHANGE_VOTER, false, 0);
+	}
+
+	cp_configure_ilim(chip, ICL_CHANGE_VOTER, icl_ua);
 
 	return 0;
 }
@@ -1996,11 +2022,6 @@ int qcom_batt_init(struct charger_param *chg_param)
 	if (!chip->pl_ws)
 		goto cleanup;
 
-	INIT_DELAYED_WORK(&chip->status_change_work, status_change_work);
-	INIT_WORK(&chip->pl_taper_work, pl_taper_work);
-	INIT_WORK(&chip->pl_disable_forever_work, pl_disable_forever_work);
-	INIT_DELAYED_WORK(&chip->fcc_stepper_work, fcc_stepper_work);
-
 	chip->fcc_main_votable = create_votable("FCC_MAIN", VOTE_MIN,
 					pl_fcc_main_vote_callback,
 					chip);
@@ -2069,6 +2090,11 @@ int qcom_batt_init(struct charger_param *chg_param)
 	}
 
 	vote(chip->pl_disable_votable, PL_INDIRECT_VOTER, true, 0);
+
+	INIT_DELAYED_WORK(&chip->status_change_work, status_change_work);
+	INIT_WORK(&chip->pl_taper_work, pl_taper_work);
+	INIT_WORK(&chip->pl_disable_forever_work, pl_disable_forever_work);
+	INIT_DELAYED_WORK(&chip->fcc_stepper_work, fcc_stepper_work);
 
 	rc = pl_register_notifier(chip);
 	if (rc < 0) {

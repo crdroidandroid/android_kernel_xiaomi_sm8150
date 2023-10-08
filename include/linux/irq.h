@@ -214,7 +214,6 @@ struct irq_data {
  * IRQD_DEFAULT_TRIGGER_SET	- Expected trigger already been set
  * IRQD_AFFINITY_ON_ACTIVATE	- Affinity is set on activation. Don't call
  *				  irq_chip::irq_set_affinity() when deactivated.
- * IRQD_PERF_CRITICAL		- IRQ is performance-critical
  */
 enum {
 	IRQD_TRIGGER_MASK		= 0xf,
@@ -236,7 +235,6 @@ enum {
 	IRQD_MANAGED_SHUTDOWN		= (1 << 23),
 	IRQD_SINGLE_TARGET		= (1 << 24),
 	IRQD_DEFAULT_TRIGGER_SET	= (1 << 25),
-	IRQD_PERF_CRITICAL		= (1 << 26),
 	IRQD_AFFINITY_ON_ACTIVATE	= (1 << 29),
 };
 
@@ -550,6 +548,12 @@ extern void irq_migrate_all_off_this_cpu(void);
 extern int irq_affinity_online_cpu(unsigned int cpu);
 #else
 # define irq_affinity_online_cpu	NULL
+#endif
+
+#if defined(CONFIG_IRQ_SBALANCE)
+extern void balance_irqs(void);
+#else
+static inline void balance_irqs(void) {}
 #endif
 
 #if defined(CONFIG_SMP) && defined(CONFIG_GENERIC_PENDING_IRQ)

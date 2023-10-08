@@ -325,7 +325,7 @@ static int constrain_params_by_rules(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_constraints *constrs =
 					&substream->runtime->hw_constraints;
 	unsigned int k;
-	unsigned int rstamps[constrs->rules_num];
+	unsigned int *rstamps;
 	unsigned int vstamps[SNDRV_PCM_HW_PARAM_LAST_INTERVAL + 1];
 	unsigned int stamp;
 	struct snd_pcm_hw_rule *r;
@@ -333,7 +333,7 @@ static int constrain_params_by_rules(struct snd_pcm_substream *substream,
 	struct snd_mask old_mask;
 	struct snd_interval old_interval;
 	bool again;
-	int changed;
+	int changed, err = 0;
 
 	/*
 	 * Each application of rule has own sequence number.
@@ -341,8 +341,9 @@ static int constrain_params_by_rules(struct snd_pcm_substream *substream,
 	 * Each member of 'rstamps' array represents the sequence number of
 	 * recent application of corresponding rule.
 	 */
-	for (k = 0; k < constrs->rules_num; k++)
-		rstamps[k] = 0;
+	rstamps = kcalloc(constrs->rules_num, sizeof(unsigned int), GFP_KERNEL);
+	if (!rstamps)
+		return -ENOMEM;
 
 	/*
 	 * Each member of 'vstamps' array represents the sequence number of
@@ -400,8 +401,10 @@ retry:
 		}
 
 		changed = r->func(params, r);
-		if (changed < 0)
-			return changed;
+		if (changed < 0) {
+			err = changed;
+			goto out;
+		}
 
 		/*
 		 * When the parameter is changed, notify it to the caller
@@ -432,7 +435,9 @@ retry:
 	if (again)
 		goto retry;
 
-	return 0;
+ out:
+	kfree(rstamps);
+	return err;
 }
 
 static int fixup_unreferenced_params(struct snd_pcm_substream *substream,
@@ -3226,7 +3231,7 @@ static ssize_t snd_pcm_readv(struct kiocb *iocb, struct iov_iter *to)
 	if (!frame_aligned(runtime, to->iov->iov_len))
 		return -EINVAL;
 	frames = bytes_to_samples(runtime, to->iov->iov_len);
-	bufs = kmalloc(sizeof(void *) * to->nr_segs, GFP_KERNEL);
+	bufs = kmalloc_array(to->nr_segs, sizeof(void *), GFP_KERNEL);
 	if (bufs == NULL)
 		return -ENOMEM;
 	for (i = 0; i < to->nr_segs; ++i)
@@ -3261,7 +3266,7 @@ static ssize_t snd_pcm_writev(struct kiocb *iocb, struct iov_iter *from)
 	    !frame_aligned(runtime, from->iov->iov_len))
 		return -EINVAL;
 	frames = bytes_to_samples(runtime, from->iov->iov_len);
-	bufs = kmalloc(sizeof(void *) * from->nr_segs, GFP_KERNEL);
+	bufs = kmalloc_array(from->nr_segs, sizeof(void *), GFP_KERNEL);
 	if (bufs == NULL)
 		return -ENOMEM;
 	for (i = 0; i < from->nr_segs; ++i)
