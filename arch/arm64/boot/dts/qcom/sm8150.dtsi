@@ -566,6 +566,7 @@
 
 	firmware: firmware {
 		android {
+			boot_devices = "soc/1d84000.ufshc";
 			compatible = "android,firmware";
 			shared_meta: vbmeta {
 			};
