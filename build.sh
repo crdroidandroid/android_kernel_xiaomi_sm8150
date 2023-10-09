@@ -16,7 +16,7 @@ DEFCONFIG="raphael_defconfig"
 
 # Kernel Details
 REV="R5.1"
-EDITION="SYB"
+EDITION="STANDALONE"
 VER="$REV"-"$EDITION"
 
 # Vars
