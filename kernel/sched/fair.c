@@ -8455,9 +8455,6 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_f
 	int want_energy = 0;
 	int sync = (wake_flags & WF_SYNC) && !(current->flags & PF_EXITING);
 
-	if (sd_flag & SD_BALANCE_EXEC)
-		return prev_cpu;
-
 	rcu_read_lock();
 
 	if (sd_flag & SD_BALANCE_WAKE) {
