@@ -3,7 +3,6 @@ config ZRAM
 	tristate "Compressed RAM block device support"
 	depends on BLOCK && SYSFS && ZSMALLOC && CRYPTO
 	depends on CRYPTO_LZO || CRYPTO_ZSTD || CRYPTO_LZ4 || CRYPTO_LZ4HC || CRYPTO_842
-	default n
 	help
 	  Creates virtual block devices called /dev/zramX (X = 0, 1, ...).
 	  Pages written to these disks are compressed and stored in memory
@@ -13,7 +12,7 @@ config ZRAM
 	  It has several use cases, for example: /tmp storage, use as swap
 	  disks and maybe many more.
 
-	  See Documentation/blockdev/zram.txt for more information.
+	  See Documentation/admin-guide/blockdev/zram.rst for more information.
 
 choice
 	prompt "Default zram compressor"
@@ -55,10 +54,27 @@ config ZRAM_DEF_COMP
 	default "lz4hc" if ZRAM_DEF_COMP_LZ4HC
 	default "842" if ZRAM_DEF_COMP_842
 
+config ZRAM_ENTROPY
+	bool "Use entropy optimization for zram"
+	depends on ZRAM
+	help
+	  With this feature, entropy will be calculated for each page.
+	  Pages above ZRAM_ENTROPY_THRESHOLD entropy will be
+	  stored uncompressed. Use this feature if you need a performance
+	  boost and a small loss in compression.
+
+config ZRAM_ENTROPY_THRESHOLD
+	int
+	depends on ZRAM && ZRAM_ENTROPY
+	default 100000
+	help
+	  Pages with entropy above ZRAM_ENTROPY_THRESHOLD will be stored
+	  uncompressed. The default value was chosen as a result a lot of
+	  experiments. You can try set your own value.
+
 config ZRAM_WRITEBACK
        bool "Write back incompressible or idle page to backing device"
        depends on ZRAM
-       default n
        help
 	 With incompressible page, there is no memory saving to keep it
 	 in memory. Instead, write it out to backing device.
@@ -68,7 +84,7 @@ config ZRAM_WRITEBACK
 	 With /sys/block/zramX/{idle,writeback}, application could ask
 	 idle page's writeback to the backing device to save in memory.
 
-	 See Documentation/blockdev/zram.txt for more information.
+	 See Documentation/admin-guide/blockdev/zram.rst for more information.
 
 config ZRAM_MEMORY_TRACKING
 	bool "Track zRam block status"
@@ -78,9 +94,4 @@ config ZRAM_MEMORY_TRACKING
 	  of zRAM. Admin could see the information via
 	  /sys/kernel/debug/zram/zramX/block_state.
 
-	  See Documentation/blockdev/zram.txt for more information.
-
-config ZRAM_SIZE_OVERRIDE
-	int "zram size to set from kernel"
-	range 1 8
-	default 2
+	  See Documentation/admin-guide/blockdev/zram.rst for more information.
