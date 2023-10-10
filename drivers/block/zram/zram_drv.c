@@ -1223,7 +1223,7 @@ out:
 }
 
 static int __zram_bvec_read(struct zram *zram, struct page *page, u32 index,
-				struct bio *bio, bool partial_io, bool access)
+				struct bio *bio, bool partial_io)
 {
 	struct zcomp_strm *zstrm;
 	unsigned long handle;
@@ -1286,7 +1286,7 @@ static int __zram_bvec_read(struct zram *zram, struct page *page, u32 index,
 }
 
 static int zram_bvec_read(struct zram *zram, struct bio_vec *bvec,
-			u32 index, int offset, struct bio *bio, bool access)
+				u32 index, int offset, struct bio *bio)
 {
 	int ret;
 	struct page *page;
@@ -1299,7 +1299,7 @@ static int zram_bvec_read(struct zram *zram, struct bio_vec *bvec,
 			return -ENOMEM;
 	}
 
-	ret = __zram_bvec_read(zram, page, index, bio, is_partial_io(bvec), access);
+	ret = __zram_bvec_read(zram, page, index, bio, is_partial_io(bvec));
 	if (unlikely(ret))
 		goto out;
 
@@ -1504,7 +1504,7 @@ static int zram_bvec_write(struct zram *zram, struct bio_vec *bvec,
 		if (!page)
 			return -ENOMEM;
 
-		ret = __zram_bvec_read(zram, page, index, bio, true, true);
+		ret = __zram_bvec_read(zram, page, index, bio, true);
 		if (ret)
 			goto out;
 
@@ -1582,7 +1582,7 @@ static int zram_bvec_rw(struct zram *zram, struct bio_vec *bvec, u32 index,
 
 	if (!is_write) {
 		atomic64_inc(&zram->stats.num_reads);
-		ret = zram_bvec_read(zram, bvec, index, offset, bio, true);
+		ret = zram_bvec_read(zram, bvec, index, offset, bio);
 		flush_dcache_page(bvec->bv_page);
 	} else {
 		atomic64_inc(&zram->stats.num_writes);
@@ -1780,8 +1780,7 @@ static ssize_t disksize_store(struct device *dev,
 
 	disksize = (u64)6144 * SZ_1M;
 	if (!disksize)
-		disksize = (u64)SZ_1G * CONFIG_ZRAM_SIZE_OVERRIDE;
-		pr_info("Overriding zram size to %li", disksize);
+		return -EINVAL;
 
 	down_write(&zram->init_lock);
 	if (init_done(zram)) {
@@ -1880,14 +1879,12 @@ static int zram_open(struct block_device *bdev, fmode_t mode)
 	return ret;
 }
 
-#ifdef CONFIG_ZRAM_WRITEBACK
 static const struct block_device_operations zram_devops = {
 	.open = zram_open,
 	.swap_slot_free_notify = zram_slot_free_notify,
 	.rw_page = zram_rw_page,
 	.owner = THIS_MODULE
 };
-#endif
 
 static DEVICE_ATTR_WO(compact);
 static DEVICE_ATTR_RW(disksize);
@@ -2047,15 +2044,13 @@ static int zram_remove(struct zram *zram)
 		return -ENOMEM;
 
 	mutex_lock(&bdev->bd_mutex);
-	if (bdev->bd_openers) {
+	if (bdev->bd_openers || zram->claim) {
 		mutex_unlock(&bdev->bd_mutex);
 		bdput(bdev);
 		return -EBUSY;
 	}
 
-	claimed = zram->claim;
-	if (!claimed)
-	  zram->claim = true;
+	zram->claim = true;
 	mutex_unlock(&bdev->bd_mutex);
 
 	zram_debugfs_unregister(zram);
@@ -2145,7 +2140,7 @@ static struct class zram_control_class = {
 
 static int zram_remove_cb(int id, void *ptr, void *data)
 {
-        WARN_ON_ONCE(zram_remove(ptr));
+	zram_remove(ptr);
 	return 0;
 }
 
