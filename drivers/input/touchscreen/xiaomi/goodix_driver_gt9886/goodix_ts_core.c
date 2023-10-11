@@ -42,7 +42,9 @@
 #define INPUT_TYPE_B_PROTOCOL
 #endif
 #include <linux/backlight.h>
+#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 #include "../xiaomi/xiaomi_touch.h"
+#endif
 #include "test_core/test_param_init.h"
 
 #define INPUT_EVENT_START 0
