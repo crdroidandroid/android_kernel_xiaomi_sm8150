@@ -2581,31 +2581,28 @@ static ssize_t fts_grip_area_store(struct device *dev,
 	}
 	return count;
 }
-#ifdef CONFIG_FTS_FOD_AREA_REPORT
-static ssize_t fts_fod_status_show(struct device *dev,
-				   struct device_attribute *attr, char *buf)
+#if defined(CONFIG_TOUCHSCREEN_COMMON) && defined(CONFIG_FTS_FOD_AREA_REPORT)
+static ssize_t fts_fod_status_show(struct kobject *kobj,
+				   struct kobj_attribute *attr, char *buf)
 {
-	struct fts_ts_info *info = dev_get_drvdata(dev);
-
-	return snprintf(buf, TSP_BUF_SIZE, "%d\n", info->fod_status);
+	return snprintf(buf, TSP_BUF_SIZE, "%d\n", fts_info->fod_status);
 }
 
-static ssize_t fts_fod_status_store(struct device *dev,
-				    struct device_attribute *attr,
+static ssize_t fts_fod_status_store(struct kobject *kobj,
+				    struct kobj_attribute *attr,
 				    const char *buf, size_t count)
 {
-	struct fts_ts_info *info = dev_get_drvdata(dev);
 	int res = 0;
 	u8 gesture_cmd[6] = { 0xA2, 0x03, 0x20, 0x00, 0x00, 0x01 };
 	u8 single_only_cmd[4] = { 0xC0, 0x02, 0x00, 0x00 };
 	u8 single_double_cmd[4] = { 0xC0, 0x02, 0x01, 0x1E };
 
 	logError(1, " %s %s buf:%c,count:%zu\n", tag, __func__, buf[0], count);
-	sscanf(buf, "%u", &info->fod_status);
+	sscanf(buf, "%u", &fts_info->fod_status);
 
-	mutex_lock(&info->fod_mutex);
-	if (info->fod_status) {
-		if (info->fod_status_set) {
+	mutex_lock(&fts_info->fod_mutex);
+	if (fts_info->fod_status) {
+		if (fts_info->fod_status_set) {
 			logError(1, " %s %s fod status has set\n", tag,
 				 __func__);
 		} else {
@@ -2617,13 +2614,13 @@ static ssize_t fts_fod_status_store(struct device *dev,
 					"%s %s: enter gesture and longpress failed! ERROR %08X recovery in senseOff...\n",
 					tag, __func__, res);
 
-			if (info->sensor_sleep) {
+			if (fts_info->sensor_sleep) {
 				logError(
 					1,
 					" %s %s set fod cmd in sensor off status\n",
 					tag, __func__);
 				res = setScanMode(SCAN_MODE_LOW_POWER, 0);
-				if (info->gesture_enabled == 1) {
+				if (fts_info->gesture_enabled == 1) {
 					res = fts_write_dma_safe(
 						single_double_cmd,
 						ARRAY_SIZE(single_double_cmd));
@@ -2644,15 +2641,22 @@ static ssize_t fts_fod_status_store(struct device *dev,
 				}
 			}
 			fts_enableInterrupt();
-			info->fod_status_set = true;
+			fts_info->fod_status_set = true;
 		}
 	}
-	mutex_unlock(&info->fod_mutex);
+	mutex_unlock(&fts_info->fod_mutex);
 	logError(1, " %s %s end\n", tag, __func__);
 
 	return count;
 }
 
+static struct tp_common_ops fod_status_ops = {
+	.show = fts_fod_status_show,
+	.store = fts_fod_status_store,
+};
+#endif
+
+#ifdef CONFIG_FTS_FOD_AREA_REPORT
 static ssize_t fts_fod_test_store(struct device *dev,
 				  struct device_attribute *attr,
 				  const char *buf, size_t count)
@@ -3118,9 +3122,6 @@ static DEVICE_ATTR(touch_suspend_notify, (S_IRUGO | S_IRGRP),
 		   fts_touch_suspend_notify_show, NULL);
 #endif
 #ifdef CONFIG_FTS_FOD_AREA_REPORT
-static DEVICE_ATTR(fod_status, (S_IRUGO | S_IWUSR | S_IWGRP),
-		   fts_fod_status_show, fts_fod_status_store);
-
 static DEVICE_ATTR(fod_test, (S_IRUGO | S_IWUSR | S_IWGRP), NULL,
 		   fts_fod_test_store);
 #endif
@@ -7315,13 +7316,6 @@ static int fts_probe(struct spi_device *client)
 	mutex_init(&(info->fod_mutex));
 
 	error = sysfs_create_file(&info->fts_touch_dev->kobj,
-				  &dev_attr_fod_status.attr);
-	if (error) {
-		logError(1,
-			 "%s ERROR: Failed to create fod_status sysfs group!\n",
-			 tag);
-	}
-	error = sysfs_create_file(&info->fts_touch_dev->kobj,
 				  &dev_attr_fod_test.attr);
 	if (error) {
 		logError(1,
@@ -7375,6 +7369,14 @@ static int fts_probe(struct spi_device *client)
 			 tag, __func__, retval);
 	}
 #endif
+#endif
+
+#if defined(CONFIG_TOUCHSCREEN_COMMON) && defined(CONFIG_FTS_FOD_AREA_REPORT)
+	retval = tp_common_set_fod_status_ops(&fod_status_ops);
+	if (retval < 0) {
+		logError(1, "%s %s: Failed to create fod_status node err=%d\n",
+			 tag, __func__, retval);
+	}
 #endif
 
 	logError(1, "%s Probe Finished! \n", tag);
