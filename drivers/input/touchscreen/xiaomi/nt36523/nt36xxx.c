@@ -2013,6 +2013,62 @@ static void nvt_switch_mode_work(struct work_struct *work)
 	}
 }
 
+static int disable_pen_input_device(bool disable)
+{
+	uint8_t buf[8] = { 0 };
+	int32_t ret = 0;
+
+	NVT_LOG("++\n");
+	if (!bTouchIsAwake || !ts) {
+		NVT_LOG("touch suspend, stop set pen state %s",
+			disable ? "DISABLE" : "ENABLE");
+		goto nvt_set_pen_enable_out;
+	}
+
+	msleep(35);
+	disable = (!(ts->pen_input_dev_enable) || ts->pen_is_charge) ? true :
+								       disable;
+
+	//---set xdata index to EVENT BUF ADDR---
+	ret = nvt_set_page(ts->mmap->EVENT_BUF_ADDR | EVENT_MAP_HOST_CMD);
+	if (ret < 0) {
+		NVT_ERR("Set event buffer index fail!\n");
+		goto nvt_set_pen_enable_out;
+	}
+
+	buf[0] = EVENT_MAP_HOST_CMD;
+	buf[1] = 0x7B;
+	buf[2] = !!disable;
+	ret = CTP_SPI_WRITE(ts->client, buf, 3);
+	if (ret < 0) {
+		NVT_ERR("set pen %s failed!\n", disable ? "DISABLE" : "ENABLE");
+		goto nvt_set_pen_enable_out;
+	}
+	NVT_LOG("pen charge state is %s, %s pen input device\n",
+		ts->pen_is_charge ? "ENABLE" : "DISABLE",
+		disable ? "DISABLE" : "ENABLE");
+
+nvt_set_pen_enable_out:
+	NVT_LOG("--\n");
+	return ret;
+}
+
+static int nvt_pen_charge_state_notifier_callback(struct notifier_block *self,
+						  unsigned long event,
+						  void *data)
+{
+	ts->pen_is_charge = !!event;
+	release_pen_event();
+	schedule_work(&ts->pen_charge_state_change_work);
+	return 0;
+}
+
+static void nvt_pen_charge_state_change_work(struct work_struct *work)
+{
+	NVT_LOG("pen charge is %s", ts->pen_is_charge ? "ENABLE" : "DISABLE");
+	disable_pen_input_device(ts->pen_is_charge);
+}
+
 #ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 static struct xiaomi_touch_interface xiaomi_touch_interfaces;
 
@@ -2321,62 +2377,6 @@ static void update_touchfeature_value_work(struct work_struct *work)
 		NVT_LOG("set mode:%d = %d", Touch_Resist_RF, temp_set_value);
 	}
 	NVT_LOG("exit");
-}
-
-static int disable_pen_input_device(bool disable)
-{
-	uint8_t buf[8] = { 0 };
-	int32_t ret = 0;
-
-	NVT_LOG("++\n");
-	if (!bTouchIsAwake || !ts) {
-		NVT_LOG("touch suspend, stop set pen state %s",
-			disable ? "DISABLE" : "ENABLE");
-		goto nvt_set_pen_enable_out;
-	}
-
-	msleep(35);
-	disable = (!(ts->pen_input_dev_enable) || ts->pen_is_charge) ? true :
-								       disable;
-
-	//---set xdata index to EVENT BUF ADDR---
-	ret = nvt_set_page(ts->mmap->EVENT_BUF_ADDR | EVENT_MAP_HOST_CMD);
-	if (ret < 0) {
-		NVT_ERR("Set event buffer index fail!\n");
-		goto nvt_set_pen_enable_out;
-	}
-
-	buf[0] = EVENT_MAP_HOST_CMD;
-	buf[1] = 0x7B;
-	buf[2] = !!disable;
-	ret = CTP_SPI_WRITE(ts->client, buf, 3);
-	if (ret < 0) {
-		NVT_ERR("set pen %s failed!\n", disable ? "DISABLE" : "ENABLE");
-		goto nvt_set_pen_enable_out;
-	}
-	NVT_LOG("pen charge state is %s, %s pen input device\n",
-		ts->pen_is_charge ? "ENABLE" : "DISABLE",
-		disable ? "DISABLE" : "ENABLE");
-
-nvt_set_pen_enable_out:
-	NVT_LOG("--\n");
-	return ret;
-}
-
-static int nvt_pen_charge_state_notifier_callback(struct notifier_block *self,
-						  unsigned long event,
-						  void *data)
-{
-	ts->pen_is_charge = !!event;
-	release_pen_event();
-	schedule_work(&ts->pen_charge_state_change_work);
-	return 0;
-}
-
-static void nvt_pen_charge_state_change_work(struct work_struct *work)
-{
-	NVT_LOG("pen charge is %s", ts->pen_is_charge ? "ENABLE" : "DISABLE");
-	disable_pen_input_device(ts->pen_is_charge);
 }
 
 static int nvt_set_cur_value(int nvt_mode, int nvt_value)
@@ -3231,6 +3231,7 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 	}
 	INIT_WORK(&ts->resume_work, nvt_resume_work);
 	INIT_WORK(&ts->suspend_work, nvt_suspend_work);
+#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 	ts->set_touchfeature_wq =
 		create_singlethread_workqueue("nvt-set-touchfeature-queue");
 	if (!ts->set_touchfeature_wq) {
@@ -3239,6 +3240,7 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 		goto err_create_set_touchfeature_work_queue;
 	}
 	INIT_WORK(&ts->set_touchfeature_work, update_touchfeature_value_work);
+#endif
 
 	ts->pen_charge_state_notifier.notifier_call =
 		nvt_pen_charge_state_notifier_callback;
@@ -3321,8 +3323,10 @@ err_register_early_suspend_failed:
 		    &ts->pen_charge_state_notifier))
 		NVT_ERR("Error occurred while unregistering pen charge state notifier.\n");
 err_register_pen_charge_state_failed:
+#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 	destroy_workqueue(ts->set_touchfeature_wq);
 err_create_set_touchfeature_work_queue:
+#endif
 	destroy_workqueue(ts->event_wq);
 err_alloc_work_thread_failed:
 #ifndef NVT_SAVE_TESTDATA_IN_FILE
@@ -3490,8 +3494,10 @@ static int32_t nvt_ts_remove(struct spi_device *client)
 
 	spi_set_drvdata(client, NULL);
 
+#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 	if (ts->set_touchfeature_wq)
 		destroy_workqueue(ts->set_touchfeature_wq);
+#endif
 
 	if (ts) {
 		kfree(ts);
