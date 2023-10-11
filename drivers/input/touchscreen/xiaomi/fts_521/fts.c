@@ -68,7 +68,9 @@
 #ifdef KERNEL_ABOVE_2_6_38
 #include <linux/input/mt.h>
 #endif
+#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 #include "../xiaomi/xiaomi_touch.h"
+#endif
 #include "fts.h"
 #include "fts_lib/ftsCompensation.h"
 #include "fts_lib/ftsCore.h"
@@ -5010,6 +5012,29 @@ static int fts_mode_handler(struct fts_ts_info *info, int force)
 	return res;
 }
 
+int fts_palm_sensor_cmd(int on)
+{
+	int ret;
+	u8 cmd_on[] = { 0xc0, 0x07, 0x01 };
+	u8 cmd_off[] = { 0xc0, 0x07, 0x00 };
+
+	if (on) {
+		ret = fts_write_dma_safe(cmd_on, sizeof(cmd_on));
+	} else {
+		ret = fts_write_dma_safe(cmd_off, sizeof(cmd_off));
+	}
+
+	if (ret < OK) {
+		logError(1,
+			 "%s %s: write anti mis-touch cmd on...ERROR %08X !\n",
+			 tag, __func__, ret);
+		return -EINVAL;
+	}
+	logError(1, "%s %s %d\n", tag, __func__, on);
+
+	return 0;
+}
+
 #ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 static struct xiaomi_touch_interface xiaomi_touch_interfaces;
 
@@ -5656,29 +5681,6 @@ int fts_p_sensor_write(int value)
 		fts_info->p_sensor_changed = true;
 
 	return ret;
-}
-
-int fts_palm_sensor_cmd(int on)
-{
-	int ret;
-	u8 cmd_on[] = { 0xc0, 0x07, 0x01 };
-	u8 cmd_off[] = { 0xc0, 0x07, 0x00 };
-
-	if (on) {
-		ret = fts_write_dma_safe(cmd_on, sizeof(cmd_on));
-	} else {
-		ret = fts_write_dma_safe(cmd_off, sizeof(cmd_off));
-	}
-
-	if (ret < OK) {
-		logError(1,
-			 "%s %s: write anti mis-touch cmd on...ERROR %08X !\n",
-			 tag, __func__, ret);
-		return -EINVAL;
-	}
-	logError(1, "%s %s %d\n", tag, __func__, on);
-
-	return 0;
 }
 
 int fts_palm_sensor_write(int value)
