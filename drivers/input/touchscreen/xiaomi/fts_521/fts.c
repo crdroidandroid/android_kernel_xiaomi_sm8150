@@ -83,6 +83,10 @@
 #include "fts_lib/ftsTime.h"
 #include "fts_lib/ftsTool.h"
 
+#ifdef CONFIG_TOUCHSCREEN_COMMON
+#include <linux/input/tp_common.h>
+#endif
+
 /**
  * Event handler installer helpers
  */
@@ -2724,6 +2728,34 @@ static ssize_t fts_touchgame_show(struct device *dev,
 			grip_value[1], grip_value[2], grip_value[3],
 			grip_value[4], grip_value[5], grip_value[6]);
 }
+#endif
+
+#if defined(CONFIG_TOUCHSCREEN_COMMON) && defined(GESTURE_MODE)
+static ssize_t double_tap_show(struct kobject *kobj,
+			       struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", fts_info->gesture_enabled);
+}
+
+static ssize_t double_tap_store(struct kobject *kobj,
+				struct kobj_attribute *attr, const char *buf,
+				size_t count)
+{
+	int rc, val;
+
+	rc = kstrtoint(buf, 10, &val);
+	if (rc)
+		return -EINVAL;
+
+	fts_info->gesture_enabled = !!val;
+
+	return count;
+}
+
+static struct tp_common_ops double_tap_ops = {
+	.show = double_tap_show,
+	.store = double_tap_store,
+};
 #endif
 
 #ifdef CONFIG_SECURE_TOUCH
@@ -7333,6 +7365,16 @@ static int fts_probe(struct spi_device *client)
 #ifndef FW_UPDATE_ON_PROBE
 	queue_delayed_work(info->fwu_workqueue, &info->fwu_work,
 			   msecs_to_jiffies(EXP_FN_WORK_DELAY_MS));
+#endif
+
+#ifdef CONFIG_TOUCHSCREEN_COMMON
+#ifdef GESTURE_MODE
+	retval = tp_common_set_double_tap_ops(&double_tap_ops);
+	if (retval < 0) {
+		logError(1, "%s %s: Failed to create double_tap node err=%d\n",
+			 tag, __func__, retval);
+	}
+#endif
 #endif
 
 	logError(1, "%s Probe Finished! \n", tag);
