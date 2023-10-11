@@ -89,7 +89,6 @@ static int32_t nvt_ts_suspend(struct device *dev);
 static int32_t nvt_ts_resume(struct device *dev);
 extern int dsi_panel_lockdown_info_read(unsigned char *plockdowninfo);
 extern void dsi_panel_doubleclick_enable(bool on);
-extern void touch_irq_boost(void);
 extern void lpm_disable_for_input(bool on);
 extern int pen_charge_state_notifier_register_client(struct notifier_block *nb);
 extern int
@@ -1664,7 +1663,6 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 	}
 #endif
 
-	touch_irq_boost();
 	lpm_disable_for_input(true);
 
 	mutex_lock(&ts->lock);
