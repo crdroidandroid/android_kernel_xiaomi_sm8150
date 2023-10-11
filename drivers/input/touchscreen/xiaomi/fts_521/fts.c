@@ -153,7 +153,6 @@ static int fts_chip_initialization(struct fts_ts_info *info, int init_type);
 static const char *fts_get_limit(struct fts_ts_info *info);
 static irqreturn_t fts_event_handler(int irq, void *ts_info);
 extern void lpm_disable_for_input(bool on);
-extern void touch_irq_boost(void);
 
 /**
 * Release all the touches in the linux input subsystem
