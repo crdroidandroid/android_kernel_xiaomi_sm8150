@@ -1332,32 +1332,31 @@ static ssize_t gtp_fod_test_store(struct device *dev,
 	return count;
 }
 
-static ssize_t gtp_fod_status_show(struct device *dev,
-				   struct device_attribute *attr, char *buf)
+#ifdef CONFIG_TOUCHSCREEN_COMMON
+static ssize_t gtp_fod_status_show(struct kobject *kobj,
+				   struct kobj_attribute *attr, char *buf)
 {
-	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
-
-	return snprintf(buf, 10, "%d\n", core_data->fod_status);
+	return snprintf(buf, 10, "%d\n", goodix_core_data->fod_status);
 }
 
-static ssize_t gtp_fod_status_store(struct device *dev,
-				    struct device_attribute *attr,
+static ssize_t gtp_fod_status_store(struct kobject *kobj,
+				    struct kobj_attribute *attr,
 				    const char *buf, size_t count)
 {
-	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
-	//struct goodix_ts_event *ts_event = &core_data->ts_event;
-	ts_info("buf:%s, count:%zu\n", buf, count);
-	sscanf(buf, "%u", &core_data->fod_status);
+	sscanf(buf, "%u", &goodix_core_data->fod_status);
 
-	//goodix_ts_input_report(core_data->input_dev,&ts_event->event_data.touch_data);
-	core_data->gesture_enabled = core_data->double_wakeup |
-				     core_data->fod_status;
-	goodix_check_gesture_stat(!!core_data->fod_status);
+	goodix_core_data->gesture_enabled = goodix_core_data->double_wakeup |
+					    goodix_core_data->fod_status;
+	goodix_check_gesture_stat(!!goodix_core_data->fod_status);
 
 	return count;
 }
-static DEVICE_ATTR(fod_status, (S_IRUGO | S_IWUSR | S_IWGRP),
-		   gtp_fod_status_show, gtp_fod_status_store);
+
+static struct tp_common_ops fod_status_ops = {
+	.show = gtp_fod_status_show,
+	.store = gtp_fod_status_store,
+};
+#endif
 
 static DEVICE_ATTR(fod_test, (S_IRUGO | S_IWUSR | S_IWGRP), NULL,
 		   gtp_fod_test_store);
@@ -2765,6 +2764,11 @@ static int goodix_ts_probe(struct platform_device *pdev)
 	if (r < 0) {
 		ts_err("Failed to create double_tap node err=%d\n", r);
 	}
+
+	r = tp_common_set_fod_status_ops(&fod_status_ops);
+	if (r < 0) {
+		ts_err("Failed to create fod_status node err=%d\n", r);
+	}
 #endif
 
 	r = ts_device->hw_ops->reset(ts_device);
@@ -2846,12 +2850,6 @@ static int goodix_ts_probe(struct platform_device *pdev)
 	if (sysfs_create_file(&core_data->gtp_touch_dev->kobj,
 			      &dev_attr_touch_suspend_notify.attr)) {
 		ts_err("Failed to create sysfs group!\n");
-		goto out;
-	}
-
-	if (sysfs_create_file(&core_data->gtp_touch_dev->kobj,
-			      &dev_attr_fod_status.attr)) {
-		ts_err("Failed to create fod_status sysfs group!\n");
 		goto out;
 	}
 
