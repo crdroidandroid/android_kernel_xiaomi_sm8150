@@ -5117,9 +5117,7 @@ int dsi_panel_apply_hbm_mode(struct dsi_panel *panel)
 		type = type_map[0];
 	}
 
-	mutex_lock(&panel->panel_lock);
 	rc = dsi_panel_tx_cmd_set(panel, type);
-	mutex_unlock(&panel->panel_lock);
 
 	return rc;
 }

@@ -550,7 +550,7 @@
 	};
 
 	chosen {
-		bootargs = "quiet rcupdate.rcu_expedited=1 rcu_nocbs=0-7 noirqdebug nodebugmon kpti=off";
+		bootargs = "quiet rcupdate.rcu_expedited=1 rcu_nocbs=0-7 noirqdebug nodebugmon kpti=off dwc3_msm.ep_addr_rxdbg_mask=0 dwc3_msm.ep_addr_txdbg_mask=0";
 	};
 
 	soc: soc { };
