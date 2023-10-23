@@ -131,7 +131,7 @@ module_param_named(debug_mask, debug_mask, int, 0600);
 #define pl_dbg(chip, reason, fmt, ...)				\
 	do {								\
 		if (debug_mask & (reason))				\
-			pr_debug(fmt, ##__VA_ARGS__);	\
+			pr_info(fmt, ##__VA_ARGS__);	\
 		else							\
 			pr_debug(fmt, ##__VA_ARGS__);		\
 	} while (0)
@@ -1442,7 +1442,7 @@ static int pl_disable_vote_callback(struct votable *votable,
 			return rc;
 
 		if (disable) {
-			pr_debug("Parallel ICL is less than min ICL(%d), skipping parallel enable\n",
+			pr_info("Parallel ICL is less than min ICL(%d), skipping parallel enable\n",
 					chip->pl_min_icl_ua);
 			return 0;
 		}
