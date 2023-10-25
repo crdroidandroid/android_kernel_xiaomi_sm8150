@@ -181,6 +181,8 @@ static unsigned int scale_intrs(unsigned int intrs, int cpu)
 	return intrs * SCHED_CAPACITY_SCALE / per_cpu(cpu_cap, cpu);
 }
 
+extern int kp_active_mode(void);
+
 /* Returns true if IRQ balancing should stop */
 static bool find_min_bd(const cpumask_t *mask, unsigned int max_intrs,
 			struct bal_domain **min_bd)
@@ -205,7 +207,10 @@ static bool find_min_bd(const cpumask_t *mask, unsigned int max_intrs,
 	}
 
 	/* Don't balance if IRQs are already balanced evenly enough */
-	return max_intrs - min_intrs < IRQ_SCALED_THRESH;
+	if (kp_active_mode() == 1)
+		return max_intrs - min_intrs < (IRQ_SCALED_THRESH * 4);
+	else
+		return max_intrs - min_intrs < IRQ_SCALED_THRESH;
 }
 
 static void balance_irqs(void)
