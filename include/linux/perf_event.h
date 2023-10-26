@@ -588,13 +588,8 @@ struct perf_event {
 	/* The cumulative AND of all event_caps for events in this group. */
 	int				group_caps;
 
+	unsigned int			group_generation;
 	struct perf_event		*group_leader;
-
-	/*
-	 * Protect the pmu, attributes and context of a group leader.
-	 * Note: does not protect the pointer to the group_leader.
-	 */
-	struct mutex			group_leader_mutex;
 	struct pmu			*pmu;
 	void				*pmu_private;
 
