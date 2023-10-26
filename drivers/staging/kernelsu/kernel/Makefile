@@ -12,7 +12,7 @@ obj-y += embed_ksud.o
 obj-y += kernel_compat.o
 
 obj-y += selinux/
-KSU_GIT_VERSION := 1072
+KSU_GIT_VERSION := 1135
 # ksu_version: major * 10000 + git version + 200 for historical reasons
 $(eval KSU_VERSION=$(shell expr 10000 + $(KSU_GIT_VERSION) + 200))
 ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
@@ -29,7 +29,7 @@ endif
 #ccflags-y += -DKSU_MANAGER_PACKAGE=\"$(KSU_MANAGER_PACKAGE)\"
 #$(info -- KernelSU Manager package name: $(KSU_MANAGER_PACKAGE))
 #endif
-#
+
 #$(info -- KernelSU Manager signature size: $(KSU_EXPECTED_SIZE))
 #$(info -- KernelSU Manager signature hash: $(KSU_EXPECTED_HASH))
 
