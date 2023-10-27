@@ -438,10 +438,9 @@ static int32_t msm_ois_control(struct msm_ois_ctrl_t *o_ctrl,
 	if (set_info->ois_params.setting_size > 0 &&
 		set_info->ois_params.setting_size
 		< MAX_OIS_REG_SETTINGS) {
-		settings = kmalloc(
-			sizeof(struct reg_settings_ois_t) *
-			(set_info->ois_params.setting_size),
-			GFP_KERNEL);
+		settings = kmalloc_array(set_info->ois_params.setting_size,
+					 sizeof(struct reg_settings_ois_t),
+					 GFP_KERNEL);
 		if (settings == NULL) {
 			pr_err("Error allocating memory\n");
 			return -EFAULT;
@@ -545,9 +544,9 @@ static int32_t msm_ois_config(struct msm_ois_ctrl_t *o_ctrl,
 			rc = -EFAULT;
 			break;
 		}
-		reg_setting = kzalloc(conf_array.size *
-			(sizeof(struct msm_camera_i2c_seq_reg_array)),
-			GFP_KERNEL);
+		reg_setting = kcalloc(conf_array.size,
+				      sizeof(struct msm_camera_i2c_seq_reg_array),
+				      GFP_KERNEL);
 		if (!reg_setting) {
 			pr_err("%s:%d failed\n", __func__, __LINE__);
 			rc = -ENOMEM;

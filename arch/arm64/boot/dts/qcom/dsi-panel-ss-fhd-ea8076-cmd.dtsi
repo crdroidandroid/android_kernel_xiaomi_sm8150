@@ -31,7 +31,6 @@
 		qcom,mdss-dsi-bllp-eof-power-mode;
 		qcom,mdss-dsi-bllp-power-mode;
 		qcom,ulps-enabled;
-		qcom,suspend-ulps-enabled;
 		qcom,mdss-dsi-lp11-init;
 		qcom,mdss-dsi-init-delay-us = <5000>;
 		qcom,mdss-dsi-lane-0-state;
@@ -160,8 +159,42 @@
 				qcom,mdss-dsi-off-command = [05 01 00 00 00 00 02 28 00 05 01 00 00 78 00 02 10 00];
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
-				qcom,mdss-dsi-doze-hbm-command = [39 00 00 00 00 00 03 f0 5a 5a 39 00 00 00 00 00 02 d4 8b 39 00 00 00 00 00 02 b0 a5 39 00 00 00 00 00 02 c7 00 39 00 00 00 00 00 02 b0 69 39 00 00 00 00 00 03 b9 08 8f 39 01 00 00 01 00 02 53 22 39 01 00 00 00 00 03 f0 a5 a5];
-				qcom,mdss-dsi-doze-lbm-command = [39 00 00 00 00 00 03 f0 5a 5a 39 00 00 00 00 00 02 d4 8b 39 00 00 00 00 00 02 b0 a5 39 00 00 00 00 00 02 c7 00 39 00 00 00 00 00 02 b0 69 39 00 00 00 00 00 03 b9 08 8f 39 01 00 00 01 00 02 53 23 39 01 00 00 00 00 03 f0 a5 a5];
+				qcom,mdss-dsi-doze-hbm-command = [
+					/* Test Key Enable: F0 */
+					39 00 00 00 00 00 03 F0 5A 5A
+					/* HLPM VLOUT3 Setting */
+					39 00 00 00 00 00 02 D4 8B
+					/* HLPM SELECT 1 */
+					39 00 00 00 00 00 02 B0 A5
+					/* HLPM SELECT 2 */
+					39 00 00 00 00 00 02 C7 00
+					/* HLPM AOR 1 */
+					39 00 00 00 00 00 02 B0 69
+					/* HLPM AOR 2 */
+					39 00 00 00 00 00 03 B9 08 8F
+					/* HLPM On (0x22: 60nit) */
+					39 01 00 00 01 00 02 53 22
+					/* Test Key Disable: F0 */
+					39 01 00 00 00 00 03 F0 A5 A5
+				];
+				qcom,mdss-dsi-doze-lbm-command = [
+					/* Test Key Enable: F0 */
+					39 00 00 00 00 00 03 F0 5A 5A
+					/* HLPM VLOUT3 Setting */
+					39 00 00 00 00 00 02 D4 8B
+					/* HLPM SELECT 1 */
+					39 00 00 00 00 00 02 B0 A5
+					/* HLPM SELECT 2 */
+					39 00 00 00 00 00 02 C7 00
+					/* HLPM AOR 1 */
+					39 00 00 00 00 00 02 B0 69
+					/* HLPM AOR 2 */
+					39 00 00 00 00 00 03 B9 08 8F
+					/* HLPM on (0x23: 2nit) */
+					39 01 00 00 00 00 02 53 23
+					/* Test Key Disable: F0 */
+					39 01 00 00 00 00 03 F0 A5 A5
+				];
 				qcom,mdss-dsi-nolp-command = [05 01 00 00 10 00 02 28 00 39 01 00 00 00 00 02 53 20 05 01 00 00 00 00 02 29 00];
 				qcom,mdss-dsi-doze-hbm-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-doze-lbm-command-state = "dsi_lp_mode";
@@ -223,8 +256,42 @@
 				qcom,mdss-dsi-off-command = [05 01 00 00 00 00 02 28 00 05 01 00 00 78 00 02 10 00];
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
-				qcom,mdss-dsi-doze-hbm-command = [39 00 00 00 00 00 03 f0 5a 5a 39 00 00 00 00 00 02 d4 8b 39 00 00 00 00 00 02 b0 a5 39 00 00 00 00 00 02 c7 00 39 00 00 00 00 00 02 b0 69 39 00 00 00 00 00 03 b9 08 8f 39 01 00 00 01 00 02 53 22 39 01 00 00 00 00 03 f0 a5 a5];
-				qcom,mdss-dsi-doze-lbm-command = [39 00 00 00 00 00 03 f0 5a 5a 39 00 00 00 00 00 02 d4 8b 39 00 00 00 00 00 02 b0 a5 39 00 00 00 00 00 02 c7 00 39 00 00 00 00 00 02 b0 69 39 00 00 00 00 00 03 b9 08 8f 39 01 00 00 01 00 02 53 23 39 01 00 00 00 00 03 f0 a5 a5];
+				qcom,mdss-dsi-doze-hbm-command = [
+					/* Test Key Enable: F0 */
+					39 00 00 00 00 00 03 F0 5A 5A
+					/* HLPM VLOUT3 Setting */
+					39 00 00 00 00 00 02 D4 8B
+					/* HLPM SELECT 1 */
+					39 00 00 00 00 00 02 B0 A5
+					/* HLPM SELECT 2 */
+					39 00 00 00 00 00 02 C7 00
+					/* HLPM AOR 1 */
+					39 00 00 00 00 00 02 B0 69
+					/* HLPM AOR 2 */
+					39 00 00 00 00 00 03 B9 08 8F
+					/* HLPM On (0x22: 60nit) */
+					39 01 00 00 01 00 02 53 22
+					/* Test Key Disable: F0 */
+					39 01 00 00 00 00 03 F0 A5 A5
+				];
+				qcom,mdss-dsi-doze-lbm-command = [
+					/* Test Key Enable: F0 */
+					39 00 00 00 00 00 03 F0 5A 5A
+					/* HLPM VLOUT3 Setting */
+					39 00 00 00 00 00 02 D4 8B
+					/* HLPM SELECT 1 */
+					39 00 00 00 00 00 02 B0 A5
+					/* HLPM SELECT 2 */
+					39 00 00 00 00 00 02 C7 00
+					/* HLPM AOR 1 */
+					39 00 00 00 00 00 02 B0 69
+					/* HLPM AOR 2 */
+					39 00 00 00 00 00 03 B9 08 8F
+					/* HLPM on (0x23: 2nit) */
+					39 01 00 00 00 00 02 53 23
+					/* Test Key Disable: F0 */
+					39 01 00 00 00 00 03 F0 A5 A5
+				];
 				qcom,mdss-dsi-nolp-command = [05 01 00 00 10 00 02 28 00 39 01 00 00 00 00 02 53 20 05 01 00 00 00 00 02 29 00];
 				qcom,mdss-dsi-doze-hbm-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-doze-lbm-command-state = "dsi_lp_mode";
@@ -286,8 +353,42 @@
 				qcom,mdss-dsi-off-command = [05 01 00 00 00 00 02 28 00 05 01 00 00 78 00 02 10 00];
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
-				qcom,mdss-dsi-doze-hbm-command = [39 00 00 00 00 00 03 f0 5a 5a 39 00 00 00 00 00 02 d4 8b 39 00 00 00 00 00 02 b0 a5 39 00 00 00 00 00 02 c7 00 39 00 00 00 00 00 02 b0 69 39 00 00 00 00 00 03 b9 08 8f 39 01 00 00 01 00 02 53 22 39 01 00 00 00 00 03 f0 a5 a5];
-				qcom,mdss-dsi-doze-lbm-command = [39 00 00 00 00 00 03 f0 5a 5a 39 00 00 00 00 00 02 d4 8b 39 00 00 00 00 00 02 b0 a5 39 00 00 00 00 00 02 c7 00 39 00 00 00 00 00 02 b0 69 39 00 00 00 00 00 03 b9 08 8f 39 01 00 00 01 00 02 53 23 39 01 00 00 00 00 03 f0 a5 a5];
+				qcom,mdss-dsi-doze-hbm-command = [
+					/* Test Key Enable: F0 */
+					39 00 00 00 00 00 03 F0 5A 5A
+					/* HLPM VLOUT3 Setting */
+					39 00 00 00 00 00 02 D4 8B
+					/* HLPM SELECT 1 */
+					39 00 00 00 00 00 02 B0 A5
+					/* HLPM SELECT 2 */
+					39 00 00 00 00 00 02 C7 00
+					/* HLPM AOR 1 */
+					39 00 00 00 00 00 02 B0 69
+					/* HLPM AOR 2 */
+					39 00 00 00 00 00 03 B9 08 8F
+					/* HLPM On (0x22: 60nit) */
+					39 01 00 00 01 00 02 53 22
+					/* Test Key Disable: F0 */
+					39 01 00 00 00 00 03 F0 A5 A5
+				];
+				qcom,mdss-dsi-doze-lbm-command = [
+					/* Test Key Enable: F0 */
+					39 00 00 00 00 00 03 F0 5A 5A
+					/* HLPM VLOUT3 Setting */
+					39 00 00 00 00 00 02 D4 8B
+					/* HLPM SELECT 1 */
+					39 00 00 00 00 00 02 B0 A5
+					/* HLPM SELECT 2 */
+					39 00 00 00 00 00 02 C7 00
+					/* HLPM AOR 1 */
+					39 00 00 00 00 00 02 B0 69
+					/* HLPM AOR 2 */
+					39 00 00 00 00 00 03 B9 08 8F
+					/* HLPM on (0x23: 2nit) */
+					39 01 00 00 00 00 02 53 23
+					/* Test Key Disable: F0 */
+					39 01 00 00 00 00 03 F0 A5 A5
+				];
 				qcom,mdss-dsi-nolp-command = [05 01 00 00 10 00 02 28 00 39 01 00 00 00 00 02 53 20 05 01 00 00 00 00 02 29 00];
 				qcom,mdss-dsi-doze-hbm-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-doze-lbm-command-state = "dsi_lp_mode";
@@ -349,8 +450,42 @@
 				qcom,mdss-dsi-off-command = [05 01 00 00 00 00 02 28 00 05 01 00 00 78 00 02 10 00];
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
-				qcom,mdss-dsi-doze-hbm-command = [39 00 00 00 00 00 03 f0 5a 5a 39 00 00 00 00 00 02 d4 8b 39 00 00 00 00 00 02 b0 a5 39 00 00 00 00 00 02 c7 00 39 00 00 00 00 00 02 b0 69 39 00 00 00 00 00 03 b9 08 8f 39 01 00 00 01 00 02 53 22 39 01 00 00 00 00 03 f0 a5 a5];
-				qcom,mdss-dsi-doze-lbm-command = [39 00 00 00 00 00 03 f0 5a 5a 39 00 00 00 00 00 02 d4 8b 39 00 00 00 00 00 02 b0 a5 39 00 00 00 00 00 02 c7 00 39 00 00 00 00 00 02 b0 69 39 00 00 00 00 00 03 b9 08 8f 39 01 00 00 01 00 02 53 23 39 01 00 00 00 00 03 f0 a5 a5];
+				qcom,mdss-dsi-doze-hbm-command = [
+					/* Test Key Enable: F0 */
+					39 00 00 00 00 00 03 F0 5A 5A
+					/* HLPM VLOUT3 Setting */
+					39 00 00 00 00 00 02 D4 8B
+					/* HLPM SELECT 1 */
+					39 00 00 00 00 00 02 B0 A5
+					/* HLPM SELECT 2 */
+					39 00 00 00 00 00 02 C7 00
+					/* HLPM AOR 1 */
+					39 00 00 00 00 00 02 B0 69
+					/* HLPM AOR 2 */
+					39 00 00 00 00 00 03 B9 08 8F
+					/* HLPM On (0x22: 60nit) */
+					39 01 00 00 01 00 02 53 22
+					/* Test Key Disable: F0 */
+					39 01 00 00 00 00 03 F0 A5 A5
+				];
+				qcom,mdss-dsi-doze-lbm-command = [
+					/* Test Key Enable: F0 */
+					39 00 00 00 00 00 03 F0 5A 5A
+					/* HLPM VLOUT3 Setting */
+					39 00 00 00 00 00 02 D4 8B
+					/* HLPM SELECT 1 */
+					39 00 00 00 00 00 02 B0 A5
+					/* HLPM SELECT 2 */
+					39 00 00 00 00 00 02 C7 00
+					/* HLPM AOR 1 */
+					39 00 00 00 00 00 02 B0 69
+					/* HLPM AOR 2 */
+					39 00 00 00 00 00 03 B9 08 8F
+					/* HLPM on (0x23: 2nit) */
+					39 01 00 00 00 00 02 53 23
+					/* Test Key Disable: F0 */
+					39 01 00 00 00 00 03 F0 A5 A5
+				];
 				qcom,mdss-dsi-nolp-command = [05 01 00 00 10 00 02 28 00 39 01 00 00 00 00 02 53 20 05 01 00 00 00 00 02 29 00];
 				qcom,mdss-dsi-doze-hbm-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-doze-lbm-command-state = "dsi_lp_mode";
@@ -412,8 +547,42 @@
 				qcom,mdss-dsi-off-command = [05 01 00 00 00 00 02 28 00 05 01 00 00 78 00 02 10 00];
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
-				qcom,mdss-dsi-doze-hbm-command = [39 00 00 00 00 00 03 f0 5a 5a 39 00 00 00 00 00 02 d4 8b 39 00 00 00 00 00 02 b0 a5 39 00 00 00 00 00 02 c7 00 39 00 00 00 00 00 02 b0 69 39 00 00 00 00 00 03 b9 08 8f 39 01 00 00 01 00 02 53 22 39 01 00 00 00 00 03 f0 a5 a5];
-				qcom,mdss-dsi-doze-lbm-command = [39 00 00 00 00 00 03 f0 5a 5a 39 00 00 00 00 00 02 d4 8b 39 00 00 00 00 00 02 b0 a5 39 00 00 00 00 00 02 c7 00 39 00 00 00 00 00 02 b0 69 39 00 00 00 00 00 03 b9 08 8f 39 01 00 00 01 00 02 53 23 39 01 00 00 00 00 03 f0 a5 a5];
+				qcom,mdss-dsi-doze-hbm-command = [
+					/* Test Key Enable: F0 */
+					39 00 00 00 00 00 03 F0 5A 5A
+					/* HLPM VLOUT3 Setting */
+					39 00 00 00 00 00 02 D4 8B
+					/* HLPM SELECT 1 */
+					39 00 00 00 00 00 02 B0 A5
+					/* HLPM SELECT 2 */
+					39 00 00 00 00 00 02 C7 00
+					/* HLPM AOR 1 */
+					39 00 00 00 00 00 02 B0 69
+					/* HLPM AOR 2 */
+					39 00 00 00 00 00 03 B9 08 8F
+					/* HLPM On (0x22: 60nit) */
+					39 01 00 00 01 00 02 53 22
+					/* Test Key Disable: F0 */
+					39 01 00 00 00 00 03 F0 A5 A5
+				];
+				qcom,mdss-dsi-doze-lbm-command = [
+					/* Test Key Enable: F0 */
+					39 00 00 00 00 00 03 F0 5A 5A
+					/* HLPM VLOUT3 Setting */
+					39 00 00 00 00 00 02 D4 8B
+					/* HLPM SELECT 1 */
+					39 00 00 00 00 00 02 B0 A5
+					/* HLPM SELECT 2 */
+					39 00 00 00 00 00 02 C7 00
+					/* HLPM AOR 1 */
+					39 00 00 00 00 00 02 B0 69
+					/* HLPM AOR 2 */
+					39 00 00 00 00 00 03 B9 08 8F
+					/* HLPM on (0x23: 2nit) */
+					39 01 00 00 00 00 02 53 23
+					/* Test Key Disable: F0 */
+					39 01 00 00 00 00 03 F0 A5 A5
+				];
 				qcom,mdss-dsi-nolp-command = [05 01 00 00 10 00 02 28 00 39 01 00 00 00 00 02 53 20 05 01 00 00 00 00 02 29 00];
 				qcom,mdss-dsi-doze-hbm-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-doze-lbm-command-state = "dsi_lp_mode";

@@ -14,6 +14,7 @@
 #include <linux/slab.h>
 #include <linux/version.h>
 #include <drm/drm_panel.h>
+#include <linux/event_tracking.h>
 
 /* The sched_param struct is located elsewhere in newer kernels */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
@@ -69,6 +70,10 @@ module_param(wake_boost_duration, short, 0644);
 static bool input_boost_enable = true;
 module_param(input_boost_enable, bool, 0644);
 
+#if(CONFIG_INPUT_BOOST_DURATION_MS != 0)
+unsigned long last_input_time;
+#endif
+unsigned long last_mb_time;
 
 enum {
 	SCREEN_OFF,
@@ -129,9 +134,10 @@ static unsigned int get_min_freq(struct cpufreq_policy *policy)
 
 	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
 		freq = cpu_freq_min_little;
-	else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
+
+	if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
 		freq = cpu_freq_min_big;
-	else
+	else if (cpumask_test_cpu(policy->cpu, cpu_prime_mask))
 		freq = cpu_freq_min_prime;
 
 	return max(freq, policy->cpuinfo.min_freq);
@@ -170,17 +176,23 @@ static void update_online_cpu_policy(void)
 	put_online_cpus();
 }
 
+extern int kp_active_mode(void);
 static void __cpu_input_boost_kick(struct boost_drv *b)
 {
+	unsigned int multi = 1;
+
 	if (test_bit(SCREEN_OFF, &b->state))
 		return;
 
 	if (!input_boost_duration || !input_boost_enable)
 		return;
 
+	if (kp_active_mode() == 1 && !test_bit(INPUT_BOOST, &b->state))
+		return;
+
 	set_bit(INPUT_BOOST, &b->state);
 	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
-			      msecs_to_jiffies(input_boost_duration)))
+			      msecs_to_jiffies(input_boost_duration * multi)))
 		wake_up(&b->boost_waitq);
 }
 
@@ -192,12 +204,16 @@ void cpu_input_boost_kick(void)
 }
 
 static void __cpu_input_boost_kick_max(struct boost_drv *b,
-				       unsigned int duration_ms)
+				       unsigned int duration_ms,
+				       bool always)
 {
 	unsigned long boost_jiffies = msecs_to_jiffies(duration_ms);
 	unsigned long curr_expires, new_expires;
 
 	if (test_bit(SCREEN_OFF, &b->state))
+		return;
+
+	if (kp_active_mode() == 1 && !always && !test_bit(MAX_BOOST, &b->state))
 		return;
 
 	do {
@@ -216,11 +232,12 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 		wake_up(&b->boost_waitq);
 }
 
-void cpu_input_boost_kick_max(unsigned int duration_ms)
+void cpu_input_boost_kick_max(unsigned int duration_ms, bool always)
 {
 	struct boost_drv *b = &boost_drv_g;
 
-	__cpu_input_boost_kick_max(b, duration_ms);
+	__cpu_input_boost_kick_max(b, duration_ms, always);
+	last_mb_time = jiffies;
 }
 
 static void input_unboost_worker(struct work_struct *work)
@@ -316,7 +333,7 @@ static int msm_drm_notifier_cb(struct notifier_block *nb, unsigned long action,
 	/* Boost when the screen turns on and unboost when it turns off */
 	if (*blank == MSM_DRM_BLANK_UNBLANK) {
 		clear_bit(SCREEN_OFF, &b->state);
-		__cpu_input_boost_kick_max(b, wake_boost_duration);
+		__cpu_input_boost_kick_max(b, wake_boost_duration, true);
 	} else {
 		set_bit(SCREEN_OFF, &b->state);
 		wake_up(&b->boost_waitq);
@@ -332,6 +349,10 @@ static void cpu_input_boost_input_event(struct input_handle *handle,
 	struct boost_drv *b = handle->handler->private;
 
 	__cpu_input_boost_kick(b);
+
+#if(CONFIG_INPUT_BOOST_DURATION_MS != 0)
+	last_input_time = jiffies;
+#endif
 }
 
 static int cpu_input_boost_input_connect(struct input_handler *handler,

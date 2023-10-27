@@ -960,6 +960,7 @@ static int geni_i2c_xfer(struct i2c_adapter *adap,
 		}
 
 		ret = gi2c->err;
+		gi2c->err = 0;
 		if (gi2c->err) {
 			GENI_SE_ERR(gi2c->ipcl, true, gi2c->dev,
 				"i2c error :%d\n", gi2c->err);
@@ -1142,8 +1143,7 @@ static int geni_i2c_probe(struct platform_device *pdev)
 			"qcom,bus-recovery");
 	platform_set_drvdata(pdev, gi2c);
 	ret = devm_request_irq(gi2c->dev, gi2c->irq, geni_i2c_irq,
-			       IRQF_TRIGGER_HIGH | IRQF_NOBALANCING,
-			       "i2c_geni", gi2c);
+			       IRQF_TRIGGER_HIGH, "i2c_geni", gi2c);
 	if (ret) {
 		dev_err(gi2c->dev, "Request_irq failed:%d: err:%d\n",
 				   gi2c->irq, ret);
@@ -1383,7 +1383,6 @@ static struct platform_driver geni_i2c_driver = {
 		.name = "i2c_geni",
 		.pm = &geni_i2c_pm_ops,
 		.of_match_table = geni_i2c_dt_match,
-		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 	},
 };
 

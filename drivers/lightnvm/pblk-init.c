@@ -90,7 +90,7 @@ static int pblk_l2p_init(struct pblk *pblk)
 	if (pblk->ppaf_bitsize < 32)
 		entry_size = 4;
 
-	pblk->trans_map = vmalloc(entry_size * pblk->rl.nr_secs);
+	pblk->trans_map = vmalloc(array_size(entry_size, pblk->rl.nr_secs));
 	if (!pblk->trans_map)
 		return -ENOMEM;
 
@@ -121,7 +121,7 @@ static int pblk_rwb_init(struct pblk *pblk)
 
 	nr_entries = pblk_rb_calculate_size(pblk->pgs_in_buffer);
 
-	entries = vzalloc(nr_entries * sizeof(struct pblk_rb_entry));
+	entries = vzalloc(array_size(nr_entries, sizeof(struct pblk_rb_entry)));
 	if (!entries)
 		return -ENOMEM;
 

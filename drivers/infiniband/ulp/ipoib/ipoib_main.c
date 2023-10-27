@@ -1507,7 +1507,7 @@ static int ipoib_neigh_hash_init(struct ipoib_dev_priv *priv)
 		return -ENOMEM;
 	set_bit(IPOIB_STOP_NEIGH_GC, &priv->flags);
 	size = roundup_pow_of_two(arp_tbl.gc_thresh3);
-	buckets = kzalloc(size * sizeof(*buckets), GFP_KERNEL);
+	buckets = kcalloc(size, sizeof(*buckets), GFP_KERNEL);
 	if (!buckets) {
 		kfree(htbl);
 		return -ENOMEM;
@@ -1669,12 +1669,13 @@ static int ipoib_dev_init_default(struct net_device *dev)
 	netif_napi_add(dev, &priv->napi, ipoib_poll, NAPI_POLL_WEIGHT);
 
 	/* Allocate RX/TX "rings" to hold queued skbs */
-	priv->rx_ring =	kzalloc(ipoib_recvq_size * sizeof *priv->rx_ring,
-				GFP_KERNEL);
+	priv->rx_ring =	kcalloc(ipoib_recvq_size,
+				       sizeof(*priv->rx_ring),
+				       GFP_KERNEL);
 	if (!priv->rx_ring)
 		goto out;
 
-	priv->tx_ring = vzalloc(ipoib_sendq_size * sizeof *priv->tx_ring);
+	priv->tx_ring = vzalloc(array_size(ipoib_sendq_size, sizeof(*priv->tx_ring)));
 	if (!priv->tx_ring) {
 		printk(KERN_WARNING "%s: failed to allocate TX ring (%d entries)\n",
 		       priv->ca->name, ipoib_sendq_size);
