@@ -49,6 +49,7 @@
 #ifndef GOODIX_DRM_INTERFACE_WA
 #include <linux/msm_drm_notify.h>
 #endif
+#include <soc/qcom/socinfo.h>
 
 #include "gf_spi.h"
 
@@ -591,9 +592,11 @@ static int gf_open(struct inode *inode, struct file *filp)
 			break;
 		}
 	}
-#ifdef CONFIG_FINGERPRINT_FP_VREG_CONTROL
 	pr_info("Try to enable fp_vdd_vreg\n");
-	gf_dev->vreg = regulator_get(&gf_dev->spi->dev, "fp_vdd_vreg");
+	if (get_hw_version_platform() == HARDWARE_PLATFORM_VAYU)
+		gf_dev->vreg = regulator_get(NULL, "pm8150_l17");
+	else
+		gf_dev->vreg = regulator_get(&gf_dev->spi->dev, "fp_vdd_vreg");
 
 	if (gf_dev->vreg == NULL) {
 		dev_err(&gf_dev->spi->dev,
@@ -605,6 +608,17 @@ static int gf_open(struct inode *inode, struct file *filp)
 	if (regulator_is_enabled(gf_dev->vreg)) {
 		pr_info("fp_vdd_vreg is already enabled!\n");
 	} else {
+		if (get_hw_version_platform() == HARDWARE_PLATFORM_VAYU) {
+			status = regulator_set_voltage(gf_dev->vreg, 3000000,
+						       3000000);
+			if (status < 0) {
+				pr_info("fp_vdd_vreg set voltage failed!\n");
+				gf_dev->vreg = NULL;
+				mutex_unlock(&device_list_lock);
+				return -EPERM;
+			}
+		}
+
 		rc = regulator_enable(gf_dev->vreg);
 
 		if (rc) {
@@ -618,10 +632,12 @@ static int gf_open(struct inode *inode, struct file *filp)
 	}
 
 	pr_info("fp_vdd_vreg is enabled!\n");
-#endif
 
 	if (status == 0) {
-		rc = gpio_request(gf_dev->reset_gpio, "goodix_reset");
+		if (get_hw_version_platform() == HARDWARE_PLATFORM_VAYU)
+			rc = gpio_request(gf_dev->reset_gpio, "gpio-reset");
+		else
+			rc = gpio_request(gf_dev->reset_gpio, "goodix_reset");
 
 		if (rc) {
 			dev_err(&gf_dev->spi->dev,
@@ -632,7 +648,10 @@ static int gf_open(struct inode *inode, struct file *filp)
 		}
 
 		gpio_direction_output(gf_dev->reset_gpio, 0);
-		rc = gpio_request(gf_dev->irq_gpio, "goodix_irq");
+		if (get_hw_version_platform() == HARDWARE_PLATFORM_VAYU)
+			rc = gpio_request(gf_dev->irq_gpio, "gpio-irq");
+		else
+			rc = gpio_request(gf_dev->irq_gpio, "goodix_irq");
 
 		if (rc) {
 			dev_err(&gf_dev->spi->dev,
@@ -696,16 +715,15 @@ static int gf_release(struct inode *inode, struct file *filp)
 	/*
 	 *Disable fp_vdd_vreg regulator
 	 */
-#ifdef CONFIG_FINGERPRINT_FP_VREG_CONTROL
-	pr_info("disable fp_vdd_vreg!\n");
+	if (get_hw_version_platform() == HARDWARE_PLATFORM_VAYU) {
+		pr_info("disable fp_vdd_vreg!\n");
 
-	if (regulator_is_enabled(gf_dev->vreg)) {
-		regulator_disable(gf_dev->vreg);
-		regulator_put(gf_dev->vreg);
-		gf_dev->vreg = NULL;
+		if (regulator_is_enabled(gf_dev->vreg)) {
+			regulator_disable(gf_dev->vreg);
+			regulator_put(gf_dev->vreg);
+			gf_dev->vreg = NULL;
+		}
 	}
-
-#endif
 	gf_dev->users--;
 
 	if (!gf_dev->users) {
