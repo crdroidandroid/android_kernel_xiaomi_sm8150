@@ -1,0 +1,23 @@
+source "drivers/input/touchscreen/xiaomi/fts_521/Kconfig"
+source "drivers/input/touchscreen/xiaomi/goodix_driver_gt9886/Kconfig"
+source "drivers/input/touchscreen/xiaomi/nt36523/Kconfig"
+source "drivers/input/touchscreen/xiaomi/nt36672c/Kconfig"
+
+config I2C_BY_DMA
+	bool "I2C BY DMA"
+
+config SECURE_TOUCH
+	bool "Secure Touch"
+
+config INPUT_PRESS_NDT
+	bool "ndt"
+	depends on I2C
+	help
+	  Say Y here if you have a press ic ndt.
+
+config SPI_XIAOMI_TP
+	bool
+	depends on SPI
+	default y if TOUCHSCREEN_NT36xxx_HOSTDL_SPI
+	help
+		Say Y if want use xiaomi touch panel.
