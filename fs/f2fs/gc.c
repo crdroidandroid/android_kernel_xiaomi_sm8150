@@ -1532,8 +1532,7 @@ next_step:
 			int err;
 
 			inode = f2fs_iget(sb, dni.ino);
-			if (IS_ERR(inode) || is_bad_inode(inode) ||
-					special_file(inode->i_mode))
+			if (IS_ERR(inode) || is_bad_inode(inode))
 				continue;
 
 			err = f2fs_gc_pinned_control(inode, gc_type, segno);
