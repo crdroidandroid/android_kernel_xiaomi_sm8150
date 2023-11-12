@@ -87,7 +87,8 @@ static int imx_dt_node_to_map(struct pinctrl_dev *pctldev,
 			map_num++;
 	}
 
-	new_map = kmalloc(sizeof(struct pinctrl_map) * map_num, GFP_KERNEL);
+	new_map = kmalloc_array(map_num, sizeof(struct pinctrl_map),
+				GFP_KERNEL);
 	if (!new_map)
 		return -ENOMEM;
 
@@ -476,10 +477,12 @@ static int imx_pinctrl_parse_groups(struct device_node *np,
 	config = imx_pinconf_parse_generic_config(np, ipctl);
 
 	grp->num_pins = size / pin_size;
-	grp->data = devm_kzalloc(info->dev, grp->num_pins *
-				 sizeof(struct imx_pin), GFP_KERNEL);
-	grp->pins = devm_kzalloc(info->dev, grp->num_pins *
-				 sizeof(unsigned int), GFP_KERNEL);
+	grp->data = devm_kcalloc(info->dev,
+				 grp->num_pins, sizeof(struct imx_pin),
+				 GFP_KERNEL);
+	grp->pins = devm_kcalloc(info->dev,
+				 grp->num_pins, sizeof(unsigned int),
+				 GFP_KERNEL);
 	if (!grp->pins || !grp->data)
 		return -ENOMEM;
 
@@ -690,8 +693,9 @@ int imx_pinctrl_probe(struct platform_device *pdev,
 	if (!ipctl)
 		return -ENOMEM;
 
-	info->pin_regs = devm_kmalloc(&pdev->dev, sizeof(*info->pin_regs) *
-				      info->npins, GFP_KERNEL);
+	info->pin_regs = devm_kmalloc_array(&pdev->dev,
+				      info->npins, sizeof(*info->pin_regs),
+				      GFP_KERNEL);
 	if (!info->pin_regs)
 		return -ENOMEM;
 

@@ -502,8 +502,8 @@ static void ipa3_copy_qmi_flt_rule_ex(
 	 */
 	flt_spec_ptr = (struct ipa_filter_spec_ex_type_v01 *) flt_spec_ptr_void;
 
-	q6_ul_flt_rule_ptr->ip = flt_spec_ptr->ip_type;
-	q6_ul_flt_rule_ptr->action = flt_spec_ptr->filter_action;
+	q6_ul_flt_rule_ptr->ip = (enum ipa_ip_type)flt_spec_ptr->ip_type;
+	q6_ul_flt_rule_ptr->action = (enum ipa_flt_action)flt_spec_ptr->filter_action;
 	if (flt_spec_ptr->is_routing_table_index_valid == true)
 		q6_ul_flt_rule_ptr->rt_tbl_idx =
 		flt_spec_ptr->route_table_index;
@@ -3011,10 +3011,7 @@ static int rmnet_ipa_ap_suspend(struct device *dev)
 	}
 
 	/* Make sure that there is no Tx operation ongoing */
-	netif_stop_queue(netdev);
-	/* Stoppig Watch dog timer when pipe was in suspend state */
-	if (del_timer(&netdev->watchdog_timer))
-		dev_put(netdev);
+	netif_device_detach(netdev);
 	spin_unlock_irqrestore(&wwan_ptr->lock, flags);
 
 	IPAWANDBG("De-activating the PM/RM resource.\n");
@@ -3046,10 +3043,8 @@ static int rmnet_ipa_ap_resume(struct device *dev)
 	/* Clear the suspend in progress flag. */
 	atomic_set(&rmnet_ipa3_ctx->ap_suspend, 0);
 	if (netdev) {
-		netif_wake_queue(netdev);
-		/* Starting Watch dog timer, pipe was changes to resume state */
-		if (netif_running(netdev) && netdev->watchdog_timeo <= 0)
-			__netdev_watchdog_up(netdev);
+		netif_device_attach(netdev);
+		netif_trans_update(netdev);
 	}
 	IPAWANDBG("Exit\n");
 
@@ -3069,8 +3064,8 @@ static const struct of_device_id rmnet_ipa_dt_match[] = {
 MODULE_DEVICE_TABLE(of, rmnet_ipa_dt_match);
 
 static const struct dev_pm_ops rmnet_ipa_pm_ops = {
-	.suspend_noirq = rmnet_ipa_ap_suspend,
-	.resume_noirq = rmnet_ipa_ap_resume,
+	.suspend_late = rmnet_ipa_ap_suspend,
+	.resume_early = rmnet_ipa_ap_resume,
 };
 
 static struct platform_driver rmnet_ipa_driver = {
