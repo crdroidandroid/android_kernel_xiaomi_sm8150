@@ -773,9 +773,7 @@ ifeq ($(cc-name),clang)
 KBUILD_CFLAGS   += -O3
 KBUILD_CFLAGS	+= -march=armv8.2-a+dotprod -mcpu=cortex-a76+crypto+crc
 endif
-ifdef CONFIG_LTO_CLANG
-KBUILD_CFLAG	+= -fwhole-program-vtables
-endif
+
 ifdef CONFIG_INLINE_OPTIMIZATION
 KBUILD_CFLAGS	+= -mllvm -inline-threshold=2500
 KBUILD_CFLAGS	+= -mllvm -inlinehint-threshold=1500
@@ -963,12 +961,14 @@ LD_FLAGS_LTO_CLANG := -mllvm -import-instr-limit=60
 KBUILD_LDFLAGS += $(LD_FLAGS_LTO_CLANG)
 KBUILD_LDFLAGS_MODULE += $(LD_FLAGS_LTO_CLANG)
 
+lto-clang-flags += -fwhole-program-vtables
+
 KBUILD_LDFLAGS_MODULE += -T scripts/module-lto.lds
 
 KBUILD_LDS_MODULE += $(srctree)/scripts/module-lto.lds
 
 # allow disabling only clang LTO where needed
-DISABLE_LTO_CLANG := -fno-lto
+DISABLE_LTO_CLANG := -fno-lto -fno-whole-program-vtables
 export DISABLE_LTO_CLANG
 endif
 
