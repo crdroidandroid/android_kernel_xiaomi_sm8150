@@ -96,7 +96,7 @@
 #include <linux/scs.h>
 #include <linux/simple_lmk.h>
 #include <linux/devfreq_boost.h>
-
+#include <linux/irq.h>
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
 #include <linux/uaccess.h>
@@ -2257,6 +2257,7 @@ long _do_fork(unsigned long clone_flags,
 	/* Boost DDR bus to the max for 50 ms when userspace launches an app */
 	if (task_is_zygote(current))
 		devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 50);
+		balance_irqs();
 
 	/*
 	 * Determine whether and which event to report to ptracer.  When
