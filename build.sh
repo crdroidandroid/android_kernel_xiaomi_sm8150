@@ -52,7 +52,7 @@ function make_menuconfig {
 }
 function building {
 		echo
-		make O=out CC=$HOME/toolchains/boolx-clang/bin/clang AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip KBUILD_BUILD_USER=OnettBoots KBUILD_BUILD_HOST=SuperTermux -j$(grep -c ^processor /proc/cpuinfo)
+		make O=out CC=$HOME/toolchains/boolx-clang/bin/clang LLVM=1 LLVM_IAS=1 KBUILD_BUILD_USER=OnettBoots KBUILD_BUILD_HOST=SuperTermux -j$(grep -c ^processor /proc/cpuinfo)
 }
 function make_boot {
 		cp $KERNEL $REPACK_DIR && cp $DTBO $REPACK_DIR/oc
