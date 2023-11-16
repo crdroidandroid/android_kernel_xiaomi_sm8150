@@ -1532,7 +1532,13 @@ next_step:
 			int err;
 
 			inode = f2fs_iget(sb, dni.ino);
+<<<<<<< HEAD
 			if (IS_ERR(inode) || is_bad_inode(inode))
+=======
+			if (IS_ERR(inode) || is_bad_inode(inode) ||
+					special_file(inode->i_mode)) {
+				set_sbi_flag(sbi, SBI_NEED_FSCK);
+>>>>>>> aosp/android-4.14-stable
 				continue;
 
 			err = f2fs_gc_pinned_control(inode, gc_type, segno);
