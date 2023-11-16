@@ -941,6 +941,7 @@ alloc_new:
 				       fio->page->index, fio,
 				       GFP_NOIO);
 
+		bio_set_op_attrs(bio, fio->op, fio->op_flags);
 		add_bio_entry(fio->sbi, bio, page, fio->temp);
 	} else {
 		if (add_ipu_page(fio, &bio, page))
@@ -1063,7 +1064,9 @@ static struct bio *f2fs_grab_read_bio(struct inode *inode, block_t blkaddr,
 	bio->bi_end_io = f2fs_read_end_io;
 
 	if (fscrypt_inode_uses_fs_layer_crypto(inode))
-		post_read_steps |= STEP_DECRYPT;
+		post_read_steps |= 1 << STEP_DECRYPT;
+	if (f2fs_need_verity(inode, first_idx))
+		post_read_steps |= 1 << STEP_VERITY;
 
 	if (f2fs_need_verity(inode, first_idx))
 		post_read_steps |= STEP_VERITY;
