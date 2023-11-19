@@ -114,11 +114,11 @@ static inline void gf_setup(struct gf_dev *gf_dev) {
 	gpio_direction_input(gf_dev->irq_gpio);
 	gf_dev->irq = gpio_to_irq(gf_dev->irq_gpio);
 	if (!request_threaded_irq(gf_dev->irq, NULL, gf_irq,
-			IRQF_TRIGGER_RISING | IRQF_ONESHOT,
-			"gf", gf_dev))
-		enable_irq_wake(gf_dev->irq);
-		gf_dev->irq_enabled = 1;
-		irq_switch(gf_dev, 0);
+		IRQF_TRIGGER_RISING | IRQF_ONESHOT,
+		"gf", gf_dev))
+	enable_irq_wake(gf_dev->irq);
+	gf_dev->irq_enabled = 1;
+	irq_switch(gf_dev, 0);
 	return;
 }
 
@@ -132,8 +132,8 @@ static inline void gf_cleanup(struct gf_dev *gf_dev) {
 	if (gpio_is_valid(gf_dev->rst_gpio))
 		gpio_free(gf_dev->rst_gpio);
 	if (gpio_is_valid(gf_dev->pwr_gpio))
-		gf_power_switch(gf_dev, 0);
-		gpio_free(gf_dev->pwr_gpio);
+	gf_power_switch(gf_dev, 0);
+	gpio_free(gf_dev->pwr_gpio);
 }
 
 static inline void gpio_reset(struct gf_dev *gf_dev) {
