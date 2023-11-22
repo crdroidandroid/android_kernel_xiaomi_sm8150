@@ -53,7 +53,7 @@
 int sysctl_panic_on_oom;
 int sysctl_oom_kill_allocating_task;
 int sysctl_oom_dump_tasks;
-int sysctl_reap_mem_on_sigkill = 1;
+int sysctl_reap_mem_on_sigkill;
 
 DEFINE_MUTEX(oom_lock);
 /* Serializes oom_score_adj and oom_score_adj_min updates */
