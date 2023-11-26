@@ -199,135 +199,136 @@ static void ipa_eth_gsi_chan_err_cb(struct gsi_chan_err_notify *notify)
 
 
 static int ipa_eth_setup_rtk_gsi_channel(
-	struct ipa_eth_client_pipe_info *pipe,
-	struct ipa3_ep_context *ep)
+    struct ipa_eth_client_pipe_info *pipe,
+    struct ipa3_ep_context *ep)
 {
-	struct gsi_evt_ring_props gsi_evt_ring_props;
-	struct gsi_chan_props gsi_channel_props;
-	union __packed gsi_channel_scratch ch_scratch;
-	union __packed gsi_evt_scratch evt_scratch;
-	const struct ipa_gsi_ep_config *gsi_ep_info;
-	int result, len;
-	int queue_number;
-	u64 bar_addr;
+    struct gsi_evt_ring_props gsi_evt_ring_props;
+    struct gsi_chan_props gsi_channel_props;
+    union __packed gsi_channel_scratch ch_scratch;
+    union __packed gsi_evt_scratch evt_scratch;
+    const struct ipa_gsi_ep_config *gsi_ep_info;
+    int result, len;
+    int queue_number;
+    u64 bar_addr;
 
-	if (unlikely(!pipe->info.is_transfer_ring_valid)) {
-		IPAERR("RTK transfer ring invalid\n");
-		ipa_assert();
-		return -EFAULT;
-	}
+    if (unlikely(!pipe->info.is_transfer_ring_valid)) {
+        IPAERR("RTK transfer ring invalid\n");
+        ipa_assert();
+        return -EFAULT;
+    }
 
-	/* setup event ring */
-	bar_addr =
-		IPA_ETH_PCIE_SET(pipe->info.client_info.rtk.bar_addr);
-	memset(&gsi_evt_ring_props, 0, sizeof(gsi_evt_ring_props));
-	gsi_evt_ring_props.intf = GSI_EVT_CHTYPE_RTK_EV;
-	gsi_evt_ring_props.intr = GSI_INTR_MSI;
-	gsi_evt_ring_props.re_size = GSI_EVT_RING_RE_SIZE_16B;
-	if (pipe->dir == IPA_ETH_PIPE_DIR_TX) {
-		gsi_evt_ring_props.int_modt = IPA_ETH_RTK_MODT;
-		gsi_evt_ring_props.int_modc = IPA_ETH_RTK_MODC;
-	}
-	gsi_evt_ring_props.exclusive = true;
-	gsi_evt_ring_props.err_cb = ipa_eth_gsi_evt_ring_err_cb;
-	gsi_evt_ring_props.user_data = NULL;
-	gsi_evt_ring_props.msi_addr =
-		bar_addr +
-		pipe->info.client_info.rtk.dest_tail_ptr_offs;
-	len = pipe->info.transfer_ring_size;
-	gsi_evt_ring_props.ring_len = len;
-	gsi_evt_ring_props.ring_base_addr =
-		(u64)pipe->info.transfer_ring_base;
-	result = gsi_alloc_evt_ring(&gsi_evt_ring_props,
-		ipa3_ctx->gsi_dev_hdl,
-		&ep->gsi_evt_ring_hdl);
-	if (result != GSI_STATUS_SUCCESS) {
-		IPAERR("fail to alloc RX event ring\n");
-		return -EFAULT;
-	}
-	ep->gsi_mem_info.evt_ring_len =
-		gsi_evt_ring_props.ring_len;
-	ep->gsi_mem_info.evt_ring_base_addr =
-		gsi_evt_ring_props.ring_base_addr;
+    /* setup event ring */
+    bar_addr =
+        IPA_ETH_PCIE_SET(pipe->info.client_info.rtk.bar_addr);
+    memset(&gsi_evt_ring_props, 0, sizeof(gsi_evt_ring_props));
+    gsi_evt_ring_props.intf = GSI_EVT_CHTYPE_RTK_EV;
+    gsi_evt_ring_props.intr = GSI_INTR_MSI;
+    gsi_evt_ring_props.re_size = GSI_EVT_RING_RE_SIZE_16B;
+    if (pipe->dir == IPA_ETH_PIPE_DIR_TX) {
+        gsi_evt_ring_props.int_modt = IPA_ETH_RTK_MODT;
+        gsi_evt_ring_props.int_modc = IPA_ETH_RTK_MODC;
+    }
+    gsi_evt_ring_props.exclusive = true;
+    gsi_evt_ring_props.err_cb = ipa_eth_gsi_evt_ring_err_cb;
+    gsi_evt_ring_props.user_data = NULL;
+    gsi_evt_ring_props.msi_addr =
+        bar_addr +
+        pipe->info.client_info.rtk.dest_tail_ptr_offs;
+    len = pipe->info.transfer_ring_size;
+    gsi_evt_ring_props.ring_len = len;
+    gsi_evt_ring_props.ring_base_addr =
+        (u64)pipe->info.transfer_ring_base;
+    result = gsi_alloc_evt_ring(&gsi_evt_ring_props,
+                                ipa3_ctx->gsi_dev_hdl,
+                                &ep->gsi_evt_ring_hdl);
+    if (result != GSI_STATUS_SUCCESS) {
+        IPAERR("fail to alloc RX event ring\n");
+        return -EFAULT;
+    }
+    ep->gsi_mem_info.evt_ring_len =
+        gsi_evt_ring_props.ring_len;
+    ep->gsi_mem_info.evt_ring_base_addr =
+        gsi_evt_ring_props.ring_base_addr;
 
-	/* setup channel ring */
-	memset(&gsi_channel_props, 0, sizeof(gsi_channel_props));
-	gsi_channel_props.prot = GSI_CHAN_PROT_RTK;
-	if (pipe->dir == IPA_ETH_PIPE_DIR_TX)
-		gsi_channel_props.dir = GSI_CHAN_DIR_FROM_GSI;
-	else
-		gsi_channel_props.dir = GSI_CHAN_DIR_TO_GSI;
-		gsi_ep_info = ipa3_get_gsi_ep_info(ep->client);
-	if (!gsi_ep_info) {
-		IPAERR("Failed getting GSI EP info for client=%d\n",
-		       ep->client);
-		result = -EINVAL;
-		goto fail_get_gsi_ep_info;
-	} else
-		gsi_channel_props.ch_id = gsi_ep_info->ipa_gsi_chan_num;
-	gsi_channel_props.evt_ring_hdl = ep->gsi_evt_ring_hdl;
-	gsi_channel_props.re_size = GSI_CHAN_RE_SIZE_16B;
-	gsi_channel_props.use_db_eng = GSI_CHAN_DB_MODE;
-	gsi_channel_props.max_prefetch = GSI_ONE_PREFETCH_SEG;
-	gsi_channel_props.prefetch_mode =
-		gsi_ep_info->prefetch_mode;
-	gsi_channel_props.empty_lvl_threshold =
-		gsi_ep_info->prefetch_threshold;
-	gsi_channel_props.low_weight = 1;
-	gsi_channel_props.err_cb = ipa_eth_gsi_chan_err_cb;
-	gsi_channel_props.ring_len = len;
-	gsi_channel_props.ring_base_addr =
-		(u64)pipe->info.transfer_ring_base;
-	result = gsi_alloc_channel(&gsi_channel_props, ipa3_ctx->gsi_dev_hdl,
-		&ep->gsi_chan_hdl);
-	if (result != GSI_STATUS_SUCCESS)
-		goto fail_get_gsi_ep_info;
-	ep->gsi_mem_info.chan_ring_len = gsi_channel_props.ring_len;
-	ep->gsi_mem_info.chan_ring_base_addr =
-		gsi_channel_props.ring_base_addr;
+    /* setup channel ring */
+    memset(&gsi_channel_props, 0, sizeof(gsi_channel_props));
+    gsi_channel_props.prot = GSI_CHAN_PROT_RTK;
+    if (pipe->dir == IPA_ETH_PIPE_DIR_TX)
+        gsi_channel_props.dir = GSI_CHAN_DIR_FROM_GSI;
+    else
+        gsi_channel_props.dir = GSI_CHAN_DIR_TO_GSI;
+    gsi_ep_info = ipa3_get_gsi_ep_info(ep->client);
+    if (!gsi_ep_info) {
+        IPAERR("Failed getting GSI EP info for client=%d\n",
+               ep->client);
+        result = -EINVAL;
+        goto fail_get_gsi_ep_info;
+    } else
+        gsi_channel_props.ch_id = gsi_ep_info->ipa_gsi_chan_num;
+    gsi_channel_props.evt_ring_hdl = ep->gsi_evt_ring_hdl;
+    gsi_channel_props.re_size = GSI_CHAN_RE_SIZE_16B;
+    gsi_channel_props.use_db_eng = GSI_CHAN_DB_MODE;
+    gsi_channel_props.max_prefetch = GSI_ONE_PREFETCH_SEG;
+    gsi_channel_props.prefetch_mode =
+        gsi_ep_info->prefetch_mode;
+    gsi_channel_props.empty_lvl_threshold =
+        gsi_ep_info->prefetch_threshold;
+    gsi_channel_props.low_weight = 1;
+    gsi_channel_props.err_cb = ipa_eth_gsi_chan_err_cb;
+    gsi_channel_props.ring_len = len;
+    gsi_channel_props.ring_base_addr =
+        (u64)pipe->info.transfer_ring_base;
+    result = gsi_alloc_channel(&gsi_channel_props, ipa3_ctx->gsi_dev_hdl,
+                               &ep->gsi_chan_hdl);
+    if (result != GSI_STATUS_SUCCESS)
+        goto fail_get_gsi_ep_info;
+    ep->gsi_mem_info.chan_ring_len = gsi_channel_props.ring_len;
+    ep->gsi_mem_info.chan_ring_base_addr =
+        gsi_channel_props.ring_base_addr;
 
-	/* write event scratch */
-	memset(&evt_scratch, 0, sizeof(evt_scratch));
-	/* nothing is needed for RTK event scratch */
+    /* write event scratch */
+    memset(&evt_scratch, 0, sizeof(evt_scratch));
+    /* nothing is needed for RTK event scratch */
 
-	/* write ch scratch */
-	queue_number = pipe->info.client_info.rtk.queue_number;
-	memset(&ch_scratch, 0, sizeof(ch_scratch));
-	ch_scratch.rtk.rtk_bar_low =
-		(u32)bar_addr;
-	ch_scratch.rtk.rtk_bar_high =
-		(u32)((u64)(bar_addr) >> 32);
-	/*
-	 * RX: Queue Number will be as is received from RTK
-	 * (Range 0 - 15).
-	 * TX: Queue Number will be configured to be
-	 * either 16 or 18.
-	 * (For TX Queue 0: Configure 16)
-	 * (For TX Queue 1: Configure 18)
-	 */
-	ch_scratch.rtk.queue_number =
-		(pipe->dir == IPA_ETH_PIPE_DIR_RX) ?
-		pipe->info.client_info.rtk.queue_number :
-		(queue_number == 0) ? 16 : 18;
-	ch_scratch.rtk.fix_buff_size =
-		ilog2(pipe->info.fix_buffer_size);
-	ch_scratch.rtk.rtk_buff_addr_low =
-		(u32)pipe->info.data_buff_list[0].iova;
-	ch_scratch.rtk.rtk_buff_addr_high =
-		(u32)((u64)(pipe->info.data_buff_list[0].iova) >> 32);
-	result = gsi_write_channel_scratch(ep->gsi_chan_hdl, ch_scratch);
-	if (result != GSI_STATUS_SUCCESS) {
-		IPAERR("failed to write evt ring scratch\n");
-		goto fail_write_scratch;
-	}
-	return 0;
+    /* write ch scratch */
+    queue_number = pipe->info.client_info.rtk.queue_number;
+    memset(&ch_scratch, 0, sizeof(ch_scratch));
+    ch_scratch.rtk.rtk_bar_low =
+        (u32)bar_addr;
+    ch_scratch.rtk.rtk_bar_high =
+        (u32)((u64)(bar_addr) >> 32);
+    /*
+     * RX: Queue Number will be as is received from RTK
+     * (Range 0 - 15).
+     * TX: Queue Number will be configured to be
+     * either 16 or 18.
+     * (For TX Queue 0: Configure 16)
+     * (For TX Queue 1: Configure 18)
+     */
+    ch_scratch.rtk.queue_number =
+        (pipe->dir == IPA_ETH_PIPE_DIR_RX) ?
+        pipe->info.client_info.rtk.queue_number :
+        (queue_number == 0) ? 16 : 18;
+    ch_scratch.rtk.fix_buff_size =
+        ilog2(pipe->info.fix_buffer_size);
+    ch_scratch.rtk.rtk_buff_addr_low =
+        (u32)pipe->info.data_buff_list[0].iova;
+    ch_scratch.rtk.rtk_buff_addr_high =
+        (u32)((u64)(pipe->info.data_buff_list[0].iova) >> 32);
+    result = gsi_write_channel_scratch(ep->gsi_chan_hdl, ch_scratch);
+    if (result != GSI_STATUS_SUCCESS) {
+        IPAERR("failed to write evt ring scratch\n");
+        goto fail_write_scratch;
+    }
+    return 0;
+
 fail_write_scratch:
-	gsi_dealloc_channel(ep->gsi_chan_hdl);
-	ep->gsi_chan_hdl = ~0;
+    gsi_dealloc_channel(ep->gsi_chan_hdl);
+    ep->gsi_chan_hdl = ~0;
 fail_get_gsi_ep_info:
-	gsi_dealloc_evt_ring(ep->gsi_evt_ring_hdl);
-	ep->gsi_evt_ring_hdl = ~0;
-	return result;
+    gsi_dealloc_evt_ring(ep->gsi_evt_ring_hdl);
+    ep->gsi_evt_ring_hdl = ~0;
+    return result;
 }
 
 static int ipa3_smmu_map_rtk_pipes(struct ipa_eth_client_pipe_info *pipe,

@@ -288,51 +288,51 @@ static int qti_haptics_read(struct qti_hap_chip *chip,
 }
 
 static int qti_haptics_write(struct qti_hap_chip *chip,
-		u8 addr, u8 *val, int len)
+                             u8 addr, u8 *val, int len)
 {
-	int rc = 0, i;
-	unsigned long flags;
+    int rc = 0, i;
+    unsigned long flags;
 
-	spin_lock_irqsave(&chip->bus_lock, flags);
-	if (is_secure(addr)) {
-		for (i = 0; i < len; i++) {
-			rc = regmap_write(chip->regmap,
-					chip->reg_base + REG_HAP_SEC_ACCESS,
-					0xA5);
-			if (rc < 0) {
-				dev_err(chip->dev, "write SEC_ACCESS failed, rc=%d\n",
-						rc);
-				goto unlock;
-			}
+    spin_lock_irqsave(&chip->bus_lock, flags);
+    if (is_secure(addr)) {
+        for (i = 0; i < len; i++) {
+            rc = regmap_write(chip->regmap,
+                              chip->reg_base + REG_HAP_SEC_ACCESS,
+                              0xA5);
+            if (rc < 0) {
+                dev_err(chip->dev, "write SEC_ACCESS failed, rc=%d\n",
+                        rc);
+                goto unlock;
+            }
 
-			rc = regmap_write(chip->regmap,
-					chip->reg_base + addr + i, val[i]);
-			if (rc < 0) {
-				dev_err(chip->dev, "write val 0x%x to addr 0x%x failed, rc=%d\n",
-						val[i], addr + i, rc);
-				goto unlock;
-			}
-		}
-	} else {
-		if (len > 1)
-			rc = regmap_bulk_write(chip->regmap,
-					chip->reg_base + addr, val, len);
-		else
-			rc = regmap_write(chip->regmap,
-					chip->reg_base + addr, *val);
+            rc = regmap_write(chip->regmap,
+                              chip->reg_base + addr + i, val[i]);
+            if (rc < 0) {
+                dev_err(chip->dev, "write val 0x%x to addr 0x%x failed, rc=%d\n",
+                        val[i], addr + i, rc);
+                goto unlock;
+            }
+        }
+    } else {
+        if (len > 1)
+            rc = regmap_bulk_write(chip->regmap,
+                                   chip->reg_base + addr, val, len);
+        else
+            rc = regmap_write(chip->regmap,
+                              chip->reg_base + addr, *val);
 
-		if (rc < 0)
-			dev_err(chip->dev, "write addr 0x%x failed, rc=%d\n",
-					addr, rc);
-	}
+        if (rc < 0)
+            dev_err(chip->dev, "write addr 0x%x failed, rc=%d\n",
+                    addr, rc);
+    }
 
-	for (i = 0; i < len; i++)
-		dev_dbg(chip->dev, "Update addr 0x%x to val 0x%x\n",
-				addr + i, val[i]);
+    for (i = 0; i < len; i++)
+        dev_dbg(chip->dev, "Update addr 0x%x to val 0x%x\n",
+                addr + i, val[i]);
 
 unlock:
-	spin_unlock_irqrestore(&chip->bus_lock, flags);
-	return rc;
+    spin_unlock_irqrestore(&chip->bus_lock, flags);
+    return rc;
 }
 
 static int qti_haptics_masked_write(struct qti_hap_chip *chip, u8 addr,

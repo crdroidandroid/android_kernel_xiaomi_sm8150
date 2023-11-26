@@ -628,14 +628,15 @@ EXPORT_SYMBOL(fscrypt_has_permitted_context);
 
 static int fscrypt_update_context(union fscrypt_context *ctx)
 {
-	char *boot = "ufs";
+    char *boot = "ufs";
 
-	if (!fscrypt_find_storage_type(&boot)) {
-		if (!strcmp(boot, SDHCI))
-			ctx->v1.flags |= FSCRYPT_POLICY_FLAG_IV_INO_LBLK_32;
-			return 0;
-	}
-	return -EINVAL;
+    if (!fscrypt_find_storage_type(&boot)) {
+        if (!strcmp(boot, SDHCI)) {
+            ctx->v1.flags |= FSCRYPT_POLICY_FLAG_IV_INO_LBLK_32;
+            return 0;
+        }
+    }
+    return -EINVAL;
 }
 
 /**
