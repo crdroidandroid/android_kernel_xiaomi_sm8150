@@ -1146,54 +1146,54 @@ static bool usb_bam_resume_core(enum usb_ctrl bam_type,
  * Return: 0 in case of success, errno otherwise.
  */
 static int usb_bam_disconnect_ipa_prod(
-	       struct usb_bam_connect_ipa_params *ipa_params,
-	       enum usb_ctrl cur_bam)
+    struct usb_bam_connect_ipa_params *ipa_params,
+    enum usb_ctrl cur_bam)
 {
-	int ret;
-	u8 idx = 0;
-	struct usb_bam_pipe_connect *pipe_connect;
-	struct usb_bam_ctx_type *ctx = &msm_usb_bam[cur_bam];
+    int ret;
+    u8 idx = 0;
+    struct usb_bam_pipe_connect *pipe_connect;
+    struct usb_bam_ctx_type *ctx = &msm_usb_bam[cur_bam];
 
-	idx = ipa_params->dst_idx;
-	pipe_connect = &ctx->usb_bam_connections[idx];
-	pipe_connect->activity_notify = NULL;
-	pipe_connect->inactivity_notify = NULL;
-	pipe_connect->priv = NULL;
+    idx = ipa_params->dst_idx;
+    pipe_connect = &ctx->usb_bam_connections[idx];
+    pipe_connect->activity_notify = NULL;
+    pipe_connect->inactivity_notify = NULL;
+    pipe_connect->priv = NULL;
 
-	/* close IPA -> USB pipe */
-	if (pipe_connect->pipe_type == USB_BAM_PIPE_BAM2BAM) {
-		ret = ipa_disconnect(ipa_params->prod_clnt_hdl);
-		if (ret) {
-			log_event_err("%s: dst pipe disconnection failure\n",
-				 __func__);
-		return ret;
-		}
+    /* close IPA -> USB pipe */
+    if (pipe_connect->pipe_type == USB_BAM_PIPE_BAM2BAM) {
+        ret = ipa_disconnect(ipa_params->prod_clnt_hdl);
+        if (ret) {
+            log_event_err("%s: dst pipe disconnection failure\n",
+                          __func__);
+            return ret;
+        }
 
-	       ret = usb_bam_disconnect_pipe(cur_bam, idx);
-		if (ret) {
-			log_event_err("%s: failure to disconnect pipe %d\n",
-				__func__, idx);
-		return ret;
-		}
-	} else {
-		ret = ipa_teardown_sys_pipe(ipa_params->prod_clnt_hdl);
-		if (ret) {
-			log_event_err("%s: dst pipe disconnection failure\n",
-			__func__);
-		return ret;
-		}
+        ret = usb_bam_disconnect_pipe(cur_bam, idx);
+        if (ret) {
+            log_event_err("%s: failure to disconnect pipe %d\n",
+                          __func__, idx);
+            return ret;
+        }
+    } else {
+        ret = ipa_teardown_sys_pipe(ipa_params->prod_clnt_hdl);
+        if (ret) {
+            log_event_err("%s: dst pipe disconnection failure\n",
+                          __func__);
+            return ret;
+        }
 
-		pipe_connect->enabled = false;
-		spin_lock(&ctx->usb_bam_lock);
-		if (ctx->pipes_enabled_per_bam == 0)
-			log_event_err("%s: wrong pipes enabled counter for bam=%d\n",
-				__func__, pipe_connect->bam_type);
-		else
-			ctx->pipes_enabled_per_bam -= 1;
-			spin_unlock(&ctx->usb_bam_lock);
-	}
+        pipe_connect->enabled = false;
+        spin_lock(&ctx->usb_bam_lock);
+        if (ctx->pipes_enabled_per_bam == 0)
+            log_event_err("%s: wrong pipes enabled counter for bam=%d\n",
+                          __func__, pipe_connect->bam_type);
+        else
+            ctx->pipes_enabled_per_bam -= 1;
+        spin_unlock(&ctx->usb_bam_lock);
+    }
 
-	return 0;
+    return 0;
 }
 
 /**
@@ -1208,117 +1208,117 @@ static int usb_bam_disconnect_ipa_prod(
  * Return: 0 in case of success, errno otherwise.
  */
 static int usb_bam_disconnect_ipa_cons(
-	       struct usb_bam_connect_ipa_params *ipa_params,
-	       enum usb_ctrl cur_bam)
+    struct usb_bam_connect_ipa_params *ipa_params,
+    enum usb_ctrl cur_bam)
 {
-	int ret;
-	u8 idx = 0;
-	struct usb_bam_ctx_type *ctx = &msm_usb_bam[cur_bam];
-	struct usb_bam_pipe_connect *pipe_connect;
-	struct sps_pipe *pipe;
-	u32 timeout = 10, pipe_empty;
-	struct usb_bam_sps_type usb_bam_sps = ctx->usb_bam_sps;
-	struct sps_connect *sps_connection;
-	bool inject_zlt = true;
+    int ret;
+    u8 idx = 0;
+    struct usb_bam_ctx_type *ctx = &msm_usb_bam[cur_bam];
+    struct usb_bam_pipe_connect *pipe_connect;
+    struct sps_pipe *pipe;
+    u32 timeout = 10, pipe_empty;
+    struct usb_bam_sps_type usb_bam_sps = ctx->usb_bam_sps;
+    struct sps_connect *sps_connection;
+    bool inject_zlt = true;
 
-	idx = ipa_params->src_idx;
-	pipe = ctx->usb_bam_sps.sps_pipes[idx];
-	pipe_connect = &ctx->usb_bam_connections[idx];
-	sps_connection = &usb_bam_sps.sps_connections[idx];
+    idx = ipa_params->src_idx;
+    pipe = ctx->usb_bam_sps.sps_pipes[idx];
+    pipe_connect = &ctx->usb_bam_connections[idx];
+    sps_connection = &usb_bam_sps.sps_connections[idx];
 
-	pipe_connect->activity_notify = NULL;
-	pipe_connect->inactivity_notify = NULL;
-	pipe_connect->priv = NULL;
+    pipe_connect->activity_notify = NULL;
+    pipe_connect->inactivity_notify = NULL;
+    pipe_connect->priv = NULL;
 
-	/*
-	 * On some platforms, there is a chance that flow control
-	 * is disabled from IPA side, due to this IPA core may not
-	 * consume data from USB. Hence notify IPA to enable flow
-	 * control and then check sps pipe is empty or not before
-	 * processing USB->IPA pipes disconnect.
-	 */
-	ipa_clear_endpoint_delay(ipa_params->cons_clnt_hdl);
+    /*
+     * On some platforms, there is a chance that flow control
+     * is disabled from IPA side, due to this IPA core may not
+     * consume data from USB. Hence notify IPA to enable flow
+     * control and then check sps pipe is empty or not before
+     * processing USB->IPA pipes disconnect.
+     */
+    ipa_clear_endpoint_delay(ipa_params->cons_clnt_hdl);
 retry:
-	/* Make sure pipe is empty before disconnecting it */
-	while (1) {
-		ret = sps_is_pipe_empty(pipe, &pipe_empty);
-		if (ret) {
-			log_event_err("%s: sps_is_pipe_empty failed with %d\n",
-				__func__, ret);
-		return ret;
-		}
-		if (pipe_empty || !--timeout)
-			break;
+    /* Make sure pipe is empty before disconnecting it */
+    while (1) {
+        ret = sps_is_pipe_empty(pipe, &pipe_empty);
+        if (ret) {
+            log_event_err("%s: sps_is_pipe_empty failed with %d\n",
+                          __func__, ret);
+            return ret;
+        }
+        if (pipe_empty || !--timeout)
+            break;
 
-		/* Check again */
-		usleep_range(1000, 2000);
-	}
+        /* Check again */
+        usleep_range(1000, 2000);
+    }
 
-	if (!pipe_empty) {
-		if (inject_zlt) {
-			pr_debug("%s: Inject ZLT\n", __func__);
-			log_event_dbg("%s: Inject ZLT\n", __func__);
-			inject_zlt = false;
-			sps_pipe_inject_zlt(sps_connection->destination,
-					sps_connection->dest_pipe_index);
-			timeout = 10;
-			goto retry;
-		}
-		log_event_err("%s: src pipe(USB) not empty, wait timed out!\n",
-							       __func__);
-		sps_get_bam_debug_info(ctx->h_bam, 93,
-				(SPS_BAM_PIPE(0) | SPS_BAM_PIPE(1)), 0, 2);
-		ipa_bam_reg_dump();
-		panic("%s:SPS pipe not empty for USB->IPA\n", __func__);
-	}
+    if (!pipe_empty) {
+        if (inject_zlt) {
+            pr_debug("%s: Inject ZLT\n", __func__);
+            log_event_dbg("%s: Inject ZLT\n", __func__);
+            inject_zlt = false;
+            sps_pipe_inject_zlt(sps_connection->destination,
+                                sps_connection->dest_pipe_index);
+            timeout = 10;
+            goto retry;
+        }
+        log_event_err("%s: src pipe(USB) not empty, wait timed out!\n",
+                      __func__);
+        sps_get_bam_debug_info(ctx->h_bam, 93,
+                               (SPS_BAM_PIPE(0) | SPS_BAM_PIPE(1)), 0, 2);
+        ipa_bam_reg_dump();
+        panic("%s:SPS pipe not empty for USB->IPA\n", __func__);
+    }
 
-	/* Do the release handshake with the IPA via RM */
-	spin_lock(&usb_bam_ipa_handshake_info_lock);
-	info[cur_bam].connect_complete = 0;
-	info[cur_bam].disconnected = 1;
-	spin_unlock(&usb_bam_ipa_handshake_info_lock);
+    /* Do the release handshake with the IPA via RM */
+    spin_lock(&usb_bam_ipa_handshake_info_lock);
+    info[cur_bam].connect_complete = 0;
+    info[cur_bam].disconnected = 1;
+    spin_unlock(&usb_bam_ipa_handshake_info_lock);
 
-	/* Start release handshake on the last USB BAM producer pipe */
-	if (info[cur_bam].prod_pipes_enabled_per_bam == 1)
-		wait_for_prod_release(cur_bam);
+    /* Start release handshake on the last USB BAM producer pipe */
+    if (info[cur_bam].prod_pipes_enabled_per_bam == 1)
+        wait_for_prod_release(cur_bam);
 
-	/* close USB -> IPA pipe */
-	if (pipe_connect->pipe_type == USB_BAM_PIPE_BAM2BAM) {
-		ret = ipa_disconnect(ipa_params->cons_clnt_hdl);
-		if (ret) {
-			log_event_err("%s: src pipe disconnection failure\n",
-				 __func__);
-			return ret;
-		}
+    /* close USB -> IPA pipe */
+    if (pipe_connect->pipe_type == USB_BAM_PIPE_BAM2BAM) {
+        ret = ipa_disconnect(ipa_params->cons_clnt_hdl);
+        if (ret) {
+            log_event_err("%s: src pipe disconnection failure\n",
+                          __func__);
+            return ret;
+        }
 
-		ret = usb_bam_disconnect_pipe(cur_bam, idx);
-		if (ret) {
-			log_event_err("%s: failure to disconnect pipe %d\n",
-				 __func__, idx);
-			return ret;
-		}
-	} else {
-		ret = ipa_teardown_sys_pipe(ipa_params->cons_clnt_hdl);
-		if (ret) {
-			log_event_err("%s: src pipe disconnection failure\n",
-				__func__);
-			return ret;
-		}
+        ret = usb_bam_disconnect_pipe(cur_bam, idx);
+        if (ret) {
+            log_event_err("%s: failure to disconnect pipe %d\n",
+                          __func__, idx);
+            return ret;
+        }
+    } else {
+        ret = ipa_teardown_sys_pipe(ipa_params->cons_clnt_hdl);
+        if (ret) {
+            log_event_err("%s: src pipe disconnection failure\n",
+                          __func__);
+            return ret;
+        }
 
-	       pipe_connect->enabled = false;
-	       spin_lock(&ctx->usb_bam_lock);
-		if (ctx->pipes_enabled_per_bam == 0)
-			log_event_err("%s: wrong pipes enabled counter for bam=%d\n",
-				 __func__, pipe_connect->bam_type);
-		else
-			ctx->pipes_enabled_per_bam -= 1;
-			spin_unlock(&ctx->usb_bam_lock);
-	}
+        pipe_connect->enabled = false;
+        spin_lock(&ctx->usb_bam_lock);
+        if (ctx->pipes_enabled_per_bam == 0)
+            log_event_err("%s: wrong pipes enabled counter for bam=%d\n",
+                          __func__, pipe_connect->bam_type);
+        else
+            ctx->pipes_enabled_per_bam -= 1;
+        spin_unlock(&ctx->usb_bam_lock);
+    }
 
-	pipe_connect->ipa_clnt_hdl = -1;
-	info[cur_bam].prod_pipes_enabled_per_bam -= 1;
+    pipe_connect->ipa_clnt_hdl = -1;
+    info[cur_bam].prod_pipes_enabled_per_bam -= 1;
 
-	return 0;
+    return 0;
 }
 
 static void _msm_bam_wait_for_host_prod_granted(enum usb_ctrl bam_type)

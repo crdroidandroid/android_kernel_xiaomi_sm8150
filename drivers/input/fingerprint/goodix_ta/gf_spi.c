@@ -100,40 +100,44 @@ static inline int gf_power_switch(struct gf_dev *gf_dev, int status)
 }
 
 static inline void gf_setup(struct gf_dev *gf_dev) {
-	gf_dev->pwr_gpio = of_get_named_gpio(gf_dev->spi->dev.of_node,
-		"fp-gpio-pwr", 0);
-	gpio_request(gf_dev->pwr_gpio, "goodix_pwr");
-	//gpio_direction_output(gf_dev->pwr_gpio, 1);	// will be turned on through ioctl
-	gf_dev->rst_gpio = of_get_named_gpio(gf_dev->spi->dev.of_node,
-		"goodix,gpio-reset", 0);
-	gpio_request(gf_dev->rst_gpio, "gpio-reset");
-	gpio_direction_output(gf_dev->rst_gpio, 1);
-	gf_dev->irq_gpio = of_get_named_gpio(gf_dev->spi->dev.of_node,
-		"goodix,gpio-irq", 0);
-	gpio_request(gf_dev->irq_gpio, "gpio-irq");
-	gpio_direction_input(gf_dev->irq_gpio);
-	gf_dev->irq = gpio_to_irq(gf_dev->irq_gpio);
-	if (!request_threaded_irq(gf_dev->irq, NULL, gf_irq,
-			IRQF_TRIGGER_RISING | IRQF_ONESHOT,
-			"gf", gf_dev))
-		enable_irq_wake(gf_dev->irq);
-		gf_dev->irq_enabled = 1;
-		irq_switch(gf_dev, 0);
-	return;
+    gf_dev->pwr_gpio = of_get_named_gpio(gf_dev->spi->dev.of_node,
+            "fp-gpio-pwr", 0);
+    gpio_request(gf_dev->pwr_gpio, "goodix_pwr");
+    //gpio_direction_output(gf_dev->pwr_gpio, 1);   // will be turned on through ioctl
+    gf_dev->rst_gpio = of_get_named_gpio(gf_dev->spi->dev.of_node,
+            "goodix,gpio-reset", 0);
+    gpio_request(gf_dev->rst_gpio, "gpio-reset");
+    gpio_direction_output(gf_dev->rst_gpio, 1);
+    gf_dev->irq_gpio = of_get_named_gpio(gf_dev->spi->dev.of_node,
+            "goodix,gpio-irq", 0);
+    gpio_request(gf_dev->irq_gpio, "gpio-irq");
+    gpio_direction_input(gf_dev->irq_gpio);
+    gf_dev->irq = gpio_to_irq(gf_dev->irq_gpio);
+    if (!request_threaded_irq(gf_dev->irq, gf_irq, NULL,
+            IRQF_TRIGGER_RISING | IRQF_ONESHOT,
+            "gf", gf_dev)) {
+        enable_irq_wake(gf_dev->irq);
+        gf_dev->irq_enabled = 1;
+        irq_switch(gf_dev, 0);
+    }
+    return;
 }
 
 static inline void gf_cleanup(struct gf_dev *gf_dev) {
-	if (gf_dev->irq_enabled) {
-		irq_switch(gf_dev, 0);
-		free_irq(gf_dev->irq, gf_dev);
-	}
-	if (gpio_is_valid(gf_dev->irq_gpio))
-		gpio_free(gf_dev->irq_gpio);
-	if (gpio_is_valid(gf_dev->rst_gpio))
-		gpio_free(gf_dev->rst_gpio);
-	if (gpio_is_valid(gf_dev->pwr_gpio))
-		gf_power_switch(gf_dev, 0);
-		gpio_free(gf_dev->pwr_gpio);
+    if (gf_dev->irq_enabled) {
+        irq_switch(gf_dev, 0);
+        free_irq(gf_dev->irq, gf_dev);
+    }
+    if (gpio_is_valid(gf_dev->irq_gpio)) {
+        gpio_free(gf_dev->irq_gpio);
+    }
+    if (gpio_is_valid(gf_dev->rst_gpio)) {
+        gpio_free(gf_dev->rst_gpio);
+    }
+    if (gpio_is_valid(gf_dev->pwr_gpio)) {
+        gf_power_switch(gf_dev, 0);
+        gpio_free(gf_dev->pwr_gpio);
+    }
 }
 
 static inline void gpio_reset(struct gf_dev *gf_dev) {
