@@ -31,10 +31,9 @@
 #include <linux/smpboot.h>
 #include <uapi/linux/sched/types.h>
 #include "../time/tick-internal.h"
+#include "../locking/rtmutex_common.h"
 
 #ifdef CONFIG_RCU_BOOST
-
-#include "../locking/rtmutex_common.h"
 
 /*
  * Control variables for per-CPU and per-rcu_node kthreads.  These
@@ -528,16 +527,25 @@ void rcu_read_unlock_special(struct task_struct *t)
 			raw_spin_unlock_irqrestore_rcu_node(rnp, flags);
 		}
 
-		/* Unboost if we were boosted. */
-		if (IS_ENABLED(CONFIG_RCU_BOOST) && drop_boost_mutex)
-			rt_mutex_unlock(&rnp->boost_mtx);
-
 		/*
 		 * If this was the last task on the expedited lists,
 		 * then we need to report up the rcu_node hierarchy.
 		 */
 		if (!empty_exp && empty_exp_now)
 			rcu_report_exp_rnp(rcu_state_p, rnp, true);
+		/*
+		 * Unboost if we were boosted.
+		 * Disable preemption to make sure completion is signalled
+		 * without having the task de-scheduled with its priority
+		 * lowered (in which case we're left with no boosted thread
+		 * and possible RCU starvation).
+		 */
+		if (IS_ENABLED(CONFIG_RCU_BOOST) && drop_boost_mutex) {
+			preempt_disable();
+			rt_mutex_futex_unlock(&rnp->boost_mtx);
+			complete(&rnp->boost_completion);
+			preempt_enable();
+		}
 	} else {
 		local_irq_restore(flags);
 	}
@@ -991,10 +999,14 @@ static int rcu_boost(struct rcu_node *rnp)
 	 */
 	t = container_of(tb, struct task_struct, rcu_node_entry);
 	rt_mutex_init_proxy_locked(&rnp->boost_mtx, t);
+	init_completion(&rnp->boost_completion);
 	raw_spin_unlock_irqrestore_rcu_node(rnp, flags);
 	/* Lock only for side effect: boosts task t's priority. */
 	rt_mutex_lock(&rnp->boost_mtx);
 	rt_mutex_unlock(&rnp->boost_mtx);  /* Then keep lockdep happy. */
+
+	/* Wait until boostee is done accessing mtx before reinitializing. */
+	wait_for_completion(&rnp->boost_completion);
 
 	return READ_ONCE(rnp->exp_tasks) != NULL ||
 	       READ_ONCE(rnp->boost_tasks) != NULL;
