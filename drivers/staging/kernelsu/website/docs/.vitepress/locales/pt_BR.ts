@@ -36,7 +36,6 @@ export default defineConfig({
 function nav() {
   return [
     { text: 'Guia', link: '/pt_BR/guide/what-is-kernelsu' },
-    { text: 'Github', link: 'https://github.com/tiann/KernelSU' }
   ]
 }
 
@@ -46,6 +45,7 @@ function sidebarGuide() {
         text: 'Guia',
         items: [
           { text: 'O que é KernelSU?', link: '/pt_BR/guide/what-is-kernelsu' },
+          { text: 'Diferença com Magisk', link: '/pt_BR/guide/difference-with-magisk' },
           { text: 'Instalação', link: '/pt_BR/guide/installation' },
           { text: 'Como construir?', link: '/pt_BR/guide/how-to-build' },
           { text: 'Integração para dispositivos não GKI', link: '/pt_BR/guide/how-to-integrate-for-non-gki'},

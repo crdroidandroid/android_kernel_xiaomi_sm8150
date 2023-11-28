@@ -475,8 +475,8 @@ static bool should_umount(struct path *path)
 	}
 
 	if (current->nsproxy->mnt_ns == init_nsproxy.mnt_ns) {
-		/* pr_info("ignore global mnt namespace process: %d\n",
-			current_uid().val); */
+		pr_info("ignore global mnt namespace process: %d\n",
+			current_uid().val);
 		return false;
 	}
 
@@ -561,7 +561,7 @@ int ksu_handle_setuid(struct cred *new, const struct cred *old)
 		return 0;
 	}
 	// umount the target mnt
-	// pr_info("handle umount for uid: %d, pid: %d\n", new_uid.val, current->pid);
+	pr_debug("handle umount for uid: %d, pid: %d\n", new_uid.val, current->pid);
 
 	// fixme: use `collect_mounts` and `iterate_mount` to iterate all mountpoint and
 	// filter the mountpoint whose target is `/data/adb`
