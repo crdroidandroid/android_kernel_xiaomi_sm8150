@@ -203,17 +203,7 @@ u32 __pure __weak __crc32c_le(u32 crc, unsigned char const *p, size_t len)
 			(const u32 (*)[256])crc32ctable_le, CRC32C_POLY_LE);
 }
 #endif
-
-u32 __pure __weak crc32_le(u32 crc, unsigned char const *p, size_t len)
-{
-	return crc32_le_base(crc, p, len);
-}
 EXPORT_SYMBOL(crc32_le);
-
-u32 __pure __weak __crc32c_le(u32 crc, unsigned char const *p, size_t len)
-{
-	return __crc32c_le_base(crc, p, len);
-}
 EXPORT_SYMBOL(__crc32c_le);
 
 u32 __pure crc32_le_base(u32, unsigned char const *, size_t) __alias(crc32_le);
