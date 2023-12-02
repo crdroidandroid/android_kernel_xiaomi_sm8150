@@ -32,7 +32,7 @@
 #define tmp1		x7
 #define tmp2		x8
 
-SYM_FUNC_START_WEAK_PI(memcmp)
+WEAK(memcmp)
 	subs	limit, limit, 8
 	b.lo	L(less8)
 
@@ -135,4 +135,4 @@ L(byte_loop):
 	sub	result, data1w, data2w
 	ret
 
-SYM_FUNC_END_PI(memcmp)
+ENDPIPROC(memcmp)
