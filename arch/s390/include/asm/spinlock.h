@@ -46,7 +46,6 @@ static inline void arch_spin_relax(arch_spinlock_t *lock)
 {
 	arch_lock_relax(lock->lock);
 }
-#define arch_spin_relax		arch_spin_relax
 
 static inline u32 arch_spin_lockval(int cpu)
 {
@@ -82,7 +81,6 @@ static inline void arch_spin_lock_flags(arch_spinlock_t *lp,
 	if (!arch_spin_trylock_once(lp))
 		arch_spin_lock_wait_flags(lp, flags);
 }
-#define arch_spin_lock_flags	arch_spin_lock_flags
 
 static inline int arch_spin_trylock(arch_spinlock_t *lp)
 {
@@ -127,6 +125,9 @@ static inline void arch_spin_unlock(arch_spinlock_t *lp)
 
 extern int _raw_read_trylock_retry(arch_rwlock_t *lp);
 extern int _raw_write_trylock_retry(arch_rwlock_t *lp);
+
+#define arch_read_lock_flags(lock, flags) arch_read_lock(lock)
+#define arch_write_lock_flags(lock, flags) arch_write_lock(lock)
 
 static inline int arch_read_trylock_once(arch_rwlock_t *rw)
 {
@@ -268,12 +269,10 @@ static inline void arch_read_relax(arch_rwlock_t *rw)
 {
 	arch_lock_relax(rw->owner);
 }
-#define arch_read_relax		arch_read_relax
 
 static inline void arch_write_relax(arch_rwlock_t *rw)
 {
 	arch_lock_relax(rw->owner);
 }
-#define arch_write_relax	arch_write_relax
 
 #endif /* __ASM_SPINLOCK_H */
