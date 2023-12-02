@@ -44,7 +44,7 @@
 #define endloop		x15
 #define count		mask
 
-WEAK(strncmp)
+SYM_FUNC_START_WEAK_PI(strncmp)
 	cbz	limit, L(ret0)
 	eor	tmp1, src1, src2
 	mov	zeroones, #REP8_01
@@ -256,4 +256,4 @@ L(done_loop):
 L(ret0):
 	mov	result, #0
 	ret
-ENDPIPROC(strncmp)
+SYM_FUNC_END_PI(strncmp)

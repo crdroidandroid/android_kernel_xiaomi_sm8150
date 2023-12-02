@@ -39,10 +39,11 @@
 #define zeroones	x10
 #define pos		x11
 
-WEAK(strcmp)
-	eor	tmp1, src1, src2
-	mov	zeroones, #REP8_01
-	tst	tmp1, #7
+SYM_FUNC_START_WEAK_PI(strcmp)
+	sub	off2, src2, src1
+	mov	zeroones, REP8_01
+	and	tmp, src1, 7
+	tst	off2, 7
 	b.ne	L(misaligned8)
 	ands	tmp1, src1, #7
 	b.ne	L(mutual_align)
@@ -170,4 +171,4 @@ L(done):
 	sub	result, data1, data2
 	ret
 
-ENDPIPROC(strcmp)
+SYM_FUNC_END_PI(strcmp)
