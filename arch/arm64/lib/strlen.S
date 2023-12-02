@@ -200,3 +200,4 @@ L(page_cross):
 	b	L(page_cross_entry)
 
 ENDPIPROC(strlen)
+EXPORT_SYMBOL_NOKASAN(strlen)

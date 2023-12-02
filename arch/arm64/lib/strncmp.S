@@ -256,5 +256,4 @@ L(done_loop):
 L(ret0):
 	mov	result, #0
 	ret
-
 ENDPIPROC(strncmp)
