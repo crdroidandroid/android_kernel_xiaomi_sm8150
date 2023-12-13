@@ -204,15 +204,25 @@ lr	.req	x30		// link register
 
 /*
  * Pseudo-ops for PC-relative adr/ldr/str <reg>, <symbol> where
- * <symbol> is within the range +/- 4 GB of the PC.
+ * <symbol> is within the range +/- 4 GB of the PC when running
+ * in core kernel context. In module context, a movz/movk sequence
+ * is used, since modules may be loaded far away from the kernel
+ * when KASLR is in effect.
  */
 	/*
 	 * @dst: destination register (64 bit wide)
 	 * @sym: name of the symbol
 	 */
 	.macro	adr_l, dst, sym
+#ifndef MODULE
 	adrp	\dst, \sym
 	add	\dst, \dst, :lo12:\sym
+#else
+	movz	\dst, #:abs_g3:\sym
+	movk	\dst, #:abs_g2_nc:\sym
+	movk	\dst, #:abs_g1_nc:\sym
+	movk	\dst, #:abs_g0_nc:\sym
+#endif
 	.endm
 
 	/*
@@ -223,6 +233,7 @@ lr	.req	x30		// link register
 	 *       the address
 	 */
 	.macro	ldr_l, dst, sym, tmp=
+#ifndef MODULE
 	.ifb	\tmp
 	adrp	\dst, \sym
 	ldr	\dst, [\dst, :lo12:\sym]
@@ -230,6 +241,15 @@ lr	.req	x30		// link register
 	adrp	\tmp, \sym
 	ldr	\dst, [\tmp, :lo12:\sym]
 	.endif
+#else
+	.ifb	\tmp
+	adr_l	\dst, \sym
+	ldr	\dst, [\dst]
+	.else
+	adr_l	\tmp, \sym
+	ldr	\dst, [\tmp]
+	.endif
+#endif
 	.endm
 
 	/*
@@ -239,18 +259,28 @@ lr	.req	x30		// link register
 	 *       while <src> needs to be preserved.
 	 */
 	.macro	str_l, src, sym, tmp
+#ifndef MODULE
 	adrp	\tmp, \sym
 	str	\src, [\tmp, :lo12:\sym]
+#else
+	adr_l	\tmp, \sym
+	str	\src, [\tmp]
+#endif
 	.endm
 
 	/*
-	 * @dst: Result of per_cpu(sym, smp_processor_id()) (can be SP)
+	 * @dst: Result of per_cpu(sym, smp_processor_id()), can be SP for
+	 *       non-module code
 	 * @sym: The name of the per-cpu variable
 	 * @tmp: scratch register
 	 */
 	.macro adr_this_cpu, dst, sym, tmp
+#ifndef MODULE
 	adrp	\tmp, \sym
 	add	\dst, \tmp, #:lo12:\sym
+#else
+	adr_l	\dst, \sym
+#endif
 alternative_if_not ARM64_HAS_VIRT_HOST_EXTN
 	mrs	\tmp, tpidr_el1
 alternative_else

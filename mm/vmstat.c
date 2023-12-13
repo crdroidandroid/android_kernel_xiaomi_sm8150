@@ -1095,6 +1095,7 @@ const char * const vmstat_text[] = {
 	"nr_dirtied",
 	"nr_written",
 	"nr_kernel_misc_reclaimable",
+	"nr_ion_heap",
 	"nr_unreclaimable_pages",
 
 	/* enum writeback_stat_item counters */
