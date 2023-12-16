@@ -225,6 +225,11 @@ static inline bool valid_policy(int policy)
 		rt_policy(policy) || dl_policy(policy);
 }
 
+static inline int task_has_idle_policy(struct task_struct *p)
+{
+	return idle_policy(p->policy);
+}
+
 static inline int task_has_rt_policy(struct task_struct *p)
 {
 	return rt_policy(p->policy);
@@ -939,9 +944,9 @@ struct rq {
 	struct walt_sched_stats walt_stats;
 
 	int cstate, wakeup_latency, wakeup_energy;
-	u64 window_start;
-	s64 cum_window_start;
-	unsigned long walt_flags;
+	u64			window_start;
+	u32			prev_window_size;
+	unsigned long		walt_flags;
 
 	u64 cur_irqload;
 	u64 avg_irqload;
@@ -3080,14 +3085,15 @@ extern void clear_top_tasks_bitmap(unsigned long *bitmap);
 #if defined(CONFIG_SCHED_TUNE)
 extern bool task_sched_boost(struct task_struct *p);
 extern int sync_cgroup_colocation(struct task_struct *p, bool insert);
-extern bool schedtune_task_colocated(struct task_struct *p);
+extern bool same_schedtune(struct task_struct *tsk1, struct task_struct *tsk2);
 extern void update_cgroup_boost_settings(void);
 extern void restore_cgroup_boost_settings(void);
 
 #else
-static inline bool schedtune_task_colocated(struct task_struct *p)
+static inline bool
+same_schedtune(struct task_struct *tsk1, struct task_struct *tsk2)
 {
-	return false;
+	return true;
 }
 
 static inline bool task_sched_boost(struct task_struct *p)
@@ -3347,3 +3353,13 @@ struct sched_avg_stats {
 	int nr_max;
 };
 extern void sched_get_nr_running_avg(struct sched_avg_stats *stats);
+
+#ifdef CONFIG_SMP
+static inline void sched_irq_work_queue(struct irq_work *work)
+{
+        if (likely(cpu_online(raw_smp_processor_id())))
+                irq_work_queue(work);
+        else
+                irq_work_queue_on(work, cpumask_any(cpu_online_mask));
+}
+#endif

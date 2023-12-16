@@ -17,6 +17,15 @@
 #ifdef CONFIG_SCHED_WALT
 
 #include <linux/sched/sysctl.h>
+#include <linux/sched/core_ctl.h>
+
+/* Default window size (in ns) = 12ms */
+#define DEFAULT_SCHED_RAVG_WINDOW 12000000
+
+/* Max window size (in ns) = 600ms */
+#define MAX_SCHED_RAVG_WINDOW 600000000
+#define NR_WINDOWS_PER_SEC (NSEC_PER_SEC / DEFAULT_SCHED_RAVG_WINDOW)
+#define MAX_NR_CLUSTERS			3
 
 #define WINDOW_STATS_RECENT		0
 #define WINDOW_STATS_MAX		1
@@ -33,9 +42,10 @@
 #define for_each_related_thread_group(grp) \
 	list_for_each_entry(grp, &active_related_thread_groups, list)
 
-#define SCHED_NEW_TASK_WINDOWS 5
+#define NEW_TASK_ACTIVE_TIME 80000000
 
 extern unsigned int sched_ravg_window;
+extern unsigned int new_sched_ravg_window;
 extern unsigned int max_possible_efficiency;
 extern unsigned int min_possible_efficiency;
 extern unsigned int max_possible_freq;
@@ -202,7 +212,7 @@ scale_load_to_freq(u64 load, unsigned int src_freq, unsigned int dst_freq)
 
 static inline bool is_new_task(struct task_struct *p)
 {
-	return p->ravg.active_windows < SCHED_NEW_TASK_WINDOWS;
+	return p->ravg.active_time < NEW_TASK_ACTIVE_TIME;
 }
 
 static inline void clear_top_tasks_table(u8 *table)
@@ -283,6 +293,8 @@ static inline void assign_cluster_ids(struct list_head *head)
 		cluster->id = pos;
 		sched_cluster[pos++] = cluster;
 	}
+
+	WARN_ON(pos > MAX_NR_CLUSTERS);
 }
 
 static inline int same_cluster(int src_cpu, int dst_cpu)
@@ -303,7 +315,7 @@ static inline void walt_update_last_enqueue(struct task_struct *p)
 extern void walt_rotate_work_init(void);
 extern void walt_rotation_checkpoint(int nr_big);
 extern unsigned int walt_rotation_enabled;
-extern unsigned int walt_get_default_coloc_group_load(void);
+extern void walt_fill_ta_data(struct core_ctl_notif_data *data);
 
 extern __read_mostly bool sched_freq_aggr_en;
 static inline void walt_enable_frequency_aggregation(bool enable)
@@ -318,10 +330,6 @@ static inline void walt_sched_init_rq(struct rq *rq) { }
 static inline void walt_rotate_work_init(void) { }
 static inline void walt_rotation_checkpoint(int nr_big) { }
 static inline void walt_update_last_enqueue(struct task_struct *p) { }
-static inline unsigned int walt_get_default_coloc_group_load(void)
-{
-	return 0;
-}
 
 static inline void update_task_ravg(struct task_struct *p, struct rq *rq,
 				int event, u64 wallclock, u64 irqtime) { }

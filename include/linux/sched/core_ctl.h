@@ -17,6 +17,8 @@
 struct core_ctl_notif_data {
 	unsigned int nr_big;
 	unsigned int coloc_load_pct;
+	unsigned int ta_util_pct[MAX_CLUSTERS];
+        unsigned int cur_cap_pct[MAX_CLUSTERS];
 };
 
 #ifdef CONFIG_SCHED_CORE_CTL

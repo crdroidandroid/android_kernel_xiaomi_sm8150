@@ -1,13 +1,6 @@
-/* Copyright (c) 2014-2018, 2020, The Linux Foundation. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 and
- * only version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (c) 2014-2019, The Linux Foundation. All rights reserved.
  */
 
 #define pr_fmt(fmt)	"core_ctl: " fmt
@@ -27,10 +20,6 @@
 #include "sched.h"
 #include "walt.h"
 
-#define MAX_CPUS_PER_CLUSTER 6
-#define MAX_CLUSTERS 3
-
-#define MAX_NR_HISTORY_COUNT	2
 struct cluster_data {
 	bool inited;
 	unsigned int min_cpus;
@@ -747,6 +736,13 @@ static bool adjustment_possible(const struct cluster_data *cluster,
 						cluster->nr_isolated_cpus));
 }
 
+static bool need_all_cpus(const struct cluster_data *cluster)
+{
+
+	return (is_min_capacity_cpu(cluster->first_cpu) &&
+		sched_ravg_window < DEFAULT_SCHED_RAVG_WINDOW);
+}
+
 static bool eval_need(struct cluster_data *cluster)
 {
 	unsigned long flags;
@@ -762,7 +758,7 @@ static bool eval_need(struct cluster_data *cluster)
 
 	spin_lock_irqsave(&state_lock, flags);
 
-	if (cluster->boost || !cluster->enable) {
+	if (cluster->boost || !cluster->enable || need_all_cpus(cluster)) {
 		need_cpus = cluster->max_cpus;
 	} else {
 		cluster->active_cpus = get_active_cpu_count(cluster);
@@ -891,7 +887,7 @@ void core_ctl_notifier_unregister(struct notifier_block *n)
 
 static void core_ctl_call_notifier(void)
 {
-	struct core_ctl_notif_data ndata;
+	struct core_ctl_notif_data ndata = {0};
 	struct notifier_block *nb;
 
 	/*
@@ -906,7 +902,9 @@ static void core_ctl_call_notifier(void)
 		return;
 
 	ndata.nr_big = last_nr_big;
-	ndata.coloc_load_pct = walt_get_default_coloc_group_load();
+	walt_fill_ta_data(&ndata);
+	trace_core_ctl_notif_data(ndata.nr_big, ndata.coloc_load_pct,
+			ndata.ta_util_pct, ndata.cur_cap_pct);
 
 	atomic_notifier_call_chain(&core_ctl_notifier, 0, &ndata);
 }
