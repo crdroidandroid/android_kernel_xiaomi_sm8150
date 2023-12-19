@@ -3079,7 +3079,7 @@ static void transfer_busy_time(struct rq *rq, struct related_thread_group *grp,
 }
 
 /* Set to 1GHz by default */
-unsigned int sysctl_sched_little_cluster_coloc_fmin_khz = 1000000;
+unsigned int sysctl_sched_little_cluster_coloc_fmin_khz = 1708800;
 static u64 coloc_boost_load;
 
 void walt_map_freq_to_load(void)
@@ -3121,26 +3121,6 @@ static void walt_update_coloc_boost_load(void)
 			break;
 		}
 	}
-}
-
-int sched_little_cluster_coloc_fmin_khz_handler(struct ctl_table *table,
-				int write, void __user *buffer, size_t *lenp,
-				loff_t *ppos)
-{
-	int ret;
-	static DEFINE_MUTEX(mutex);
-
-	mutex_lock(&mutex);
-
-	ret = proc_dointvec_minmax(table, write, buffer, lenp, ppos);
-	if (ret || !write)
-		goto done;
-
-	walt_map_freq_to_load();
-
-done:
-	mutex_unlock(&mutex);
-	return ret;
 }
 
 extern unsigned int KP_MODE_CHANGE;
