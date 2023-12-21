@@ -9,7 +9,7 @@ restore='\033[0m'
 clear
 
 # Resources
-export CLANG_PATH=~/tc/aosp/clang-r498229b/bin
+export CLANG_PATH=~/tc/aosp/clang-r510928/bin
 export PATH=${CLANG_PATH}:${PATH}
 export THINLTO_CACHE=~/ltocache/
 DEFCONFIG="raphael_defconfig"
