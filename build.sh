@@ -20,7 +20,7 @@ export SUBARCH=arm64
 export ARCH=arm64
 export CC=$HOME/toolchains/boolx-clang/bin/clang
 
-VER="V1.3-DSP"
+VER="V1.4-junkidding-DSP"
 KERNEL_DIR=`pwd`
 REPACK_DIR=$HOME/AnyKernel3
 ZIP_MOVE=$HOME/Boolx
