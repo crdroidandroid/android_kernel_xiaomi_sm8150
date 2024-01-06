@@ -260,8 +260,6 @@ int dsi_phy_set_clk_freq(struct msm_dsi_phy *phy,
  * @phy:          DSI PHY handle
  * @timing:       array holding timing params.
  * @size:         size of the array.
- * @commit:		  boolean to indicate if programming PHY HW registers is
- *				  required
  *
  * When PHY timing calculator is not implemented, this array will be used to
  * pass PHY timing information.
@@ -269,7 +267,7 @@ int dsi_phy_set_clk_freq(struct msm_dsi_phy *phy,
  * Return: error code.
  */
 int dsi_phy_set_timing_params(struct msm_dsi_phy *phy,
-			      u32 *timing, u32 size, bool commit);
+			      u32 *timing, u32 size);
 
 /**
  * dsi_phy_lane_reset() - Reset DSI PHY lanes in case of error
