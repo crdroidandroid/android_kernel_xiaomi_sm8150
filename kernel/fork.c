@@ -97,6 +97,7 @@
 #include <linux/simple_lmk.h>
 #include <linux/devfreq_boost.h>
 #include <linux/irq.h>
+#include <linux/event_tracking.h>
 
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
@@ -2260,10 +2261,12 @@ long _do_fork(unsigned long clone_flags,
 
 	/* Boost CPU to the max for 50 ms when userspace launches an app */
 	if (task_is_zygote(current)) {
-		cpu_input_boost_kick_max(500, false);
-		devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 500, true);
-		devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 500, true);
-		balance_irqs();
+		if (time_before(jiffies, last_mb_time + msecs_to_jiffies(200))) {
+			cpu_input_boost_kick_max(500, false);
+			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 500, true);
+			devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 500, true);
+			balance_irqs();
+		}
 	}
 
 	/*
