@@ -3219,19 +3219,19 @@ static int tcp_clean_rtx_queue(struct sock *sk, int prior_fackets,
 		flag |= FLAG_SACK_RENEGING;
 
 	if (likely(first_ackt) && !(flag & FLAG_RETRANS_DATA_ACKED)) {
-		seq_rtt_us = tcp_stamp_us_delta(tp->tcp_mstamp, first_ackt);
-		ca_rtt_us = tcp_stamp_us_delta(tp->tcp_mstamp, last_ackt);
+                seq_rtt_us = tcp_stamp_us_delta(tp->tcp_mstamp, first_ackt);
+                ca_rtt_us = tcp_stamp_us_delta(tp->tcp_mstamp, last_ackt);
 
-		if (pkts_acked == 1 && last_in_flight < tp->mss_cache &&
-		    last_in_flight && !prior_sacked && fully_acked &&
-		    sack->rate->prior_delivered + 1 == tp->delivered &&
-		    !(flag & (FLAG_CA_ALERT | FLAG_SYN_ACKED))) {
-			/* Conservatively mark a delayed ACK. It's typically
-			 * from a lone runt packet over the round trip to
-			 * a receiver w/o out-of-order or CE events.
-			 */
-			flag |= FLAG_ACK_MAYBE_DELAYED;
-		}
+                if (pkts_acked == 1 && fully_acked && !prior_sacked &&
+                    (tp->snd_una - prior_snd_una) < tp->mss_cache &&
+                    sack->rate->prior_delivered + 1 == tp->delivered &&
+                    !(flag & (FLAG_CA_ALERT | FLAG_SYN_ACKED))) {
+                        /* Conservatively mark a delayed ACK. It's typically
+                         * from a lone runt packet over the round trip to
+                         * a receiver w/o out-of-order or CE events.
+                         */
+                        flag |= FLAG_ACK_MAYBE_DELAYED;
+                }
 	}
 	if (sack->first_sackt) {
 		sack_rtt_us = tcp_stamp_us_delta(tp->tcp_mstamp, sack->first_sackt);
