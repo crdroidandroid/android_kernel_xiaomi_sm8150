@@ -4211,11 +4211,7 @@ static bool isolate_page(struct lruvec *lruvec, struct page *page, struct scan_c
 	if (!get_page_unless_zero(page))
 		return false;
 
-	/* raced with another isolation */
-	if (!TestClearPageLRU(page)) {
-		put_page(page);
-		return false;
-	}
+	ClearPageLRU(page);
 
 	/* see the comment on MAX_NR_TIERS */
 	if (!PageReferenced(page))
