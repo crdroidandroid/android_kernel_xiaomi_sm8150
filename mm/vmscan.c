@@ -4031,13 +4031,14 @@ static void lru_gen_age_node(struct pglist_data *pgdat, struct scan_control *sc)
 void lru_gen_look_around(struct page_vma_mapped_walk *pvmw)
 {
 	int i;
+	pte_t *pte;
 	unsigned long start;
 	unsigned long end;
+	unsigned long addr;
 	struct page *page;
 	struct lru_gen_mm_walk *walk;
 	int young = 0;
-	pte_t *pte = pvmw->pte;
-	unsigned long addr = pvmw->address;
+	unsigned long bitmap[BITS_TO_LONGS(MIN_LRU_BATCH)] = {};
 	struct mem_cgroup *memcg = page_memcg(pvmw->page);
 	struct pglist_data *pgdat = page_pgdat(pvmw->page);
 	struct lruvec *lruvec = mem_cgroup_lruvec(pgdat, memcg);
@@ -4053,27 +4054,24 @@ void lru_gen_look_around(struct page_vma_mapped_walk *pvmw)
 	/* avoid taking the LRU lock under the PTL when possible */
 	walk = current->reclaim_state ? current->reclaim_state->mm_walk : NULL;
 
-	start = max(addr & PMD_MASK, pvmw->vma->vm_start);
-	end = min(addr | ~PMD_MASK, pvmw->vma->vm_end - 1) + 1;
+	start = max(pvmw->address & PMD_MASK, pvmw->vma->vm_start);
+	end = min(pvmw->address | ~PMD_MASK, pvmw->vma->vm_end - 1) + 1;
 
 	if (end - start > MIN_LRU_BATCH * PAGE_SIZE) {
-		if (addr - start < MIN_LRU_BATCH * PAGE_SIZE / 2)
+		if (pvmw->address - start < MIN_LRU_BATCH * PAGE_SIZE / 2)
 			end = start + MIN_LRU_BATCH * PAGE_SIZE;
-		else if (end - addr < MIN_LRU_BATCH * PAGE_SIZE / 2)
+		else if (end - pvmw->address < MIN_LRU_BATCH * PAGE_SIZE / 2)
 			start = end - MIN_LRU_BATCH * PAGE_SIZE;
 		else {
-			start = addr - MIN_LRU_BATCH * PAGE_SIZE / 2;
-			end = addr + MIN_LRU_BATCH * PAGE_SIZE / 2;
+			start = pvmw->address - MIN_LRU_BATCH * PAGE_SIZE / 2;
+			end = pvmw->address + MIN_LRU_BATCH * PAGE_SIZE / 2;
 		}
 	}
 
-	/* page_update_gen() requires stable page_memcg() */
-	if (!mem_cgroup_trylock_pages(memcg))
-		return;
+	pte = pvmw->pte - (pvmw->address - start) / PAGE_SIZE;
 
+	rcu_read_lock();
 	arch_enter_lazy_mmu_mode();
-
-	pte -= (addr - start) / PAGE_SIZE;
 
 	for (i = 0, addr = start; addr != end; i++, addr += PAGE_SIZE) {
 		unsigned long pfn;
@@ -4098,27 +4096,54 @@ void lru_gen_look_around(struct page_vma_mapped_walk *pvmw)
 		    !(PageAnon(page) && PageSwapBacked(page) && !PageSwapCache(page)))
 			set_page_dirty(page);
 
-		if (walk) {
-			old_gen = page_update_gen(page, new_gen);
-			if (old_gen >= 0 && old_gen != new_gen)
-				update_batch_size(walk, page, old_gen, new_gen);
-
-			continue;
-		}
-
 		old_gen = page_lru_gen(page);
 		if (old_gen < 0)
 			SetPageReferenced(page);
 		else if (old_gen != new_gen)
-			activate_page(page);
+			__set_bit(i, bitmap);
 	}
 
 	arch_leave_lazy_mmu_mode();
-	mem_cgroup_unlock_pages();
+	rcu_read_unlock();
 
 	/* feedback from rmap walkers to page table walkers */
 	if (suitable_to_scan(i, young))
 		update_bloom_filter(lruvec, max_seq, pvmw->pmd);
+
+	if (!walk && bitmap_weight(bitmap, MIN_LRU_BATCH) < PAGEVEC_SIZE) {
+		for_each_set_bit(i, bitmap, MIN_LRU_BATCH)
+			activate_page(pte_page(pte[i]));
+		return;
+	}
+
+	/* page_update_gen() requires stable page_memcg() */
+	if (!mem_cgroup_trylock_pages(memcg))
+		return;
+
+	if (!walk) {
+		spin_lock_irq(&pgdat->lru_lock);
+		new_gen = lru_gen_from_seq(lruvec->lrugen.max_seq);
+	}
+
+	for_each_set_bit(i, bitmap, MIN_LRU_BATCH) {
+		page = compound_head(pte_page(pte[i]));
+		if (page_memcg_rcu(page) != memcg)
+			continue;
+
+		old_gen = page_update_gen(page, new_gen);
+		if (old_gen < 0 || old_gen == new_gen)
+			continue;
+
+		if (walk)
+			update_batch_size(walk, page, old_gen, new_gen);
+		else
+			lru_gen_update_size(lruvec, page, old_gen, new_gen);
+	}
+
+	if (!walk)
+		spin_unlock_irq(&pgdat->lru_lock);
+
+	mem_cgroup_unlock_pages();
 }
 
 /******************************************************************************
