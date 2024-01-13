@@ -2,7 +2,6 @@
 #
 # Makefile for the kernel character device drivers.
 #
-
 obj-y				+= mem.o random.o
 obj-$(CONFIG_SRANDOM)		+= srandom.o
 obj-$(CONFIG_TTY_PRINTK)	+= ttyprintk.o

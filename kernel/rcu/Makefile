@@ -4,8 +4,6 @@
 KCOV_INSTRUMENT := n
 
 ccflags-y += -O3
-ccflags-y += -mllvm -inline-threshold=15000
-ccflags-y += -mllvm -inlinehint-threshold=10000
 
 obj-y += update.o sync.o
 obj-$(CONFIG_TREE_SRCU) += srcutree.o
