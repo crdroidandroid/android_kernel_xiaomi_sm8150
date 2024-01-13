@@ -1,7 +1,3 @@
-ccflags-y += -mllvm -inline-threshold=15000
-ccflags-y += -mllvm -inlinehint-threshold=10000
-ccflags-y += -O3
-
 ccflags-y += -I$(src)			# needed for trace events
 
 obj-y					+= ion/
