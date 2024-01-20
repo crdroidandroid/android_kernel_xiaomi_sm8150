@@ -236,6 +236,7 @@ extern void balance_irqs(void)
 		struct cpufreq_policy *policy = cpufreq_cpu_get(cpu);
 		per_cpu(cpu_cap, cpu) = arch_scale_cpu_capacity(NULL, cpu) *
 					policy->min / policy->max;
+		cpufreq_cpu_put(policy);
 	}
 
 	list_for_each_entry_rcu(bi, &bal_irq_list, node) {
