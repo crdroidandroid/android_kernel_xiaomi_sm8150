@@ -3202,10 +3202,7 @@ extern void walt_update_min_max_capacity(void);
 
 static inline bool is_min_capacity_cluster(struct sched_cluster *cluster)
 {
-	if (kp_active_mode == (void*)1)
-		return false;
-
-	return is_min_capacity_cpu(cluster_first_cpu(cluster));
+	return false;
 }
 
 #else	/* CONFIG_SCHED_WALT */
