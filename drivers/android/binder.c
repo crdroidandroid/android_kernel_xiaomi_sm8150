@@ -3068,7 +3068,7 @@ static void binder_transaction(struct binder_proc *proc,
 		goto err_binder_alloc_buf_failed;
 	}
 	if (secctx) {
-		int err;
+		__maybe_unused int err;
 		size_t buf_offset = ALIGN(tr->data_size, sizeof(void *)) +
 				    ALIGN(tr->offsets_size, sizeof(void *)) +
 				    ALIGN(extra_buffers_size, sizeof(void *)) -
