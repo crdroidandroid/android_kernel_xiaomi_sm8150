@@ -270,8 +270,7 @@ static void f2fs_post_read_work(struct work_struct *work)
 
 static void f2fs_read_end_io(struct bio *bio)
 {
-	struct page *first_page = bio->bi_io_vec[0].bv_page;
-	struct f2fs_sb_info *sbi = F2FS_P_SB(first_page);
+	struct f2fs_sb_info *sbi = F2FS_P_SB(bio->bi_io_vec->bv_page);
 	struct bio_post_read_ctx *ctx;
 	bool intask = in_task();
 
@@ -941,6 +940,8 @@ alloc_new:
 		f2fs_set_bio_crypt_ctx(bio, fio->page->mapping->host,
 				       fio->page->index, fio,
 				       GFP_NOIO);
+
+		bio_set_op_attrs(bio, fio->op, fio->op_flags);
 		add_bio_entry(fio->sbi, bio, page, fio->temp);
 	} else {
 		if (add_ipu_page(fio, &bio, page))
@@ -1063,7 +1064,9 @@ static struct bio *f2fs_grab_read_bio(struct inode *inode, block_t blkaddr,
 	bio->bi_end_io = f2fs_read_end_io;
 
 	if (fscrypt_inode_uses_fs_layer_crypto(inode))
-		post_read_steps |= STEP_DECRYPT;
+		post_read_steps |= 1 << STEP_DECRYPT;
+	if (f2fs_need_verity(inode, first_idx))
+		post_read_steps |= 1 << STEP_VERITY;
 
 	if (f2fs_need_verity(inode, first_idx))
 		post_read_steps |= STEP_VERITY;
