@@ -891,4 +891,6 @@ config INPUT_HISI_POWERKEY
 
 source "drivers/input/misc/aw8697_haptic_xm/Kconfig"
 
+source "drivers/input/misc/xiaomi_keyboard/Kconfig"
+
 endif
