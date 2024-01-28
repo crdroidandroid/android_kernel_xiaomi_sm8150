@@ -97,7 +97,6 @@ extern void dsi_panel_doubleclick_enable(bool on);
 #ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 static int32_t nvt_check_palm(uint8_t input_id, uint8_t *data);
 #endif
-extern void lpm_disable_for_input(bool on);
 uint32_t ENG_RST_ADDR = 0x7FFF80;
 uint32_t SWRST_N8_ADDR = 0; /* read from dtsi */
 uint32_t SPI_RD_FAST_ADDR = 0; /* read from dtsi */
@@ -1419,15 +1418,11 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 	}
 #endif
 	mutex_lock(&ts->lock);
-	if (ts->debug_flag >= TOUCH_DISABLE_LPM)
-		lpm_disable_for_input(true);
 	if (ts->dev_pm_suspend) {
 		ret = wait_for_completion_timeout(
 			&ts->dev_pm_suspend_completion, msecs_to_jiffies(500));
 		if (!ret) {
 			NVT_ERR("system(spi) can't finished resuming procedure, skip it\n");
-			if (ts->debug_flag >= TOUCH_DISABLE_LPM)
-				lpm_disable_for_input(false);
 			goto XFER_ERROR;
 		}
 	}
@@ -1435,8 +1430,6 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 	ret = CTP_SPI_READ(ts->client, point_data, POINT_DATA_LEN + 1);
 	if (ret < 0) {
 		NVT_ERR("CTP_SPI_READ failed.(%d)\n", ret);
-		if (ts->debug_flag >= TOUCH_DISABLE_LPM)
-			lpm_disable_for_input(false);
 		goto XFER_ERROR;
 	}
 	/*
@@ -1463,8 +1456,6 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 		} else {
 			nvt_update_firmware(ts->fw_name);
 		}
-		if (ts->debug_flag >= TOUCH_DISABLE_LPM)
-			lpm_disable_for_input(false);
 		goto XFER_ERROR;
 	}
 #endif /* #if NVT_TOUCH_WDT_RECOVERY */
@@ -1473,8 +1464,6 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 	/* ESD protect by FW handshake */
 	if (nvt_fw_recovery(point_data)) {
 		nvt_esd_check_enable(true);
-		if (ts->debug_flag >= TOUCH_DISABLE_LPM)
-			lpm_disable_for_input(false);
 		goto XFER_ERROR;
 	}
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
@@ -1482,8 +1471,6 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 #ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 	input_id = (uint8_t)(point_data[1] >> 3);
 	if (nvt_check_palm(input_id, point_data)) {
-		if (ts->debug_flag >= TOUCH_DISABLE_LPM)
-			lpm_disable_for_input(false);
 		goto XFER_ERROR; /* to skip point data parsing */
 	}
 #endif
@@ -1492,8 +1479,6 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 	if (bTouchIsAwake == 0) {
 		input_id = (uint8_t)(point_data[1] >> 3);
 		nvt_ts_wakeup_gesture_report(input_id, point_data);
-		if (ts->debug_flag >= TOUCH_DISABLE_LPM)
-			lpm_disable_for_input(false);
 		mutex_unlock(&ts->lock);
 		return IRQ_HANDLED;
 	}
@@ -1579,8 +1564,6 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 				input_report_key(ts->input_dev, BTN_TOUCH, 0);
 				input_report_key(ts->input_dev, BTN_TOOL_FINGER,
 						 0);
-				if (ts->debug_flag >= TOUCH_DISABLE_LPM)
-					lpm_disable_for_input(false);
 			}
 			clear_bit(i, ts->slot_map);
 		}
