@@ -476,6 +476,12 @@ config BACKLIGHT_ARCXCNN
 	  If you have an ARCxCnnnn family backlight say Y to enable
 	  the backlight driver.
 
+config BACKLIGHT_KTZ8866
+	tristate "KTZ8866 Backlight"
+	depends on I2C
+	help
+	  If you have a KTZ8866 say Y to enable the backlight driver.
+
 endif # BACKLIGHT_CLASS_DEVICE
 
 endif # BACKLIGHT_LCD_SUPPORT
