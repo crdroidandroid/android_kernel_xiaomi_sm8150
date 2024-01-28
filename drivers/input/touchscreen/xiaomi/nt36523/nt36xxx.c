@@ -89,7 +89,6 @@ static int32_t nvt_ts_suspend(struct device *dev);
 static int32_t nvt_ts_resume(struct device *dev);
 extern int dsi_panel_lockdown_info_read(unsigned char *plockdowninfo);
 extern void dsi_panel_doubleclick_enable(bool on);
-extern void lpm_disable_for_input(bool on);
 extern int pen_charge_state_notifier_register_client(struct notifier_block *nb);
 extern int
 pen_charge_state_notifier_unregister_client(struct notifier_block *nb);
@@ -1663,8 +1662,6 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 	}
 #endif
 
-	lpm_disable_for_input(true);
-
 	mutex_lock(&ts->lock);
 
 	if (ts->dev_pm_suspend) {
@@ -1672,7 +1669,6 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 			&ts->dev_pm_suspend_completion, msecs_to_jiffies(500));
 		if (!ret) {
 			NVT_ERR("system(spi) can't finished resuming procedure, skip it\n");
-			lpm_disable_for_input(false);
 			goto XFER_ERROR;
 		}
 	}
@@ -1738,7 +1734,6 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 		input_id = (uint8_t)(point_data[1] >> 3);
 		nvt_ts_wakeup_gesture_report(input_id, point_data);
 		mutex_unlock(&ts->lock);
-		lpm_disable_for_input(false);
 		return IRQ_HANDLED;
 	}
 #endif
@@ -1929,7 +1924,6 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 XFER_ERROR:
 
 	mutex_unlock(&ts->lock);
-	lpm_disable_for_input(false);
 	return IRQ_HANDLED;
 }
 
