@@ -565,7 +565,7 @@ static void *dax_insert_mapping_entry(struct address_space *mapping,
 		ret = __radix_tree_lookup(page_tree, index, &node, &slot);
 		WARN_ON_ONCE(ret != entry);
 		__radix_tree_replace(page_tree, node, slot,
-				     new_entry, NULL, NULL);
+				     new_entry, NULL);
 		entry = new_entry;
 	}
 
@@ -789,7 +789,7 @@ int dax_writeback_mapping_range(struct address_space *mapping,
 
 	tag_pages_for_writeback(mapping, start_index, end_index);
 
-	pagevec_init(&pvec, 0);
+	pagevec_init(&pvec);
 	while (!done) {
 		pvec.nr = find_get_entries_tag(mapping, start_index,
 				PAGECACHE_TAG_TOWRITE, PAGEVEC_SIZE,

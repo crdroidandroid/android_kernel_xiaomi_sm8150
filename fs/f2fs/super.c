@@ -2095,6 +2095,8 @@ static void default_options(struct f2fs_sb_info *sbi)
 	}
 	F2FS_OPTION(sbi).bggc_mode = BGGC_MODE_ON;
 	F2FS_OPTION(sbi).memory_mode = MEMORY_MODE_NORMAL;
+	set_opt(sbi, ATGC);
+	set_opt(sbi, GC_MERGE);
 
 	set_opt(sbi, INLINE_XATTR);
 	set_opt(sbi, INLINE_DATA);
@@ -2795,29 +2797,29 @@ static int f2fs_enable_quotas(struct super_block *sb)
 
 static int f2fs_quota_sync_file(struct f2fs_sb_info *sbi, int type)
 {
-        struct quota_info *dqopt = sb_dqopt(sbi->sb);
-        struct address_space *mapping = dqopt->files[type]->i_mapping;
-        int ret = 0;
+	struct quota_info *dqopt = sb_dqopt(sbi->sb);
+	struct address_space *mapping = dqopt->files[type]->i_mapping;
+	int ret = 0;
 
-        ret = dquot_writeback_dquots(sbi->sb, type);
-        if (ret)
-                goto out;
+	ret = dquot_writeback_dquots(sbi->sb, type);
+	if (ret)
+		goto out;
 
-        ret = filemap_fdatawrite(mapping);
-        if (ret)
-                goto out;
+	ret = filemap_fdatawrite(mapping);
+	if (ret)
+		goto out;
 
-        /* if we are using journalled quota */
-        if (is_journalled_quota(sbi))
-                goto out;
+	/* if we are using journalled quota */
+	if (is_journalled_quota(sbi))
+		goto out;
 
-        ret = filemap_fdatawait(mapping);
+	ret = filemap_fdatawait(mapping);
 
-        truncate_inode_pages(&dqopt->files[type]->i_data, 0);
+	truncate_inode_pages(&dqopt->files[type]->i_data, 0);
 out:
-        if (ret)
-                set_sbi_flag(sbi, SBI_QUOTA_NEED_REPAIR);
-        return ret;
+	if (ret)
+		set_sbi_flag(sbi, SBI_QUOTA_NEED_REPAIR);
+	return ret;
 }
 
 int f2fs_quota_sync(struct super_block *sb, int type)
@@ -2825,30 +2827,13 @@ int f2fs_quota_sync(struct super_block *sb, int type)
 	struct f2fs_sb_info *sbi = F2FS_SB(sb);
 	struct quota_info *dqopt = sb_dqopt(sb);
 	int cnt;
-	int ret;
-
-	/*
-	 * do_quotactl
-	 *  f2fs_quota_sync
-	 *  down_read(quota_sem)
-	 *  dquot_writeback_dquots()
-	 *  f2fs_dquot_commit
-	 *                            block_operation
-	 *                            down_read(quota_sem)
-	 */
-	f2fs_lock_op(sbi);
-
-	f2fs_down_read(&sbi->quota_sem);
-	ret = dquot_writeback_dquots(sb, type);
-	if (ret)
-		goto out;
+	int ret = 0;
 
 	/*
 	 * Now when everything is written we can discard the pagecache so
 	 * that userspace sees the changes.
 	 */
 	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
-		struct address_space *mapping;
 
 		if (type != -1 && cnt != type)
 			continue;
@@ -2886,27 +2871,9 @@ int f2fs_quota_sync(struct super_block *sb, int type)
 		if (!f2fs_sb_has_quota_ino(sbi))
 			inode_unlock(dqopt->files[cnt]);
 
-		ret = filemap_fdatawrite(mapping);
 		if (ret)
-			goto out;
-
-		/* if we are using journalled quota */
-		if (is_journalled_quota(sbi))
-			continue;
-
-		ret = filemap_fdatawait(mapping);
-		if (ret)
-			set_sbi_flag(F2FS_SB(sb), SBI_QUOTA_NEED_REPAIR);
-
-		inode_lock(dqopt->files[cnt]);
-		truncate_inode_pages(&dqopt->files[cnt]->i_data, 0);
-		inode_unlock(dqopt->files[cnt]);
+			break;
 	}
-out:
-	if (ret)
-		set_sbi_flag(F2FS_SB(sb), SBI_QUOTA_NEED_REPAIR);
-	f2fs_up_read(&sbi->quota_sem);
-	f2fs_unlock_op(sbi);
 	return ret;
 }
 
@@ -3457,7 +3424,7 @@ static int sanity_check_raw_super(struct f2fs_sb_info *sbi,
 		return -EFSCORRUPTED;
 	}
 
-	/* Currently, support 512/1024/2048/4096 bytes sector size */
+	/* Currently, support 512/1024/2048/4096/16K bytes sector size */
 	if (le32_to_cpu(raw_super->log_sectorsize) >
 				F2FS_MAX_LOG_SECTOR_SIZE ||
 		le32_to_cpu(raw_super->log_sectorsize) <
@@ -4688,7 +4655,6 @@ free_bio_info:
 
 #ifdef CONFIG_UNICODE
 	utf8_unload(sb->s_encoding);
-	sb->s_encoding = NULL;
 #endif
 free_options:
 #ifdef CONFIG_QUOTA
@@ -4783,7 +4749,7 @@ static int __init init_f2fs_fs(void)
 	int err;
 
 	if (PAGE_SIZE != F2FS_BLKSIZE) {
-		printk("F2FS not supported on PAGE_SIZE(%lu) != %d\n",
+		printk("F2FS not supported on PAGE_SIZE(%lu) != BLOCK_SIZE(%d)\n",
 				PAGE_SIZE, F2FS_BLKSIZE);
 		return -EINVAL;
 	}
