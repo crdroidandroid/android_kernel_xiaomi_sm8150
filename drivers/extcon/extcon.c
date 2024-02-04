@@ -1321,7 +1321,8 @@ int extcon_dev_register(struct extcon_dev *edev)
 		}
 	}
 
-	edev->bnh = kcalloc(edev->max_supported, sizeof(*edev->bnh), GFP_KERNEL);
+	edev->bnh = devm_kzalloc(&edev->dev,
+			sizeof(*edev->bnh) * edev->max_supported, GFP_KERNEL);
 	if (!edev->bnh) {
 		ret = -ENOMEM;
 		goto err_dev;
@@ -1339,13 +1340,6 @@ int extcon_dev_register(struct extcon_dev *edev)
 	if (ret) {
 		put_device(&edev->dev);
 		goto err_reg;
-	}
-
-	edev->bnh = devm_kzalloc(&edev->dev,
-			sizeof(*edev->bnh) * edev->max_supported, GFP_KERNEL);
-	if (!edev->bnh) {
-		ret = -ENOMEM;
-		goto err_dev;
 	}
 
 	mutex_lock(&extcon_dev_list_lock);
