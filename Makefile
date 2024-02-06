@@ -980,6 +980,7 @@ endif
 lto-clang-flags += -fvisibility=default $(call cc-option, -fsplit-lto-unit)
 
 lto-clang-flags += -fwhole-program-vtables
+lto-clang-flags += -fsplit-machine-functions
 
 KBUILD_LDFLAGS_MODULE += -T scripts/module-lto.lds
 
