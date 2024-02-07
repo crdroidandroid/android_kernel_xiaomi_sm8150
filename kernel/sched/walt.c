@@ -503,7 +503,6 @@ u64 freq_policy_load(struct rq *rq)
 	struct sched_cluster *cluster = rq->cluster;
 	u64 aggr_grp_load = cluster->aggr_grp_load;
 	u64 load, tt_load = 0;
-	u64 coloc_boost_load = cluster->coloc_boost_load;
 
 	if (rq->ed_task != NULL) {
 		load = sched_ravg_window;
@@ -514,9 +513,6 @@ u64 freq_policy_load(struct rq *rq)
 		load = rq->prev_runnable_sum + aggr_grp_load;
 	else
 		load = rq->prev_runnable_sum + rq->grp_time.prev_runnable_sum;
-
-	if (coloc_boost_load)
-		load = max_t(u64, load, coloc_boost_load);
 
 	tt_load = top_task_load(rq);
 	switch (reporting_policy) {
@@ -2315,7 +2311,6 @@ struct sched_cluster init_cluster = {
 	.notifier_sent		=	0,
 	.wake_up_idle		=	0,
 	.aggr_grp_load		=	0,
-	.coloc_boost_load	=	0,
 };
 
 void init_clusters(void)
@@ -3078,51 +3073,6 @@ static void transfer_busy_time(struct rq *rq, struct related_thread_group *grp,
 	BUG_ON((s64)*src_nt_prev_runnable_sum < 0);
 }
 
-/* Set to 1GHz by default */
-unsigned int sysctl_sched_little_cluster_coloc_fmin_khz = 1708800;
-static u64 coloc_boost_load;
-
-void walt_map_freq_to_load(void)
-{
-	struct sched_cluster *cluster;
-
-	for_each_sched_cluster(cluster) {
-		if (is_min_capacity_cluster(cluster)) {
-			int fcpu = cluster_first_cpu(cluster);
-
-			coloc_boost_load = div64_u64(
-				((u64)sched_ravg_window *
-				arch_scale_cpu_capacity(NULL, fcpu) *
-				sysctl_sched_little_cluster_coloc_fmin_khz),
-				(u64)1024 * cpu_max_possible_freq(fcpu));
-			coloc_boost_load = div64_u64(coloc_boost_load << 2, 5);
-			break;
-		}
-	}
-}
-
-static void walt_update_coloc_boost_load(void)
-{
-	struct related_thread_group *grp;
-	struct sched_cluster *cluster;
-
-	if (!sysctl_sched_little_cluster_coloc_fmin_khz ||
-			sched_boost() == CONSERVATIVE_BOOST)
-		return;
-
-	grp = lookup_related_thread_group(DEFAULT_CGROUP_COLOC_ID);
-	if (!grp || !grp->preferred_cluster ||
-			is_min_capacity_cluster(grp->preferred_cluster))
-		return;
-
-	for_each_sched_cluster(cluster) {
-		if (is_min_capacity_cluster(cluster)) {
-			cluster->coloc_boost_load = coloc_boost_load;
-			break;
-		}
-	}
-}
-
 extern unsigned int KP_MODE_CHANGE;
 extern int kp_notifier_register_client(struct notifier_block *nb);
 extern int kp_notifier_unregister_client(struct notifier_block *nb);
@@ -3240,22 +3190,18 @@ void walt_irq_work(struct irq_work *irq_work)
 
 		cluster->aggr_grp_load = aggr_grp_load;
 		total_grp_load += aggr_grp_load;
-		cluster->coloc_boost_load = 0;
 
 		if (is_min_capacity_cluster(cluster))
 			min_cluster_grp_load = aggr_grp_load;
 		raw_spin_unlock(&cluster->load_lock);
 	}
 
-	if (total_grp_load) {
-		if (cpumask_weight(&asym_cap_sibling_cpus)) {
-			u64 big_grp_load =
-					  total_grp_load - min_cluster_grp_load;
+	if (total_grp_load && (cpumask_weight(&asym_cap_sibling_cpus))) {
+		u64 big_grp_load =
+				  total_grp_load - min_cluster_grp_load;
 
-			for_each_cpu(cpu, &asym_cap_sibling_cpus)
-				cpu_cluster(cpu)->aggr_grp_load = big_grp_load;
-		}
-		walt_update_coloc_boost_load();
+		for_each_cpu(cpu, &asym_cap_sibling_cpus)
+			cpu_cluster(cpu)->aggr_grp_load = big_grp_load;
 	}
 
 	for_each_sched_cluster(cluster) {

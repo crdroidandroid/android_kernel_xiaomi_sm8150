@@ -2298,6 +2298,7 @@ OBJS += $(TXRX3.0_OBJS)
 endif
 
 ccflags-y += $(INCS)
+ldflags-y += -Wl --lto-O0
 
 # LTO does way too much here
 ccflags-y += $(DISABLE_LTO)
