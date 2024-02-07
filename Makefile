@@ -800,12 +800,6 @@ ifdef CONFIG_MINIMAL_TRACING_FOR_IORAP
 KBUILD_CFLAGS   += -DNOTRACE
 endif
 
-ifdef CONFIG_INLINE_OPTIMIZATION
-KBUILD_CFLAGS	+= -mllvm -inline-threshold=2000
-KBUILD_CFLAGS	+= -mllvm -inlinehint-threshold=3000
-KBUILD_CFLAGS	+= -mllvm -unroll-threshold=1200
-endif
-
 # Tell gcc to never replace conditional load with a non-conditional one
 KBUILD_CFLAGS	+= $(call cc-option,--param=allow-store-data-races=0)
 KBUILD_CFLAGS	+= $(call cc-option,-fno-allow-store-data-races)
@@ -977,7 +971,8 @@ endif
 
 ifdef CONFIG_LTO_CLANG
 ifdef CONFIG_THINLTO
-lto-clang-flags	:= -flto=thin
+lto-clang-flags	:= -funified-lto
+lto-clang-flags	+= -flto=thin
 LDFLAGS		+= --thinlto-cache-dir=.thinlto-cache
 else
 lto-clang-flags	:= -flto
