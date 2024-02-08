@@ -150,6 +150,7 @@
 				qcom,mdss-dsi-h-right-border = <0>;
 				qcom,mdss-dsi-v-top-border = <0>;
 				qcom,mdss-dsi-v-bottom-border = <0>;
+				qcom,mdss-mdp-transfer-time-us = <8000>;
 				qcom,mdss-dsi-panel-framerate = <60>;
 				qcom,mdss-dsi-panel-clockrate = <1100000000>;
 				qcom,mdss-dsi-panel-jitter = <0x05 0x01>;
@@ -213,6 +214,7 @@
 				qcom,mdss-dsi-h-right-border = <0>;
 				qcom,mdss-dsi-v-top-border = <0>;
 				qcom,mdss-dsi-v-bottom-border = <0>;
+				qcom,mdss-mdp-transfer-time-us = <8000>;
 				qcom,mdss-dsi-panel-framerate = <69>;
 				qcom,mdss-dsi-panel-clockrate = <1150000000>;
 				qcom,mdss-dsi-panel-jitter = <0x05 0x01>;
@@ -276,6 +278,7 @@
 				qcom,mdss-dsi-h-right-border = <0>;
 				qcom,mdss-dsi-v-top-border = <0>;
 				qcom,mdss-dsi-v-bottom-border = <0>;
+				qcom,mdss-mdp-transfer-time-us = <8000>;
 				qcom,mdss-dsi-panel-framerate = <72>;
 				qcom,mdss-dsi-panel-clockrate = <1200000000>;
 				qcom,mdss-dsi-panel-jitter = <0x05 0x01>;
@@ -339,6 +342,7 @@
 				qcom,mdss-dsi-h-right-border = <0>;
 				qcom,mdss-dsi-v-top-border = <0>;
 				qcom,mdss-dsi-v-bottom-border = <0>;
+				qcom,mdss-mdp-transfer-time-us = <8000>;
 				qcom,mdss-dsi-panel-framerate = <81>;
 				qcom,mdss-dsi-panel-clockrate = <1350000000>;
 				qcom,mdss-dsi-panel-jitter = <0x05 0x01>;
@@ -402,6 +406,7 @@
 				qcom,mdss-dsi-h-right-border = <0>;
 				qcom,mdss-dsi-v-top-border = <0>;
 				qcom,mdss-dsi-v-bottom-border = <0>;
+				qcom,mdss-mdp-transfer-time-us = <8000>;
 				qcom,mdss-dsi-panel-framerate = <90>;
 				qcom,mdss-dsi-panel-clockrate = <1500000000>;
 				qcom,mdss-dsi-panel-jitter = <0x05 0x01>;
