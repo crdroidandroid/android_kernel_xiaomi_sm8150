@@ -16,6 +16,7 @@ DEFCONFIG="raphael_defconfig"
 
 # Kernel Details
 REV="R6.1"
+
 EDITION="STANDALONE-DSP"
 VER="$REV"-"$EDITION"
 
