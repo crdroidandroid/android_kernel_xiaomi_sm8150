@@ -67,7 +67,7 @@ module_param(cpu_freq_idle_prime, uint, 0644);
 module_param(input_boost_duration, short, 0644);
 module_param(wake_boost_duration, short, 0644);
 
-static bool input_boost_enable = true;
+static bool input_boost_enable = false;
 module_param(input_boost_enable, bool, 0644);
 
 #if(CONFIG_INPUT_BOOST_DURATION_MS != 0)
