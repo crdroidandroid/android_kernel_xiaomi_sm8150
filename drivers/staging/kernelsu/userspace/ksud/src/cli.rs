@@ -105,12 +105,30 @@ enum Debug {
     },
 
     /// Root Shell
-    Su,
+    Su {
+        /// switch to gloabl mount namespace
+        #[arg(short, long, default_value = "false")]
+        global_mnt: bool,
+    },
 
     /// Get kernel version
     Version,
 
     Mount,
+
+    /// Copy sparse file
+    Xcp {
+        /// source file
+        src: String,
+        /// destination file
+        dst: String,
+    },
+
+    /// Punch hole file
+    PunchHole {
+        /// file path
+        file: String,
+    },
 
     /// For testing
     Test,
@@ -165,6 +183,9 @@ enum Module {
 
     /// list all modules
     List,
+
+    /// Shrink module image size
+    Shrink,
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -244,6 +265,7 @@ pub fn run() -> Result<()> {
                 Module::Enable { id } => module::enable_module(&id),
                 Module::Disable { id } => module::disable_module(&id),
                 Module::List => module::list_modules(),
+                Module::Shrink => module::shrink_ksu_images(),
             }
         }
         Commands::Install => event::install(),
@@ -275,8 +297,13 @@ pub fn run() -> Result<()> {
                 println!("Kernel Version: {}", crate::ksu::get_version());
                 Ok(())
             }
-            Debug::Su => crate::ksu::grant_root(),
+            Debug::Su { global_mnt } => crate::ksu::grant_root(global_mnt),
             Debug::Mount => event::mount_systemlessly(defs::MODULE_DIR),
+            Debug::Xcp { src, dst } => {
+                utils::copy_sparse_file(src, dst)?;
+                Ok(())
+            }
+            Debug::PunchHole { file } => utils::punch_hole(file),
             Debug::Test => todo!(),
         },
 
