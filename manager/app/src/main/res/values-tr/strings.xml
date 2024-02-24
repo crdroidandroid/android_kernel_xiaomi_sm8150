@@ -52,7 +52,7 @@
     <string name="home_click_to_learn_kernelsu">KernelSU\'nun nasıl kurulacağını ve modüllerin nasıl kullanılacağını öğrenin</string>
     <string name="home_support_title">Bizi destekleyin</string>
     <string name="home_support_content">KernelSU ücretsiz ve açık kaynaklı bir yazılımdır ve her zaman öyle kalacaktır. Ancak bağış yaparak bize destek olduğunuzu gösterebilirsiniz.</string>
-    <string name="about_source_code">Kaynak kodunu görüntüleyin: %1$s<br/>%2$s kanalımıza katılın</string>
+    <string name="about_source_code">Kaynak kodunu %1$s\'tan görüntüleyin<br/>%2$s kanalımıza katılın</string>
     <string name="profile" translatable="false">Uygulama profili</string>
     <string name="profile_default">Varsayılan</string>
     <string name="profile_template">Şablon</string>
@@ -104,4 +104,6 @@
     <string name="app_profile_template_save_failed">Şablon kaydedilemedi</string>
     <string name="app_profile_template_import_empty">Pano boş!</string>
     <string name="module_changelog_failed">Değişiklik geçmişi alınamadı: %s</string>
+    <string name="settings_check_update">Güncellemeleri denetle</string>
+    <string name="settings_check_update_summary">Uygulamayı açarken güncellemeleri otomatik denetle</string>
 </resources>
