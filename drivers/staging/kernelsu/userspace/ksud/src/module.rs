@@ -3,7 +3,7 @@ use crate::utils::*;
 use crate::{
     assets, defs, mount,
     restorecon::{restore_syscon, setsyscon},
-    sepolicy,
+    sepolicy, utils,
 };
 
 use anyhow::{anyhow, bail, ensure, Context, Result};
@@ -11,10 +11,11 @@ use const_format::concatcp;
 use is_executable::is_executable;
 use java_properties::PropertiesIter;
 use log::{info, warn};
+
 use std::{
     collections::HashMap,
     env::var as env_var,
-    fs::{remove_dir_all, remove_file, set_permissions, File, Permissions},
+    fs::{remove_dir_all, remove_file, set_permissions, File, OpenOptions, Permissions},
     io::Cursor,
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -118,25 +119,6 @@ fn foreach_active_module(f: impl FnMut(&Path) -> Result<()>) -> Result<()> {
     foreach_module(true, f)
 }
 
-fn get_minimal_image_size(img: &str) -> Result<u64> {
-    check_image(img)?;
-
-    let output = Command::new("resize2fs")
-        .args(["-P", img])
-        .stdout(Stdio::piped())
-        .output()?;
-
-    let output = String::from_utf8_lossy(&output.stdout);
-    println!("- {}", output.trim());
-    let regex = regex::Regex::new(r"filesystem: (\d+)")?;
-    let result = regex
-        .captures(&output)
-        .ok_or(anyhow::anyhow!("regex not match"))?;
-    let result = &result[1];
-    let result = u64::from_str(result)?;
-    Ok(result)
-}
-
 fn check_image(img: &str) -> Result<()> {
     let result = Command::new("e2fsck")
         .args(["-yf", img])
@@ -154,31 +136,6 @@ fn check_image(img: &str) -> Result<()> {
     //     code.unwrap_or(-1)
     // );
     info!("e2fsck exit code: {}", code.unwrap_or(-1));
-    Ok(())
-}
-
-fn grow_image_size(img: &str, extra_size: u64) -> Result<()> {
-    let minimal_size = get_minimal_image_size(img)?; // the minimal size is in KB
-    let target_size = minimal_size * 1024 + extra_size;
-
-    // check image
-    check_image(img)?;
-
-    println!(
-        "- Target image size: {}",
-        humansize::format_size(target_size, humansize::DECIMAL)
-    );
-    let target_size = target_size / 1024 + 1024;
-    info!("resize image to {target_size}K, minimal size is {minimal_size}K");
-    let result = Command::new("resize2fs")
-        .args([img, &format!("{target_size}K")])
-        .stdout(Stdio::piped())
-        .status()
-        .with_context(|| format!("Failed to exec resize2fs {img}"))?;
-    ensure!(result.success(), "Failed to resize2fs: {}", result);
-
-    check_image(img)?;
-
     Ok(())
 }
 
@@ -370,17 +327,11 @@ fn _install_module(zip: &str) -> Result<()> {
         std::fs::remove_file(tmp_module_path)?;
     }
 
-    let default_reserve_size = 256 * 1024 * 1024;
     let zip_uncompressed_size = get_zip_uncompressed_size(zip)?;
-    let grow_size = default_reserve_size + zip_uncompressed_size;
 
     info!(
         "zip uncompressed size: {}",
         humansize::format_size(zip_uncompressed_size, humansize::DECIMAL)
-    );
-    info!(
-        "grow size: {}",
-        humansize::format_size(grow_size, humansize::DECIMAL)
     );
 
     println!("- Preparing image");
@@ -389,19 +340,21 @@ fn _install_module(zip: &str) -> Result<()> {
         humansize::format_size(zip_uncompressed_size, humansize::DECIMAL)
     );
 
+    let sparse_image_size = 1 << 40; // 1T
+    let jounnel_size = 8; // 8M
     if !modules_img_exist && !modules_update_img_exist {
         // if no modules and modules_update, it is brand new installation, we should create a new img
         // create a tmp module img and mount it to modules_update
         info!("Creating brand new module image");
         File::create(tmp_module_img)
             .context("Failed to create ext4 image file")?
-            .set_len(grow_size)
-            .context("Failed to extend ext4 image")?;
+            .set_len(sparse_image_size)
+            .context("Failed to truncate ext4 image")?;
 
         // format the img to ext4 filesystem
         let result = Command::new("mkfs.ext4")
-            .arg("-b")
-            .arg("1024")
+            .arg("-J")
+            .arg(format!("size={jounnel_size}"))
             .arg(tmp_module_img)
             .stdout(Stdio::piped())
             .output()?;
@@ -410,32 +363,55 @@ fn _install_module(zip: &str) -> Result<()> {
             "Failed to format ext4 image: {}",
             String::from_utf8(result.stderr).unwrap()
         );
-
         check_image(tmp_module_img)?;
     } else if modules_update_img_exist {
         // modules_update.img exists, we should use it as tmp img
         info!("Using existing modules_update.img as tmp image");
-        std::fs::copy(modules_update_img, tmp_module_img).with_context(|| {
+        utils::copy_sparse_file(modules_update_img, tmp_module_img).with_context(|| {
             format!(
                 "Failed to copy {} to {}",
                 modules_update_img.display(),
                 tmp_module_img
             )
         })?;
-        // grow size of the tmp image
-        grow_image_size(tmp_module_img, grow_size)?;
     } else {
         // modules.img exists, we should use it as tmp img
         info!("Using existing modules.img as tmp image");
-        std::fs::copy(modules_img, tmp_module_img).with_context(|| {
+        utils::copy_sparse_file(modules_img, tmp_module_img).with_context(|| {
             format!(
                 "Failed to copy {} to {}",
                 modules_img.display(),
                 tmp_module_img
             )
         })?;
-        // grow size of the tmp image
-        grow_image_size(tmp_module_img, grow_size)?;
+
+        // legacy image, truncate it to new size.
+        if std::fs::metadata(modules_img)?.len() < sparse_image_size {
+            println!("- Truncate legacy image to new size");
+
+            // shrink it to minimum size
+            check_image(tmp_module_img)?;
+            Command::new("resize2fs")
+                .arg("-M")
+                .arg(tmp_module_img)
+                .stdout(Stdio::piped())
+                .status()?;
+
+            // truncate the file to new size
+            OpenOptions::new()
+                .write(true)
+                .open(tmp_module_img)
+                .context("Failed to open ext4 image")?
+                .set_len(sparse_image_size)
+                .context("Failed to truncate ext4 image")?;
+
+            // resize the image to new size
+            check_image(tmp_module_img)?;
+            Command::new("resize2fs")
+                .arg(tmp_module_img)
+                .stdout(Stdio::piped())
+                .status()?;
+        }
     }
 
     // ensure modules_update exists
@@ -469,11 +445,15 @@ fn _install_module(zip: &str) -> Result<()> {
 
     exec_install_script(zip)?;
 
+    if let Err(e) = utils::punch_hole(tmp_module_img) {
+        warn!("Failed to punch hole: {}", e);
+    }
+
     info!("rename {tmp_module_img} to {}", defs::MODULE_UPDATE_IMG);
     // all done, rename the tmp image to modules_update.img
     if std::fs::rename(tmp_module_img, defs::MODULE_UPDATE_IMG).is_err() {
         warn!("Rename image failed, try copy it.");
-        std::fs::copy(tmp_module_img, defs::MODULE_UPDATE_IMG)
+        utils::copy_sparse_file(tmp_module_img, defs::MODULE_UPDATE_IMG)
             .with_context(|| "Failed to copy image.".to_string())?;
         let _ = std::fs::remove_file(tmp_module_img);
     }
@@ -496,7 +476,7 @@ pub fn install_module(zip: &str) -> Result<()> {
     result
 }
 
-fn update_module<F>(update_dir: &str, id: &str, func: F) -> Result<()>
+fn update_module<F>(update_dir: &str, id: &str, punch_hole: bool, func: F) -> Result<()>
 where
     F: Fn(&str, &str) -> Result<()>,
 {
@@ -513,14 +493,14 @@ where
             modules_update_img.display(),
             modules_update_tmp_img.display()
         );
-        std::fs::copy(modules_update_img, modules_update_tmp_img)?;
+        utils::copy_sparse_file(modules_update_img, modules_update_tmp_img)?;
     } else {
         info!(
             "copy {} to {}",
             modules_img.display(),
             modules_update_tmp_img.display()
         );
-        std::fs::copy(modules_img, modules_update_tmp_img)?;
+        utils::copy_sparse_file(modules_img, modules_update_tmp_img)?;
     }
 
     // ensure modules_update dir exist
@@ -532,9 +512,15 @@ where
     // call the operation func
     let result = func(id, update_dir);
 
+    if punch_hole {
+        if let Err(e) = utils::punch_hole(modules_update_tmp_img) {
+            warn!("Failed to punch hole: {}", e);
+        }
+    }
+
     if let Err(e) = std::fs::rename(modules_update_tmp_img, defs::MODULE_UPDATE_IMG) {
         warn!("Rename image failed: {e}, try copy it.");
-        std::fs::copy(modules_update_tmp_img, defs::MODULE_UPDATE_IMG)
+        utils::copy_sparse_file(modules_update_tmp_img, defs::MODULE_UPDATE_IMG)
             .with_context(|| "Failed to copy image.".to_string())?;
         let _ = std::fs::remove_file(modules_update_tmp_img);
     }
@@ -545,7 +531,7 @@ where
 }
 
 pub fn uninstall_module(id: &str) -> Result<()> {
-    update_module(defs::MODULE_UPDATE_TMP_DIR, id, |mid, update_dir| {
+    update_module(defs::MODULE_UPDATE_TMP_DIR, id, true, |mid, update_dir| {
         let dir = Path::new(update_dir);
         ensure!(dir.exists(), "No module installed");
 
@@ -611,13 +597,13 @@ fn _enable_module(module_dir: &str, mid: &str, enable: bool) -> Result<()> {
 }
 
 pub fn enable_module(id: &str) -> Result<()> {
-    update_module(defs::MODULE_UPDATE_TMP_DIR, id, |mid, update_dir| {
+    update_module(defs::MODULE_UPDATE_TMP_DIR, id, false, |mid, update_dir| {
         _enable_module(update_dir, mid, true)
     })
 }
 
 pub fn disable_module(id: &str) -> Result<()> {
-    update_module(defs::MODULE_UPDATE_TMP_DIR, id, |mid, update_dir| {
+    update_module(defs::MODULE_UPDATE_TMP_DIR, id, false, |mid, update_dir| {
         _enable_module(update_dir, mid, false)
     })
 }
@@ -678,10 +664,12 @@ fn _list_modules(path: &str) -> Vec<HashMap<String, String>> {
         let enabled = !path.join(defs::DISABLE_FILE_NAME).exists();
         let update = path.join(defs::UPDATE_FILE_NAME).exists();
         let remove = path.join(defs::REMOVE_FILE_NAME).exists();
+        let web = path.join(defs::MODULE_WEB_DIR).exists();
 
         module_prop_map.insert("enabled".to_owned(), enabled.to_string());
         module_prop_map.insert("update".to_owned(), update.to_string());
         module_prop_map.insert("remove".to_owned(), remove.to_string());
+        module_prop_map.insert("web".to_owned(), web.to_string());
 
         if result.is_err() {
             warn!("Failed to parse module.prop: {}", module_prop.display());
@@ -696,5 +684,23 @@ fn _list_modules(path: &str) -> Vec<HashMap<String, String>> {
 pub fn list_modules() -> Result<()> {
     let modules = _list_modules(defs::MODULE_DIR);
     println!("{}", serde_json::to_string_pretty(&modules)?);
+    Ok(())
+}
+
+pub fn shrink_image(img: &str) -> Result<()> {
+    check_image(img)?;
+    Command::new("resize2fs")
+        .arg("-M")
+        .arg(img)
+        .stdout(Stdio::piped())
+        .status()?;
+    Ok(())
+}
+
+pub fn shrink_ksu_images() -> Result<()> {
+    shrink_image(defs::MODULE_IMG)?;
+    if Path::new(defs::MODULE_UPDATE_IMG).exists() {
+        shrink_image(defs::MODULE_UPDATE_IMG)?;
+    }
     Ok(())
 }
