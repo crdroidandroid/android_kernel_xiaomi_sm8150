@@ -574,6 +574,7 @@
 			&dsi_dual_nt36850_truly_cmd_display
 			&dsi_ss_fhd_ea8076_cmd_display
 			&dsi_ss_fhd_ea8076_global_cmd_display
+			&dsi_visionox_fhd_r66456_f11_cmd_display
 			&dsi_dual_nt36850_truly_cmd_display>;
 	};
 
