@@ -162,11 +162,11 @@ __read_mostly unsigned int sysctl_sched_walt_cpu_high_irqload =
 
 #ifdef CONFIG_SMP
 /*
- * For asym packing, by default the lower numbered cpu has higher priority.
+ * For asym packing, by default the lower max-capacity cpu has higher priority.
  */
 int __weak arch_asym_cpu_priority(int cpu)
 {
-	return -cpu;
+	return -arch_scale_cpu_capacity(NULL, cpu);
 }
 #endif
 
