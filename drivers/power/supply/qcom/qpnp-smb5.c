@@ -2393,9 +2393,6 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_SLOWLY_CHARGING:
 		rc = smblib_get_prop_battery_slowly_charging(chg, val);
 		break;
-	case POWER_SUPPLY_PROP_BQ_INPUT_SUSPEND:
-		rc = smblib_get_prop_battery_bq_input_suspend(chg, val);
-		break;
 	default:
 		pr_err("batt power supply prop %d not supported\n", psp);
 		return -EINVAL;
