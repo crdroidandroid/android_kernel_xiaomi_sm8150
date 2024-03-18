@@ -79,7 +79,7 @@ struct smd_pkt_dev {
 
 static void *smd_pkt_ilctxt;
 
-static int smd_pkt_debug_mask = 0;
+static int smd_pkt_debug_mask;
 module_param_named(debug_mask, smd_pkt_debug_mask, int, 0664);
 
 enum {

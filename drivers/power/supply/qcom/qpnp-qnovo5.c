@@ -135,7 +135,7 @@ struct qnovo {
 	int			usb_present;
 };
 
-static int debug_mask = 0;
+static int debug_mask;
 module_param_named(debug_mask, debug_mask, int, 0600);
 
 #define qnovo_dbg(chip, reason, fmt, ...)				\
