@@ -2795,55 +2795,6 @@ bool smblib_support_liquid_feature(struct smb_charger *chg)
 	return chg->support_liquid;
 }
 
-int smblib_get_prop_battery_charging_enabled(struct smb_charger *chg,
-                                        union power_supply_propval *val)
-{
-        val->intval = !(get_client_vote(chg->usb_icl_votable, MAIN_CHG_VOTER)
-                        == MAIN_CHARGER_STOP_ICL);
-        return 0;
-}
-
-int smblib_get_prop_battery_charging_limited(struct smb_charger *chg,
-                                        union power_supply_propval *val)
-{
-        if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3)
-                val->intval = (get_client_vote(chg->usb_icl_votable, MAIN_CHG_VOTER)
-                                == QC3_CHARGER_ICL);
-        else if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3P5)
-                val->intval = (get_client_vote(chg->usb_icl_votable, MAIN_CHG_VOTER)
-                                == QC3P5_CHARGER_ICL);
-        else
-                val->intval = (get_client_vote(chg->usb_icl_votable, MAIN_CHG_VOTER)
-                                == MAIN_CHARGER_ICL);
-        return 0;
-}
-
-int smblib_get_prop_battery_slowly_charging(struct smb_charger *chg,
-                                        union power_supply_propval *val)
-{
-        val->intval = chg->slowly_charging;
-        return 0;
-}
-
-int smblib_set_prop_battery_slowly_charging(struct smb_charger *chg,
-                                        const union power_supply_propval *val)
-{
-        if (val->intval ^ chg->slowly_charging) {
-                if (val->intval) {
-                        vote(chg->fcc_votable, SLOWLY_CHARGING_VOTER,
-                                                        true, SLOWLY_CHARGING_CURRENT);
-                } else {
-
-                        vote(chg->fcc_votable, SLOWLY_CHARGING_VOTER, false, 0);
-                }
-                chg->slowly_charging = (bool)val->intval;
-                rerun_election(chg->fcc_votable);
-                pr_info("slowly charging enabled[%d]\n", val->intval);
-        }
-
-        return 0;
-}
-
 /***********************
  * BATTERY PSY SETTERS *
  ***********************/
