@@ -1081,11 +1081,12 @@ static int f2fs_rename(struct inode *old_dir, struct dentry *old_dentry,
 	}
 
 	if (old_dir_entry) {
-		if (old_dir != new_dir && !whiteout)
+		if (old_dir != new_dir) {
 			f2fs_set_link(old_inode, old_dir_entry,
 						old_dir_page, new_dir);
-		else
+		} else {
 			f2fs_put_page(old_dir_page, 0);
+		}
 		f2fs_i_links_write(old_dir, false);
 	}
 	if (F2FS_OPTION(sbi).fsync_mode == FSYNC_MODE_STRICT) {
