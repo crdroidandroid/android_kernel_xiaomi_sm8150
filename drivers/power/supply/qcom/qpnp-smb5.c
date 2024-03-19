@@ -427,7 +427,7 @@ static int smb5_configure_internal_pull(struct smb_charger *chg, int type,
 
 #define MICRO_1P5A				1500000
 #define MICRO_P1A				100000
-#define MICRO_1P8A_FOR_DCP			2200000
+#define MICRO_1P8A_FOR_DCP			1800000
 #define MICRO_1PA				1000000
 #define MICRO_3PA				3000000
 #define MICRO_4PA				4000000
@@ -444,6 +444,8 @@ int smblib_change_psns_to_curr(struct smb_charger *chg, int uv)
 
 	return uv;
 }
+
+#define MICRO_1P8A_FOR_DCP		1800000
 
 static int smb5_parse_dt(struct smb5 *chip)
 {
