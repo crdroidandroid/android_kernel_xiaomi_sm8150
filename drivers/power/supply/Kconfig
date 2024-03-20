@@ -616,7 +616,6 @@ config CHARGER_NU1618
 	help
 	  say y here to enable support for nu1618 charger driver.
 
-source "drivers/power/supply/google/Kconfig"
 source "drivers/power/supply/qcom/Kconfig"
 
 endif # POWER_SUPPLY
