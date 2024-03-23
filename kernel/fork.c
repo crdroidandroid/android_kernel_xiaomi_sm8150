@@ -2264,7 +2264,6 @@ long _do_fork(unsigned long clone_flags,
 		if (time_before(jiffies, last_mb_time + msecs_to_jiffies(200))) {
 			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 500, true);
 			devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 500, true);
-			balance_irqs();
 		}
 	}
 
