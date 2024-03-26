@@ -1,7 +1,7 @@
 #[allow(clippy::wildcard_imports)]
 use crate::utils::*;
 use crate::{
-    assets, defs, mount,
+    assets, defs, ksucalls, mount,
     restorecon::{restore_syscon, setsyscon},
     sepolicy, utils,
 };
@@ -12,6 +12,7 @@ use is_executable::is_executable;
 use java_properties::PropertiesIter;
 use log::{info, warn};
 
+use std::fs::OpenOptions;
 use std::{
     collections::HashMap,
     env::var as env_var,
@@ -52,7 +53,7 @@ fn exec_install_script(module_file: &str) -> Result<()> {
             ),
         )
         .env("KSU", "true")
-        .env("KSU_KERNEL_VER_CODE", crate::ksu::get_version().to_string())
+        .env("KSU_KERNEL_VER_CODE", ksucalls::get_version().to_string())
         .env("KSU_VER", defs::VERSION_NAME)
         .env("KSU_VER_CODE", defs::VERSION_CODE)
         .env("OUTFD", "1")
@@ -177,7 +178,7 @@ fn exec_script<T: AsRef<Path>>(path: T, wait: bool) -> Result<()> {
         .arg(path.as_ref())
         .env("ASH_STANDALONE", "1")
         .env("KSU", "true")
-        .env("KSU_KERNEL_VER_CODE", crate::ksu::get_version().to_string())
+        .env("KSU_KERNEL_VER_CODE", ksucalls::get_version().to_string())
         .env("KSU_VER_CODE", defs::VERSION_CODE)
         .env("KSU_VER", defs::VERSION_NAME)
         .env(
@@ -391,22 +392,30 @@ fn _install_module(zip: &str) -> Result<()> {
             println!("- Legacy image, migrating to new format, please be patient...");
             create_module_image(tmp_module_img, sparse_image_size, journal_size)?;
             let _dontdrop =
-                mount::AutoMountExt4::try_new(tmp_module_img, module_update_tmp_dir, true)?;
-            fs_extra::dir::copy(
-                defs::MODULE_DIR,
-                module_update_tmp_dir,
-                &fs_extra::dir::CopyOptions::new()
-                    .overwrite(true)
-                    .content_only(true),
-            )?;
+                mount::AutoMountExt4::try_new(tmp_module_img, module_update_tmp_dir, true)
+                    .with_context(|| format!("Failed to mount {tmp_module_img}"))?;
+            utils::copy_module_files(defs::MODULE_DIR, module_update_tmp_dir)
+                .with_context(|| "Failed to migrate module files".to_string())?;
         } else {
-            utils::copy_sparse_file(modules_img, tmp_module_img, true).with_context(|| {
-                format!(
-                    "Failed to copy {} to {}",
-                    modules_img.display(),
-                    tmp_module_img
-                )
-            })?;
+            utils::copy_sparse_file(modules_img, tmp_module_img, true)
+                .with_context(|| "Failed to copy module image".to_string())?;
+
+            if std::fs::metadata(tmp_module_img)?.len() < sparse_image_size {
+                // truncate the file to new size
+                OpenOptions::new()
+                    .write(true)
+                    .open(tmp_module_img)
+                    .context("Failed to open ext4 image")?
+                    .set_len(sparse_image_size)
+                    .context("Failed to truncate ext4 image")?;
+
+                // resize the image to new size
+                check_image(tmp_module_img)?;
+                Command::new("resize2fs")
+                    .arg(tmp_module_img)
+                    .stdout(Stdio::piped())
+                    .status()?;
+            }
         }
     }
 

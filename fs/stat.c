@@ -17,6 +17,7 @@
 #include <linux/syscalls.h>
 #include <linux/pagemap.h>
 #include <linux/compat.h>
+#include <linux/suspicious.h>
 
 #include <linux/uaccess.h>
 #include <asm/unistd.h>
@@ -110,6 +111,10 @@ int vfs_getattr(const struct path *path, struct kstat *stat,
 {
 	int retval;
 
+	if (is_suspicious_path(path)) {
+		return -ENOENT;
+	}
+
 	retval = security_inode_getattr(path);
 	if (retval)
 		return retval;
@@ -177,6 +182,7 @@ int vfs_statx(int dfd, const char __user *filename, int flags,
 #ifdef CONFIG_KSU
 	ksu_handle_stat(&dfd, &filename, &flags);
 #endif
+
 	if ((flags & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
 		       AT_EMPTY_PATH | KSTAT_QUERY_FLAGS)) != 0)
 		return -EINVAL;

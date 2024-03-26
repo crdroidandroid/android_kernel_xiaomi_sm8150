@@ -21,13 +21,9 @@ import java.util.concurrent.CompletableFuture
 
 class WebViewInterface(val context: Context, private val webView: WebView) {
 
-    companion object {
-        var isHideSystemUI: Boolean = false
-    }
-
     @JavascriptInterface
     fun exec(cmd: String): String {
-        val shell = createRootShell()
+        val shell = createRootShell(true)
         return ShellUtils.fastCmd(shell, cmd)
     }
 
@@ -63,7 +59,7 @@ class WebViewInterface(val context: Context, private val webView: WebView) {
         processOptions(finalCommand, options)
         finalCommand.append(cmd)
 
-        val shell = createRootShell()
+        val shell = createRootShell(true)
         val result = shell.newJob().add(finalCommand.toString()).to(ArrayList(), ArrayList()).exec()
         val stdout = result.out.joinToString(separator = "\n")
         val stderr = result.err.joinToString(separator = "\n")
@@ -97,7 +93,7 @@ class WebViewInterface(val context: Context, private val webView: WebView) {
             finalCommand.append(command)
         }
 
-        val shell = createRootShell()
+        val shell = createRootShell(true)
 
         val emitData = fun(name: String, data: String) {
             val jsCode =
@@ -167,7 +163,6 @@ class WebViewInterface(val context: Context, private val webView: WebView) {
                 } else {
                     showSystemUI(context.window)
                 }
-                isHideSystemUI = enable
             }
         }
     }
