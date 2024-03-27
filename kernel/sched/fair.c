@@ -3844,11 +3844,13 @@ static inline unsigned long task_util_est(struct task_struct *p)
 }
 
 #ifdef CONFIG_UCLAMP_TASK
-static inline unsigned long uclamp_task_util(struct task_struct *p)
+static unsigned int uclamp_task_util(struct task_struct *p)
 {
-	return clamp(task_util_est(p),
-		     uclamp_eff_value(p, UCLAMP_MIN),
-		     uclamp_eff_value(p, UCLAMP_MAX));
+        unsigned int min_util = uclamp_eff_value(p, UCLAMP_MIN);
+        unsigned int max_util = uclamp_eff_value(p, UCLAMP_MAX);
+        unsigned int est_util = task_util(p);
+
+        return clamp(est_util, min_util, max_util);
 }
 
 /*
@@ -5581,8 +5583,6 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 				(uclamp_latency_sensitive(p) > 0) : 0;
 #endif
 	int idle_h_nr_running = idle_policy(p->policy);
-	bool prefer_idle = sched_feat(EAS_PREFER_IDLE) ?
-				(schedtune_prefer_idle(p) > 0) : 0;
 
 #ifdef CONFIG_SCHED_WALT
 	p->misfit = !task_fits_max(p, rq->cpu);
@@ -7785,15 +7785,6 @@ static bool is_packing_eligible(struct task_struct *p, int target_cpu,
 	 * capacity, avoid placing additional task on the CPU.
 	 */
 	return (estimated_capacity <= capacity_curr_of(target_cpu));
-}
-
-static unsigned int uclamp_task_util(struct task_struct *p)
-{
-	unsigned int min_util = uclamp_eff_value(p, UCLAMP_MIN);
-	unsigned int max_util = uclamp_eff_value(p, UCLAMP_MAX);
-	unsigned int est_util = task_util(p);
-
-	return clamp(est_util, min_util, max_util);
 }
 
 static int start_cpu(struct task_struct *p, bool boosted,
