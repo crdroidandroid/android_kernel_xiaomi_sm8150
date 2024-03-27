@@ -5582,11 +5582,7 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 #endif
 	int idle_h_nr_running = idle_policy(p->policy);
 	bool prefer_idle = sched_feat(EAS_PREFER_IDLE) ?
-#ifdef CONFIG_SCHED_TUNE
 				(schedtune_prefer_idle(p) > 0) : 0;
-#elif  CONFIG_UCLAMP_TASK
-				(uclamp_latency_sensitive(p) > 0) : 0;
-#endif
 
 #ifdef CONFIG_SCHED_WALT
 	p->misfit = !task_fits_max(p, rq->cpu);
@@ -7739,19 +7735,14 @@ static inline bool task_fits_max(struct task_struct *p, int cpu)
 	if (capacity == max_capacity)
 		return true;
 
-	if (is_min_capacity_cpu(cpu)) {
-		if (task_boost_policy(p) == SCHED_BOOST_ON_BIG ||
-			task_boost > 0 ||
+	if ((task_boost_policy(p) == SCHED_BOOST_ON_BIG ||
 #ifdef CONFIG_SCHED_TUNE
-			schedtune_task_boost(p) > 0)
+			schedtune_task_boost(p) > 0) &&
 #elif  CONFIG_UCLAMP_TASK
-			uclamp_boosted(p) > 0)
+			uclamp_boosted(p) > 0) &&
 #endif
-			return false;
-	} else { /* mid cap cpu */
-		if (task_boost > 1)
-			return false;
-	}
+			is_min_capacity_cpu(cpu))
+		return false;
 
 	return task_fits_capacity(p, capacity, cpu);
 }
@@ -8569,24 +8560,29 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
                                      int cpu, int prev_cpu,
                                      int sync, bool sync_boost)
 {
-	int use_fbt = sched_feat(FIND_BEST_TARGET);
-	int cpu_iter, eas_cpu_idx = EAS_CPU_NXT;
-	int delta = 0;
-	int target_cpu = -1;
-	struct energy_env *eenv;
-	struct cpumask *rtg_target = find_rtg_target(p);
-	struct find_best_target_env fbt_env;
-	bool need_idle = wake_to_idle(p);
-	int placement_boost = task_boost_policy(p);
-	u64 start_t = 0;
-	int next_cpu = -1, backup_cpu = -1;
-#ifdef CONFIG_UCLAMP_TASK
-	int boosted = (uclamp_boosted(p) > 0 || per_task_boost(p) > 0);
+        int use_fbt = sched_feat(FIND_BEST_TARGET);
+        int cpu_iter, eas_cpu_idx = EAS_CPU_NXT;
+        int delta = 0;
+        int target_cpu = -1;
+        struct energy_env *eenv;
+        struct cpumask *rtg_target = find_rtg_target(p);
+        struct find_best_target_env fbt_env;
+        bool need_idle = wake_to_idle(p) || uclamp_latency_sensitive(p);
+        int placement_boost = task_boost_policy(p);
+        u64 start_t = 0;
+        int next_cpu = -1, backup_cpu = -1;
+#ifdef CONFIG_SCHED_TUNE
+        bool prefer_high_cap = schedtune_prefer_high_cap(p);
+        int boosted = (schedtune_task_boost(p) > 0);
+#elif  CONFIG_UCLAMP_TASK
+        int boosted = (uclamp_boosted(p) > 0);
 #else
-	int boosted = (schedtune_task_boost(p) > 0 || per_task_boost(p) > 0);
+        int boosted = (schedtune_task_boost(p) > 0);
 #endif
-	fbt_env.fastpath = 0;
-	fbt_env.need_idle = 0;
+        fbt_env.fastpath = 0;
+
+        if (trace_sched_task_util_enabled())
+                start_t = sched_clock();
 
         if (need_idle)
                 sync = 0;
