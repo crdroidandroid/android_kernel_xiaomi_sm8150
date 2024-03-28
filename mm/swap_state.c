@@ -146,7 +146,7 @@ int __add_to_swap_cache(struct page *page, swp_entry_t entry, void **shadowp)
 		}
 
 		__radix_tree_replace(&address_space->page_tree, node, slot,
-				     page + i, NULL, NULL);
+                                     page + i, NULL);
 
 		if (shadowp) {
 			VM_BUG_ON(i);
@@ -220,7 +220,7 @@ void __delete_from_swap_cache(struct page *page, void *shadow)
 			continue;
 
 		__radix_tree_replace(&address_space->page_tree,
-				     node, slot, shadow, NULL, NULL);
+                                     node, slot, shadow, NULL);
 		set_page_private(page + i, 0);
 	}
 	ClearPageSwapCache(page);
