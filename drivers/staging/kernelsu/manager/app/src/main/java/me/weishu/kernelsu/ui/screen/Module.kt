@@ -8,7 +8,17 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,9 +28,29 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -40,19 +70,26 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
-import me.weishu.kernelsu.ui.component.ConfirmDialog
 import me.weishu.kernelsu.ui.component.ConfirmResult
-import me.weishu.kernelsu.ui.component.LoadingDialog
-import me.weishu.kernelsu.ui.screen.destinations.InstallScreenDestination
-import me.weishu.kernelsu.ui.screen.destinations.WebScreenDestination
-import me.weishu.kernelsu.ui.util.*
+import me.weishu.kernelsu.ui.component.rememberConfirmDialog
+import me.weishu.kernelsu.ui.component.rememberLoadingDialog
+import me.weishu.kernelsu.ui.screen.destinations.FlashScreenDestination
+import me.weishu.kernelsu.ui.util.DownloadListener
+import me.weishu.kernelsu.ui.util.LocalSnackbarHost
+import me.weishu.kernelsu.ui.util.download
+import me.weishu.kernelsu.ui.util.hasMagisk
+import me.weishu.kernelsu.ui.util.reboot
+import me.weishu.kernelsu.ui.util.toggleModule
+import me.weishu.kernelsu.ui.util.uninstallModule
 import me.weishu.kernelsu.ui.viewmodel.ModuleViewModel
+import me.weishu.kernelsu.ui.webui.WebUIActivity
 import okhttp3.OkHttpClient
 
 @Destination
 @Composable
 fun ModuleScreen(navigator: DestinationsNavigator) {
     val viewModel = viewModel<ModuleViewModel>()
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         if (viewModel.moduleList.isEmpty() || viewModel.isNeedRefresh) {
@@ -81,7 +118,7 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
                 val data = it.data ?: return@rememberLauncherForActivityResult
                 val uri = data.data ?: return@rememberLauncherForActivityResult
 
-                navigator.navigate(InstallScreenDestination(uri))
+                navigator.navigate(FlashScreenDestination(FlashIt.FlashModule(uri)))
 
                 viewModel.markNeedRefresh()
 
@@ -100,10 +137,6 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
             )
         }
     }) { innerPadding ->
-
-        ConfirmDialog()
-
-        LoadingDialog()
 
         when {
             hasMagisk -> {
@@ -127,10 +160,14 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
                         .fillMaxSize(),
                     onInstallModule =
                     {
-                        navigator.navigate(InstallScreenDestination(it))
+                        navigator.navigate(FlashScreenDestination(FlashIt.FlashModule(it)))
                     }, onClickModule = { id, name, hasWebUi ->
                         if (hasWebUi) {
-                            navigator.navigate(WebScreenDestination(id, name))
+                            context.startActivity(Intent(context, WebUIActivity::class.java)
+                                .setData(Uri.parse("kernelsu://webui/$id"))
+                                .putExtra("id", id)
+                                .putExtra("name", name)
+                            )
                         }
                     })
             }
@@ -162,9 +199,11 @@ private fun ModuleList(
     val startDownloadingText = stringResource(R.string.module_start_downloading)
     val fetchChangeLogFailed = stringResource(R.string.module_changelog_failed)
 
-    val dialogHost = LocalDialogHost.current
     val snackBarHost = LocalSnackbarHost.current
     val context = LocalContext.current
+
+    val loadingDialog = rememberLoadingDialog()
+    val confirmDialog = rememberConfirmDialog()
 
     suspend fun onModuleUpdate(
         module: ModuleViewModel.ModuleInfo,
@@ -172,7 +211,7 @@ private fun ModuleList(
         downloadUrl: String,
         fileName: String
     ) {
-        val changelogResult = dialogHost.withLoading {
+        val changelogResult = loadingDialog.withLoading {
             withContext(Dispatchers.IO) {
                 runCatching {
                     OkHttpClient().newCall(
@@ -201,7 +240,7 @@ private fun ModuleList(
         }
 
         // changelog is not empty, show it and wait for confirm
-        val confirmResult = dialogHost.showConfirm(
+        val confirmResult = confirmDialog.awaitConfirm(
             changelogText,
             content = changelog,
             markdown = true,
@@ -232,7 +271,7 @@ private fun ModuleList(
     }
 
     suspend fun onModuleUninstall(module: ModuleViewModel.ModuleInfo) {
-        val confirmResult = dialogHost.showConfirm(
+        val confirmResult = confirmDialog.awaitConfirm(
             moduleStr,
             content = moduleUninstallConfirm.format(module.name),
             confirm = uninstall,
@@ -242,7 +281,7 @@ private fun ModuleList(
             return
         }
 
-        val success = dialogHost.withLoading {
+        val success = loadingDialog.withLoading {
             withContext(Dispatchers.IO) {
                 uninstallModule(module.id)
             }
@@ -327,7 +366,7 @@ private fun ModuleList(
                             scope.launch { onModuleUninstall(module) }
                         }, onCheckChanged = {
                             scope.launch {
-                                val success = dialogHost.withLoading {
+                                val success = loadingDialog.withLoading {
                                     withContext(Dispatchers.IO) {
                                         toggleModule(module.id, !isChecked)
                                     }
