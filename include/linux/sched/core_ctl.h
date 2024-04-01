@@ -25,7 +25,8 @@ int core_ctl_set_boost(bool boost);
 void core_ctl_notifier_register(struct notifier_block *n);
 void core_ctl_notifier_unregister(struct notifier_block *n);
 #else
-static inline void core_ctl_check(u64 wallclock) {}
+void rotation_ctl_check(u64 wallclock);
+#define core_ctl_check rotation_ctl_check
 static inline int core_ctl_set_boost(bool boost)
 {
 	return 0;
