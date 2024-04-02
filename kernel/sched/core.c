@@ -5176,29 +5176,28 @@ static struct task_struct *find_process_by_pid(pid_t pid)
 #define SETPARAM_POLICY	-1
 
 static void __setscheduler_params(struct task_struct *p,
-		const struct sched_attr *attr)
+                const struct sched_attr *attr)
 {
-	int policy = attr->sched_policy;
+        int policy = attr->sched_policy;
 
-	if (policy == SETPARAM_POLICY)
-		policy = p->policy;
+        if (policy == SETPARAM_POLICY)
+                policy = p->policy;
 
-	/* Replace SCHED_FIFO with SCHED_RR to reduce latency */
-	p->policy = policy == SCHED_FIFO ? SCHED_RR : policy;
+        p->policy = policy;
 
-	if (dl_policy(policy))
-		__setparam_dl(p, attr);
-	else if (fair_policy(policy))
-		p->static_prio = NICE_TO_PRIO(attr->sched_nice);
+        if (dl_policy(policy))
+                __setparam_dl(p, attr);
+        else if (fair_policy(policy))
+                p->static_prio = NICE_TO_PRIO(attr->sched_nice);
 
-	/*
-	 * __sched_setscheduler() ensures attr->sched_priority == 0 when
-	 * !rt_policy. Always setting this ensures that things like
-	 * getparam()/getattr() don't report silly values for !rt tasks.
-	 */
-	p->rt_priority = attr->sched_priority;
-	p->normal_prio = normal_prio(p);
-	set_load_weight(p);
+        /*
+         * __sched_setscheduler() ensures attr->sched_priority == 0 when
+         * !rt_policy. Always setting this ensures that things like
+         * getparam()/getattr() don't report silly values for !rt tasks.
+         */
+        p->rt_priority = attr->sched_priority;
+        p->normal_prio = normal_prio(p);
+        set_load_weight(p);
 }
 
 /* Actually do priority change: must hold pi & rq lock. */
