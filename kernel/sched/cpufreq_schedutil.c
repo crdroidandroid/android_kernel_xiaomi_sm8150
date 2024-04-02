@@ -1022,11 +1022,10 @@ static int sugov_init(struct cpufreq_policy *policy)
 		tunables->down_rate_limit_us =
 					CONFIG_SCHEDUTIL_DOWN_RATE_LIMIT_LITTLE;
 	}
-	tunables->iowait_boost_enable = false;
 	policy->governor_data = sg_policy;
 	sg_policy->tunables = tunables;
 	stale_ns = sched_ravg_window + (sched_ravg_window >> 3);
-
+	tunables->iowait_boost_enable = true;
 	sugov_tunables_restore(policy);
 
 	ret = kobject_init_and_add(&tunables->attr_set.kobj, &sugov_tunables_ktype,
