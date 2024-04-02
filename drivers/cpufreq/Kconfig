@@ -241,7 +241,7 @@ config SCHEDUTIL_UP_RATE_LIMIT_PRIME
 
 config SCHEDUTIL_DOWN_RATE_LIMIT_PRIME
 	int "Default down rate-limit for schedutil on prime cluster"
-	default 500
+	default 1000
 	help
 	  This sets schedutil's default frequency down rate-limit in
 	  microseconds.
@@ -255,21 +255,21 @@ config SCHEDUTIL_UP_RATE_LIMIT_BIG
 
 config SCHEDUTIL_DOWN_RATE_LIMIT_BIG
 	int "Default down rate-limit for schedutil on big cluster"
-	default 700
+	default 1000
 	help
 	  This sets schedutil's default frequency down rate-limit in
 	  microseconds.
 
 config SCHEDUTIL_UP_RATE_LIMIT_LITTLE
 	int "Default up rate-limit for schedutil on little cluster"
-	default 500
+	default 0
 	help
 	  This sets schedutil's default frequency up rate-limit for little cluster in
 	  microseconds.
 
 config SCHEDUTIL_DOWN_RATE_LIMIT_LITTLE
 	int "Default down rate-limit for schedutil on little cluster"
-	default 2000
+	default 6000
 	help
 	  This sets schedutil's default frequency down rate-limit for little cluster in
 	  microseconds.
