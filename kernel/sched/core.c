@@ -773,21 +773,6 @@ unsigned int sysctl_sched_uclamp_util_min = SCHED_CAPACITY_SCALE;
 unsigned int sysctl_sched_uclamp_util_max = SCHED_CAPACITY_SCALE;
 
 /*
- * Ignore uclamp_max for tasks if
- *
- *	runtime < sched_slice() / divider
- *
- * ==>
- *
- *	runtime * divider < sched_slice()
- *
- * where
- *
- *	divider = 1 << sysctl_sched_uclamp_max_filter_divider
- */
-unsigned int sysctl_sched_uclamp_max_filter_divider = 2;
-
-/*
  * By default RT tasks run at the maximum performance point/capacity of the
  * system. Uclamp enforces this by always setting UCLAMP_MIN of RT tasks to
  * SCHED_CAPACITY_SCALE.
@@ -1489,8 +1474,6 @@ static void uclamp_fork(struct task_struct *p)
 	 */
 	for_each_clamp_id(clamp_id)
 		p->uclamp[clamp_id].active = false;
-
-	p->uclamp_req[UCLAMP_MAX].ignore_uclamp_max = 0;
 
 	if (likely(!p->sched_reset_on_fork))
 		return;
@@ -7918,10 +7901,6 @@ void ia64_set_curr_task(int cpu, struct task_struct *p)
 
 #endif
 
-#ifdef CONFIG_CGROUP_SCHED
-/* task_group_lock serializes the addition/removal of task groups */
-static DEFINE_SPINLOCK(task_group_lock);
-
 static inline void alloc_uclamp_sched_group(struct task_group *tg,
 					    struct task_group *parent)
 {
@@ -7935,6 +7914,10 @@ static inline void alloc_uclamp_sched_group(struct task_group *tg,
 	}
 #endif
 }
+
+#ifdef CONFIG_CGROUP_SCHED
+/* task_group_lock serializes the addition/removal of task groups */
+static DEFINE_SPINLOCK(task_group_lock);
 
 static void sched_free_group(struct task_group *tg)
 {

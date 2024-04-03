@@ -5457,19 +5457,23 @@ static int sched_idle_cpu(int cpu)
  * increased. Here we update the fair scheduling stats and
  * then put the task into the rbtree:
  */
+
 static void
 enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 {
 	struct cfs_rq *cfs_rq;
 	struct sched_entity *se = &p->se;
 	int task_new = !(flags & ENQUEUE_WAKEUP);
-	bool prefer_idle = sched_feat(EAS_PREFER_IDLE) ?
-#ifdef CONFIG_SCHED_TUNE
-				(schedtune_prefer_idle(p) > 0) : 0;
-#elif  CONFIG_UCLAMP_TASK
-				(uclamp_latency_sensitive(p) > 0) : 0;
-#endif
 	int idle_h_nr_running = idle_policy(p->policy);
+#ifdef CONFIG_SCHED_TUNE
+	bool prefer_idle = sched_feat(EAS_PREFER_IDLE)
+				? (schedtune_prefer_idle(p) > 0) : 0;
+#elif defined  CONFIG_UCLAMP_TASK
+	bool prefer_idle = sched_feat(EAS_PREFER_IDLE)
+				? (uclamp_latency_sensitive(p) > 0) : 0;
+#else
+	bool prefer_idle = sched_feat(EAS_PREFER_IDLE);
+#endif
 
 #ifdef CONFIG_SCHED_WALT
 	p->misfit = !task_fits_max(p, rq->cpu);
@@ -7824,8 +7828,11 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 			 * accounting. However, the blocked utilization may be zero.
 			 */
 			wake_util = cpu_util_without(i, p);
+#ifdef CONFIG_UCLAMP_TASK
+			new_util = wake_util + uclamp_task_util(p);
+#else
 			new_util = wake_util + task_util_est(p);
-			spare_wake_cap = capacity_orig_of(i) - wake_util;
+#endif
 
 			if (spare_wake_cap > most_spare_wake_cap) {
 				most_spare_wake_cap = spare_wake_cap;
@@ -7935,7 +7942,11 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 					continue;
 
 				/* Skip CPUs which do not fit task requirements */
+#ifdef CONFIG_UCLAMP_TASK
 				if (capacity_orig < uclamp_task_util(p))
+#else
+				if (capacity_orig < task_util_est(p))
+#endif
 					continue;
 
 				/*
@@ -8350,9 +8361,13 @@ static inline struct energy_env *get_eenv(struct task_struct *p, int prev_cpu)
 	eenv->p = p;
 	/* use boosted task util for capacity selection
 	 * during energy calculation, but unboosted task
-	 * util for group utilization calculations
-	 */
+	 * util for group utilization calculation
+	*/
+#ifdef CONFIG_UCLAMP_TASK
 	eenv->util_delta = uclamp_task_util(p);
+#else
+	eenv->util_delta = task_util_est(p);
+#endif
 	eenv->util_delta_boosted = boosted_task_util(p);
 
 	cpumask_and(&cpumask_possible_cpus, &p->cpus_allowed, cpu_online_mask);
@@ -8441,14 +8456,13 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
         int placement_boost = task_boost_policy(p);
         u64 start_t = 0;
         int next_cpu = -1, backup_cpu = -1;
-#ifdef CONFIG_SCHED_TUNE
-        bool prefer_high_cap = schedtune_prefer_high_cap(p);
-        int boosted = (schedtune_task_boost(p) > 0);
-#elif  CONFIG_UCLAMP_TASK
-        int boosted = (uclamp_boosted(p) > 0);
+#ifdef CONFIG_UCLAMP_TASK
+	int boosted = (uclamp_boosted(p) > 0 || per_task_boost(p) > 0);
 #else
-        int boosted = (schedtune_task_boost(p) > 0);
+	int boosted = (schedtune_task_boost(p) > 0 || per_task_boost(p) > 0);
+	bool prefer_high_cap = schedtune_prefer_high_cap(p);
 #endif
+
         fbt_env.fastpath = 0;
 
         if (trace_sched_task_util_enabled())
@@ -8509,11 +8523,14 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 		 * cannot be changed, it is safe to optimise out
 		 * all if(prefer_idle) blocks.
 		 */
-		prefer_idle = sched_feat(EAS_PREFER_IDLE) ?
 #ifdef CONFIG_SCHED_TUNE
+		prefer_idle = sched_feat(EAS_PREFER_IDLE) ?
 				(schedtune_prefer_idle(p) > 0) : 0;
-#elif  CONFIG_UCLAMP_TASK
+#elif defined CONFIG_UCLAMP_TASK
+		prefer_idle = sched_feat(EAS_PREFER_IDLE) ?
 				(uclamp_latency_sensitive(p) > 0) : 0;
+#else
+		prefer_idle = sched_feat(EAS_PREFER_IDLE);
 #endif
 		eenv->max_cpu_count = EAS_CPU_BKP + 1;
 
@@ -8629,10 +8646,13 @@ static inline int wake_energy(struct task_struct *p, int prev_cpu,
 		 */
 #ifdef CONFIG_SCHED_TUNE
 		if (schedtune_prefer_idle(p) > 0
-#elif  CONFIG_UCLAMP_TASK
-		if (uclamp_latency_sensitive(p) > 0
-#endif
 				&& !sync)
+#elif defined CONFIG_UCLAMP_TASK
+		if (uclamp_latency_sensitive(p) > 0
+				&& !sync)
+#else
+		if (!sync)
+#endif
 			return false;
 	}
 	return true;
