@@ -453,6 +453,7 @@ config SCHED_WALT
 	for cpufreq governors.
 
 config SCHED_THERMAL_PRESSURE
+	default y
 	bool "Enable periodic averaging of thermal pressure"
 	depends on SMP
 
