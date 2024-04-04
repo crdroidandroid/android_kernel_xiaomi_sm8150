@@ -147,7 +147,7 @@ static int cass_best_cpu(struct task_struct *p, int prev_cpu, bool sync, bool rt
 		struct rq *rq = cpu_rq(cpu);
 
 		/* Get the capacity of this CPU adjusted for thermal pressure */
-		curr->cap_max = arch_scale_cpu_capacity(cpu) -
+		curr->cap_max = arch_scale_cpu_capacity(NULL, cpu); -
 				thermal_load_avg(rq);
 
 		/* Prefer the CPU that meets the uclamp minimum requirement */
@@ -248,12 +248,13 @@ static int cass_select_task_rq(struct task_struct *p, int prev_cpu,
 }
 
 static int cass_select_task_rq_fair(struct task_struct *p, int prev_cpu,
-				    int wake_flags)
+				    int sd_flags, int wake_flags)
 {
 	return cass_select_task_rq(p, prev_cpu, wake_flags, false);
 }
 
-int cass_select_task_rq_rt(struct task_struct *p, int prev_cpu, int wake_flags)
+int cass_select_task_rq_rt(struct task_struct *p, int prev_cpu, int sd_flags,
+			   int wake_flags)
 {
 	return cass_select_task_rq(p, prev_cpu, wake_flags, true);
 }
