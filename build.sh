@@ -17,13 +17,13 @@ DEFCONFIG="raphael_defconfig"
 # Kernel Details
 REV="R6.2"
 
-EDITION="STANDALONE-DSP"
-VER="$REV"-"$EDITION"
+EDITION="DSP"
+VER="$EDITION"-"$REV"
 
 # Vars
-BASE_AK_VER="SOVIET-STAR-K20P-"
+BASE_AK_VER="SOVIET"
 DATE=`date +"%Y%m%d-%H%M"`
-AK_VER="$BASE_AK_VER$VER"
+AK_VER="$BASE_AK_VER"-"$VER"
 ZIP_NAME="$AK_VER"-"$DATE"
 export ARCH=arm64
 export SUBARCH=arm64
