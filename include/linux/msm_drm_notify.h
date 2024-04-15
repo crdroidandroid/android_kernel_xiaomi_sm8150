@@ -19,6 +19,8 @@
 #define MSM_DRM_EVENT_BLANK			0x01
 /* A hardware display blank early change occurred */
 #define MSM_DRM_EARLY_EVENT_BLANK		0x02
+/* A hardware display blank early change occurred */
+#define MSM_DRM_R_EARLY_EVENT_BLANK		0x03
 
 enum {
 	/* panel: power on */
