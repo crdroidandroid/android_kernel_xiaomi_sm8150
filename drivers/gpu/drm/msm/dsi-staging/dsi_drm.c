@@ -275,11 +275,19 @@ static void dsi_bridge_disable(struct drm_bridge *bridge)
 	struct dsi_display *display;
 	struct dsi_bridge *c_bridge = to_dsi_bridge(bridge);
 	int private_flags;
+	struct msm_drm_notifier notify_data;
+	int power_mode;
 
 	if (!bridge) {
 		pr_err("Invalid params\n");
 		return;
 	}
+
+	power_mode = sde_connector_get_lp(c_bridge->display->drm_conn);
+	notify_data.data = &power_mode;
+	notify_data.id = MSM_DRM_PRIMARY_DISPLAY;
+	msm_drm_notifier_call_chain(MSM_DRM_R_EARLY_EVENT_BLANK, &notify_data);
+
 	display = c_bridge->display;
 
 	private_flags =
