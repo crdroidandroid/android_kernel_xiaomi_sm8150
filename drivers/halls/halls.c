@@ -290,7 +290,7 @@ static int __init halls_init(void)
 	g_st_halls->hall_status = 0;
 	INIT_DELAYED_WORK(&g_st_halls->notify_work, hall_notify_work_func);
 
-	g_st_halls->hall_wakelock = wakeup_source_register("dual_hall_ws");
+	g_st_halls->hall_wakelock = wakeup_source_register(g_st_halls->miscdev.this_device, "dual_hall_ws");
 	if (!g_st_halls->hall_wakelock) {
 		pr_err("g_st_halls wakeup_source_register failed!\n");
 		return ret;
