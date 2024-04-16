@@ -3152,8 +3152,10 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 	}
 
 	INIT_WORK(&ts->switch_mode_work, nvt_switch_mode_work);
+#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 	INIT_WORK(&ts->pen_charge_state_change_work,
 		  nvt_pen_charge_state_change_work);
+#endif
 	ts->pen_is_charge = false;
 
 	ts->lkdown_readed = false;
@@ -3268,6 +3270,7 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 	}
 	INIT_WORK(&ts->resume_work, nvt_resume_work);
 	INIT_WORK(&ts->suspend_work, nvt_suspend_work);
+#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 	ts->set_touchfeature_wq =
 		create_singlethread_workqueue("nvt-set-touchfeature-queue");
 	if (!ts->set_touchfeature_wq) {
@@ -3276,7 +3279,9 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 		goto err_create_set_touchfeature_work_queue;
 	}
 	INIT_WORK(&ts->set_touchfeature_work, update_touchfeature_value_work);
+#endif
 
+#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 	ts->pen_charge_state_notifier.notifier_call =
 		nvt_pen_charge_state_notifier_callback;
 	ret = pen_charge_state_notifier_register_client(
@@ -3286,6 +3291,7 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 			ret);
 		goto err_register_pen_charge_state_failed;
 	}
+#endif
 #ifdef CONFIG_DRM
 	ts->drm_notif.notifier_call = nvt_drm_notifier_callback;
 	ret = msm_drm_register_client(&ts->drm_notif);
@@ -3354,12 +3360,14 @@ err_register_fb_notif_failed:
 	unregister_early_suspend(&ts->early_suspend);
 err_register_early_suspend_failed:
 #endif
+#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 	if (pen_charge_state_notifier_unregister_client(
 		    &ts->pen_charge_state_notifier))
 		NVT_ERR("Error occurred while unregistering pen charge state notifier.\n");
 err_register_pen_charge_state_failed:
 	destroy_workqueue(ts->set_touchfeature_wq);
 err_create_set_touchfeature_work_queue:
+#endif
 	destroy_workqueue(ts->event_wq);
 err_alloc_work_thread_failed:
 #ifndef NVT_SAVE_TESTDATA_IN_FILE
@@ -3527,8 +3535,10 @@ static int32_t nvt_ts_remove(struct spi_device *client)
 
 	spi_set_drvdata(client, NULL);
 
+#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 	if (ts->set_touchfeature_wq)
 		destroy_workqueue(ts->set_touchfeature_wq);
+#endif
 
 	if (ts) {
 		kfree(ts);
@@ -3635,7 +3645,9 @@ static int32_t nvt_ts_suspend(struct device *dev)
 
 	if (ts->pen_input_dev_enable) {
 		NVT_LOG("if enable pen,will close it");
+#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 		disable_pen_input_device(true);
+#endif
 	}
 
 	if (ts->db_wakeup) {
@@ -3763,7 +3775,9 @@ static int32_t nvt_ts_resume(struct device *dev)
 
 	mutex_unlock(&ts->lock);
 
+#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 	disable_pen_input_device(false);
+#endif
 	dsi_panel_doubleclick_enable(
 		!!ts->db_wakeup); /*if true, dbclick work until next suspend*/
 	if (likely(ts->ic_state == NVT_IC_RESUME_IN)) {
