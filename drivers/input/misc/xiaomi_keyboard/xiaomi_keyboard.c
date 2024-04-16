@@ -13,7 +13,7 @@
 #include <linux/slab.h>
 #include <linux/device.h>
 #include "xiaomi_keyboard.h"
-#include <drm/drm_notifier.h>
+#include <linux/msm_drm_notify.h>
 #include <linux/notifier.h>
 
 static struct xiaomi_keyboard_data *mdata;
@@ -351,7 +351,7 @@ static const struct dev_pm_ops xiaomi_keyboard_pm_ops = {
 static int keyboard_drm_notifier_callback(struct notifier_block *self,
 					  unsigned long event, void *data)
 {
-	struct drm_notify_data *evdata = data;
+	struct msm_drm_notifier *evdata = data;
 	int *blank;
 	struct xiaomi_keyboard_data *mdata =
 		container_of(self, struct xiaomi_keyboard_data, drm_notif);
@@ -362,15 +362,15 @@ static int keyboard_drm_notifier_callback(struct notifier_block *self,
 	if (evdata->data && mdata) {
 		blank = evdata->data;
 		flush_workqueue(mdata->event_wq);
-		if (event == DRM_EARLY_EVENT_BLANK) {
-			if (*blank == DRM_BLANK_POWERDOWN) {
+		if (event == MSM_DRM_EARLY_EVENT_BLANK) {
+			if (*blank == MSM_DRM_BLANK_POWERDOWN) {
 				MI_KB_ERR("keyboard suspend");
 				mdata->is_in_suspend = true;
 				queue_work(mdata->event_wq,
 					   &mdata->suspend_work);
 			}
-		} else if (event == DRM_EVENT_BLANK) {
-			if (*blank == DRM_BLANK_UNBLANK) {
+		} else if (event == MSM_DRM_EVENT_BLANK) {
+			if (*blank == MSM_DRM_BLANK_UNBLANK) {
 				MI_KB_ERR("keyboard resume");
 				mdata->is_in_suspend = false;
 				flush_workqueue(mdata->event_wq);
@@ -555,7 +555,7 @@ static int xiaomi_keyboard_probe(struct platform_device *pdev)
 	INIT_WORK(&mdata->power_supply_work, kb_power_supply_work);
 
 	mdata->drm_notif.notifier_call = keyboard_drm_notifier_callback;
-	ret = drm_register_client(&mdata->drm_notif);
+	ret = msm_drm_register_client(&mdata->drm_notif);
 	if (ret) {
 		MI_KB_ERR("register drm_notifier failed. ret=%d\n", ret);
 		goto err_register_drm_notif_failed;
@@ -574,7 +574,7 @@ static int xiaomi_keyboard_probe(struct platform_device *pdev)
 
 err_register_power_supply_notif_failed:
 err_register_drm_notif_failed:
-	if (drm_unregister_client(&mdata->drm_notif))
+	if (msm_drm_unregister_client(&mdata->drm_notif))
 		MI_KB_ERR("Error occurred while unregistering drm_notifier\n");
 	if (mdata->event_wq) {
 		destroy_workqueue(mdata->event_wq);
@@ -601,7 +601,7 @@ out:
 static int xiaomi_keyboard_remove(struct platform_device *pdev)
 {
 	MI_KB_INFO("enter\n");
-	drm_unregister_client(&mdata->drm_notif);
+	msm_drm_unregister_client(&mdata->drm_notif);
 	destroy_workqueue(mdata->event_wq);
 	xiaomi_keyboard_gpio_deconfig(mdata->pdata);
 	sysfs_remove_file(&mdata->pdev->dev.kobj,
