@@ -47,7 +47,11 @@
 #define TX_MACRO_SWR_MIC_MUX_SEL_MASK 0xF
 #define TX_MACRO_ADC_MUX_CFG_OFFSET 0x2
 
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+#define TX_MACRO_TX_UNMUTE_DELAY_MS	150
+#else
 #define TX_MACRO_TX_UNMUTE_DELAY_MS	40
+#endif
 
 static int tx_unmute_delay = TX_MACRO_TX_UNMUTE_DELAY_MS;
 module_param(tx_unmute_delay, int, 0664);
@@ -752,7 +756,11 @@ static int tx_macro_enable_dec(struct snd_soc_dapm_widget *w,
 							CF_MIN_3DB_150HZ) {
 			schedule_delayed_work(
 					&tx_priv->tx_hpf_work[decimator].dwork,
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+					msecs_to_jiffies(50));
+#else
 					msecs_to_jiffies(300));
+#endif
 			snd_soc_update_bits(codec, hpf_gate_reg, 0x02, 0x02);
 			/*
 			 * Minimum 1 clk cycle delay is required as per HW spec

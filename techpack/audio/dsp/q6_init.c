@@ -31,14 +31,28 @@ static int __init audio_q6_init(void)
 	msm_audio_ion_init();
 	audio_slimslave_init();
 	avtimer_init();
+#if defined(CONFIG_MSM_CSPL) || defined(CONFIG_MSM_CSPL_V2)
+	crus_sp_init();
+#endif
 	msm_mdf_init();
 	voice_mhi_init();
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	elliptic_driver_init();
+#endif
+/* for mius start */
+#ifdef CONFIG_US_PROXIMITY
+	mius_driver_init();
+#endif
+/* for mius end */
 	return 0;
 }
 
 static void __exit audio_q6_exit(void)
 {
 	msm_mdf_exit();
+#if defined(CONFIG_MSM_CSPL) || defined(CONFIG_MSM_CSPL_V2)
+	crus_sp_exit();
+#endif
 	avtimer_exit();
 	audio_slimslave_exit();
 	msm_audio_ion_exit();
@@ -53,6 +67,14 @@ static void __exit audio_q6_exit(void)
 	audio_cal_exit();
 	adsp_err_exit();
 	voice_mhi_exit();
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	elliptic_driver_exit();
+#endif
+/* for mius start */
+#ifdef CONFIG_US_PROXIMITY
+	mius_driver_exit();
+#endif
+/* for mius end */
 }
 
 module_init(audio_q6_init);
