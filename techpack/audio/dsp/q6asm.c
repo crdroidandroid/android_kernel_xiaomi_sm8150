@@ -10839,6 +10839,14 @@ static int q6asm_get_asm_topology_apptype(struct q6asm_cal_info *cal_info)
 	cal_info->app_type = ((struct audio_cal_info_asm_top *)
 		cal_block->cal_info)->app_type;
 
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+	if (0 == cal_info->topology_id) {
+		cal_info->topology_id = 0x10c68;;
+		pr_err("%s: Correct using topology %d app_type %d\n", __func__,
+			cal_info->topology_id, cal_info->app_type);
+	}
+#endif
+
 	cal_utils_mark_cal_used(cal_block);
 
 unlock:

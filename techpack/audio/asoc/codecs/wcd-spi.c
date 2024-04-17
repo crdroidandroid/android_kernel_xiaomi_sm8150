@@ -1045,6 +1045,15 @@ static int wcd_spi_bus_gwrite(void *context, const void *reg,
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	if (wcd_spi_is_suspended(wcd_spi)) {
+		dev_err(&spi->dev,
+		"%s: SPI suspended, cannot enable clk\n",
+		 __func__);
+		return -EIO;
+	}
+#endif
+
 	memset(tx_buf, 0, WCD_SPI_CMD_IRW_LEN);
 	tx_buf[0] = WCD_SPI_CMD_IRW;
 	tx_buf[1] = *((u8 *)reg);
@@ -1093,6 +1102,15 @@ static int wcd_spi_bus_read(void *context, const void *reg,
 			__func__, reg_len, val_len);
 		return -EINVAL;
 	}
+
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	if (wcd_spi_is_suspended(wcd_spi)) {
+		dev_err(&spi->dev,
+		"%s: SPI suspended, cannot enable clk\n",
+		__func__);
+		return -EIO;
+	}
+#endif
 
 	memset(tx_buf, 0, WCD_SPI_CMD_IRR_LEN);
 	tx_buf[0] = WCD_SPI_CMD_IRR;

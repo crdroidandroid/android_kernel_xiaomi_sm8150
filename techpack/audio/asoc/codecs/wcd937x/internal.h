@@ -92,6 +92,9 @@ struct wcd937x_priv {
 	struct snd_info_entry *version_entry;
 	/*Entry for Variant info*/
 	struct snd_info_entry *variant_entry;
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+	int ear_rx_path;
+#endif
 	int ana_clk_count;
 	struct mutex ana_tx_clk_lock;
 };
