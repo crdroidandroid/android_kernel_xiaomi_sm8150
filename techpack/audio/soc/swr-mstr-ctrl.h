@@ -173,6 +173,9 @@ struct swr_mstr_ctrl {
 	int wlock_holders;
 	u32 intr_mask;
 	u32 swr_irq_wakeup_capable;
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+	bool swr_tx_wakeup_capable;
+#endif
 };
 
 #endif /* _SWR_WCD_CTRL_H */
