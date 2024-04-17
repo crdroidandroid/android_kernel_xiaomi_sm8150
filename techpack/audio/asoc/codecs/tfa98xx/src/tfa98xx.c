@@ -40,7 +40,7 @@
 /* required for enum tfa9912_irq */
 #include "../inc/tfa98xx_tfafieldnames.h"
 
-#include "../inc/spk-id.h" 
+#include <linux/mfd/spk-id.h>
 
 #define TFA98XX_VERSION	TFA98XX_API_REV_STR
 
