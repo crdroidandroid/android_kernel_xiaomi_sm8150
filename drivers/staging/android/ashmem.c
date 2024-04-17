@@ -51,11 +51,11 @@ static int ashmem_open(struct inode *inode, struct file *file)
 	int ret;
 
 	ret = generic_file_open(inode, file);
-	if (unlikely(ret))
+	if (ret)
 		return ret;
 
 	asma = kmem_cache_alloc(ashmem_area_cachep, GFP_KERNEL);
-	if (unlikely(!asma))
+	if (!asma)
 		return -ENOMEM;
 
 	*asma = (typeof(*asma)){
@@ -249,7 +249,7 @@ static int ashmem_mmap(struct file *file, struct vm_area_struct *vma)
 static int set_prot_mask(struct ashmem_area *asma, unsigned long prot)
 {
 	/* the user can only remove, not add, protection bits */
-	if (unlikely((READ_ONCE(asma->prot_mask) & prot) != prot))
+	if ((READ_ONCE(asma->prot_mask) & prot) != prot)
 		return -EINVAL;
 
 	/* does the application expect PROT_READ to imply PROT_EXEC? */
@@ -346,14 +346,14 @@ static int __init ashmem_init(void)
 	ashmem_area_cachep = kmem_cache_create("ashmem_area_cache",
 					       sizeof(struct ashmem_area),
 					       0, SLAB_RECLAIM_ACCOUNT, NULL);
-	if (unlikely(!ashmem_area_cachep)) {
+	if (!ashmem_area_cachep) {
 		pr_err("failed to create slab cache\n");
 		ret = -ENOMEM;
 		goto out;
 	}
 
 	ret = misc_register(&ashmem_misc);
-	if (unlikely(ret)) {
+	if (ret) {
 		pr_err("failed to register misc device!\n");
 		goto out_free1;
 	}
