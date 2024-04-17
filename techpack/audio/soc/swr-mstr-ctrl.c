@@ -1918,6 +1918,18 @@ static int swrm_probe(struct platform_device *pdev)
 		goto err_pdata_fail;
 	}
 
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+	/* Make inband tx interrupts as wakeup capable for slave irq */
+	swrm->swr_tx_wakeup_capable = false;
+	if (of_property_read_bool(swrm->dev->of_node,
+			"qcom,swr-mstr-tx-wakeup-capable")) {
+		swrm->swr_tx_wakeup_capable = true;
+		irq_set_irq_wake(swrm->irq, 1);
+	} else
+		dev_dbg(swrm->dev, "%s: swrm tx wakeup capable not defined",
+			__func__);
+#endif
+
 	for (i = 0; i < map_length; i++) {
 		port_num = temp[3 * i];
 		port_type = temp[3 * i + 1];
@@ -2058,6 +2070,12 @@ static int swrm_probe(struct platform_device *pdev)
 				   (void *) "swrm_reg_dump",
 				   &swrm_debug_ops);
 	}
+
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+	/* Make inband tx interrupts as wakeup capable for slave irq */
+	if (swrm->master_id == MASTER_ID_TX)
+		irq_set_irq_wake(swrm->irq, 1);
+#endif
 
 	ret = device_init_wakeup(swrm->dev, true);
 	if (ret) {
