@@ -24,7 +24,11 @@
 #include "adsp_err.h"
 #include <dsp/voice_mhi.h>
 
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+#define TIMEOUT_MS 1000
+#else
 #define TIMEOUT_MS 300
+#endif
 
 
 #define CMD_STATUS_SUCCESS 0

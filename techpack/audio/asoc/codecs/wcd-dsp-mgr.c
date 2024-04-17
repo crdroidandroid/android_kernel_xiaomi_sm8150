@@ -85,6 +85,9 @@ static char *wdsp_get_cmpnt_type_string(enum wdsp_cmpnt_type);
 #define WDSP_SSR_STATUS_READY         \
 	(WDSP_SSR_STATUS_WDSP_READY | WDSP_SSR_STATUS_CDC_READY)
 #define WDSP_SSR_READY_WAIT_TIMEOUT   (10 * HZ)
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+#define WDSP_FW_LOAD_RETRY_COUNT 5
+#endif
 
 enum wdsp_ssr_type {
 
@@ -384,6 +387,9 @@ static int wdsp_download_segments(struct wdsp_mgr_priv *wdsp,
 	enum wdsp_event_type pre, post;
 	long status;
 	int ret;
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	int retry_cnt = 0;
+#endif
 
 	ctl = WDSP_GET_COMPONENT(wdsp, WDSP_CMPNT_CONTROL);
 
@@ -416,7 +422,14 @@ static int wdsp_download_segments(struct wdsp_mgr_priv *wdsp,
 
 	/* Go through the list of segments and download one by one */
 	list_for_each_entry(seg, wdsp->seg_list, list) {
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+		retry_cnt = WDSP_FW_LOAD_RETRY_COUNT;
+		do {
+#endif
 		ret = wdsp_load_each_segment(wdsp, seg);
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+		} while (ret < 0 && --retry_cnt > 0);
+#endif
 		if (ret)
 			goto dload_error;
 	}
@@ -433,6 +446,12 @@ done:
 
 dload_error:
 	wdsp_flush_segment_list(wdsp->seg_list);
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	if (type == WDSP_ELF_FLAG_RE) {
+		wdsp_broadcast_event_downseq(wdsp, post, NULL);
+		ret = 0;
+	} else
+#endif
 	wdsp_broadcast_event_downseq(wdsp, WDSP_EVENT_DLOAD_FAILED, NULL);
 	return ret;
 }
@@ -483,18 +502,40 @@ static void wdsp_load_fw_image(struct work_struct *work)
 static int wdsp_enable_dsp(struct wdsp_mgr_priv *wdsp)
 {
 	int ret;
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	int retry_cnt = WDSP_FW_LOAD_RETRY_COUNT;
+#endif
+
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	WDSP_MGR_MUTEX_LOCK(wdsp, wdsp->ssr_mutex);
+#endif
 
 	/* Make sure wdsp is in good state */
 	if (!WDSP_STATUS_IS_SET(wdsp, WDSP_STATUS_CODE_DLOADED)) {
 		WDSP_ERR(wdsp, "WDSP in invalid state 0x%x", wdsp->status);
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+		ret = wdsp_init_and_dload_code_sections(wdsp);
+		if (ret < 0) {
+			WDSP_ERR(wdsp, "Retry code dload failed %d",
+				ret);
+			goto done;
+		}
+#else
 		return -EINVAL;
+#endif
 	}
 
+#ifndef CONFIG_MACH_XIAOMI_SM8150
 	/*
 	 * Acquire SSR mutex lock to make sure enablement of DSP
 	 * does not race with SSR handling.
 	 */
 	WDSP_MGR_MUTEX_LOCK(wdsp, wdsp->ssr_mutex);
+#endif
+
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+retry:
+#endif
 	/* Download the read-write sections of image */
 	ret = wdsp_download_segments(wdsp, WDSP_ELF_FLAG_WRITE);
 	if (ret < 0) {
@@ -509,6 +550,17 @@ static int wdsp_enable_dsp(struct wdsp_mgr_priv *wdsp)
 	if (ret < 0) {
 		WDSP_ERR(wdsp, "Failed to boot dsp, err = %d", ret);
 		WDSP_CLEAR_STATUS(wdsp, WDSP_STATUS_DATA_DLOADED);
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+		if (retry_cnt-- >= 0) {
+			ret = wdsp_init_and_dload_code_sections(wdsp);
+			if (ret < 0) {
+				WDSP_ERR(wdsp, "Retry code dload failed %d",
+					ret);
+				goto done;
+			}
+			goto retry;
+		}
+#endif
 		goto done;
 	}
 
@@ -1202,6 +1254,10 @@ static int wdsp_mgr_parse_dt_entries(struct wdsp_mgr_priv *wdsp)
 			 "qcom,img-filename", ret);
 		return ret;
 	}
+
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	wdsp->img_fname  = "cpe_intl";
+#endif
 
 	ret = of_count_phandle_with_args(dev->of_node,
 					 "qcom,wdsp-components",
