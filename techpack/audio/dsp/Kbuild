@@ -189,6 +189,14 @@ CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-Werror\
 		-D__linux__
 
+ifeq (y, $(filter y,$(CONFIG_MACH_XIAOMI_RAPHAEL)))
+	CDEFINES += -DCONFIG_SND_SOC_TFA9874_FOR_DAVI
+endif
+
+ifeq (y, $(filter y,$(CONFIG_MACH_XIAOMI_NABU)))
+	CDEFINES += -DAUDIO_FORCE_RESTART_ADSP
+endif
+
 KBUILD_CPPFLAGS += $(CDEFINES)
 
 # Currently, for versions of gcc which support it, the kernel Makefile
