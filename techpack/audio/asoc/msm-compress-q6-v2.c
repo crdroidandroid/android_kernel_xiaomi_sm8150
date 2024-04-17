@@ -1291,7 +1291,11 @@ static int msm_compr_configure_dsp_for_playback
 	struct snd_compr_runtime *runtime = cstream->runtime;
 	struct msm_compr_audio *prtd = runtime->private_data;
 	struct snd_soc_pcm_runtime *soc_prtd = cstream->private_data;
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	uint16_t bits_per_sample = 24;
+#else
 	uint16_t bits_per_sample = 16;
+#endif
 	int dir = IN, ret = 0;
 	struct audio_client *ac = prtd->audio_client;
 	uint32_t stream_index;
@@ -2253,7 +2257,11 @@ static int msm_compr_trigger(struct snd_compr_stream *cstream, int cmd)
 	unsigned long flags;
 	int stream_id;
 	uint32_t stream_index;
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	uint16_t bits_per_sample = 24;
+#else
 	uint16_t bits_per_sample = 16;
+#endif
 
 	spin_lock_irqsave(&prtd->lock, flags);
 	if (atomic_read(&prtd->error)) {
@@ -3615,6 +3623,9 @@ static int msm_compr_playback_app_type_cfg_put(struct snd_kcontrol *kcontrol,
 	cfg_data.acdb_dev_id = ucontrol->value.integer.value[1];
 	if (ucontrol->value.integer.value[2] != 0)
 		cfg_data.sample_rate = ucontrol->value.integer.value[2];
+#ifdef CONFIG_MACH_XIAOMI_NABU
+	cfg_data.channel = ucontrol->value.integer.value[4];
+#endif
 	pr_debug("%s: fe_id- %llu session_type- %d be_id- %d app_type- %d acdb_dev_id- %d sample_rate- %d\n",
 		__func__, fe_id, session_type, be_id,
 		cfg_data.app_type, cfg_data.acdb_dev_id, cfg_data.sample_rate);
@@ -3648,6 +3659,9 @@ static int msm_compr_playback_app_type_cfg_get(struct snd_kcontrol *kcontrol,
 	ucontrol->value.integer.value[1] = cfg_data.acdb_dev_id;
 	ucontrol->value.integer.value[2] = cfg_data.sample_rate;
 	ucontrol->value.integer.value[3] = be_id;
+#ifdef CONFIG_MACH_XIAOMI_NABU
+	ucontrol->value.integer.value[4] = cfg_data.channel;
+#endif
 	pr_debug("%s: fedai_id %llu, session_type %d, be_id %d, app_type %d, acdb_dev_id %d, sample_rate %d\n",
 		__func__, fe_id, session_type, be_id,
 		cfg_data.app_type, cfg_data.acdb_dev_id, cfg_data.sample_rate);
