@@ -950,6 +950,7 @@ TRACE_EVENT(sched_load_cfs_rq,
 		__entry->cpu	= __trace_sched_cpu(cfs_rq, NULL);
 		__trace_sched_path(cfs_rq, __get_dynamic_array(path),
 				   __get_dynamic_array_len(path));
+		__entry->load	= cfs_rq->runnable_load_avg;
 		__entry->util	= cfs_rq->avg.util_avg;
 		__entry->util_pelt = cfs_rq->avg.util_avg;
 		__entry->util_walt = 0;

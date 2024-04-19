@@ -452,11 +452,6 @@ config SCHED_WALT
 	used to guide task placement as well as task frequency requirements
 	for cpufreq governors.
 
-config SCHED_THERMAL_PRESSURE
-	default y
-	bool "Enable periodic averaging of thermal pressure"
-	depends on SMP
-
 config BSD_PROCESS_ACCT
 	bool "BSD Process Accounting"
 	depends on MULTIUSER
