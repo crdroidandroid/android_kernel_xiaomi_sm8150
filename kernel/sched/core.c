@@ -54,7 +54,7 @@ DEFINE_PER_CPU_SHARED_ALIGNED(struct rq, runqueues);
  * Number of tasks to iterate in a single balance run.
  * Limited because this is done with IRQs disabled.
  */
-const_debug unsigned int sysctl_sched_nr_migrate = 32;
+const_debug unsigned int sysctl_sched_nr_migrate = NR_CPUS;
 
 /*
  * period over which we average the RT time consumption, measured
@@ -773,21 +773,6 @@ unsigned int sysctl_sched_uclamp_util_min = SCHED_CAPACITY_SCALE;
 unsigned int sysctl_sched_uclamp_util_max = SCHED_CAPACITY_SCALE;
 
 /*
- * Ignore uclamp_max for tasks if
- *
- *	runtime < sched_slice() / divider
- *
- * ==>
- *
- *	runtime * divider < sched_slice()
- *
- * where
- *
- *	divider = 1 << sysctl_sched_uclamp_max_filter_divider
- */
-unsigned int sysctl_sched_uclamp_max_filter_divider = 2;
-
-/*
  * By default RT tasks run at the maximum performance point/capacity of the
  * system. Uclamp enforces this by always setting UCLAMP_MIN of RT tasks to
  * SCHED_CAPACITY_SCALE.
@@ -964,6 +949,51 @@ static void uclamp_sync_util_min_rt_default(void)
 	rcu_read_unlock();
 }
 
+extern int kp_active_mode(void);
+
+static inline void uclamp_boost_write(struct task_struct *p) {
+	struct cgroup_subsys_state *css = task_css(p, cpu_cgrp_id);
+#ifdef CONFIG_STOCKISH_ROM_SUPPORT
+	int min_value = 0;
+	int max_value = 0;
+	int latency_sensitive = 0;
+#endif
+
+	//top-app min clamp input boost
+	if (strcmp(css->cgroup->kn->name, "top-app") == 0) {
+		if (kp_active_mode() == 3 || time_before(jiffies, last_input_time + msecs_to_jiffies(7000))) {
+			task_group(p)->uclamp[UCLAMP_MIN].value = 512;
+		} else {
+			task_group(p)->uclamp[UCLAMP_MIN].value = 358;
+		}
+	}
+#ifdef CONFIG_STOCKISH_ROM_SUPPORT
+	else {
+		if (strcmp(css->cgroup->kn->name, "foreground") == 0) {
+			max_value = 512;
+		} else if (strcmp(css->cgroup->kn->name, "background") == 0) {
+			min_value = 205;
+			max_value = 1024;
+		} else if (strcmp(css->cgroup->kn->name, "system-background") == 0) {
+			max_value = 410;
+		} else if (strcmp(css->cgroup->kn->name, "nnapi-hal") == 0) {
+			min_value = 768;
+			max_value = 1024;
+			latency_sensitive = 1;
+		} else if (strcmp(css->cgroup->kn->name, "camera-daemon") == 0) {
+			min_value = 512;
+			max_value = 1024;
+			latency_sensitive = 1;
+		}
+		task_group(p)->latency_sensitive = latency_sensitive;
+		if (min_value)
+			task_group(p)->uclamp[UCLAMP_MIN].value = min_value;
+		if (max_value)
+			task_group(p)->uclamp[UCLAMP_MAX].value = max_value;
+	}
+#endif
+}
+
 static inline struct uclamp_se
 uclamp_tg_restrict(struct task_struct *p, enum uclamp_id clamp_id)
 {
@@ -981,7 +1011,15 @@ uclamp_tg_restrict(struct task_struct *p, enum uclamp_id clamp_id)
 	if (task_group(p) == &root_task_group)
 		return uc_req;
 
-	tg_min = task_group(p)->uclamp[UCLAMP_MIN].value;
+	//battery kprofile optimization
+        if (kp_active_mode() == 1) {
+                tg_min = 0;
+        } else {
+                //Run for clamp boosting
+                uclamp_boost_write(p);
+                tg_min = task_group(p)->uclamp[UCLAMP_MIN].value;
+        }
+
 	tg_max = task_group(p)->uclamp[UCLAMP_MAX].value;
 	value = uc_req.value;
 	value = clamp(value, tg_min, tg_max);
@@ -1437,8 +1475,6 @@ static void uclamp_fork(struct task_struct *p)
 	for_each_clamp_id(clamp_id)
 		p->uclamp[clamp_id].active = false;
 
-	p->uclamp_req[UCLAMP_MAX].ignore_uclamp_max = 0;
-
 	if (likely(!p->sched_reset_on_fork))
 		return;
 
@@ -1464,7 +1500,7 @@ static void __init init_uclamp_rq(struct rq *rq)
 		};
 	}
 
-	rq->uclamp_flags = 0;
+	rq->uclamp_flags = UCLAMP_FLAG_IDLE;
 }
 
 static void __init init_uclamp(void)
@@ -4147,7 +4183,6 @@ void scheduler_tick(void)
 	curr->sched_class->task_tick(rq, curr, 0);
 	cpu_load_update_active(rq);
 	calc_global_load_tick(rq);
-	psi_task_tick(rq);
 
 	early_notif = early_detection_notify(rq, wallclock);
 	if (early_notif)
@@ -4588,6 +4623,8 @@ static void __sched notrace __schedule(bool preempt)
 		 * finish_lock_switch().
 		 */
 		++*switch_count;
+
+		psi_sched_switch(prev, next, !task_on_rq_queued(prev));
 
 		trace_sched_switch(preempt, prev, next);
 
@@ -5176,29 +5213,30 @@ static struct task_struct *find_process_by_pid(pid_t pid)
 #define SETPARAM_POLICY	-1
 
 static void __setscheduler_params(struct task_struct *p,
-		const struct sched_attr *attr)
+                const struct sched_attr *attr)
 {
-	int policy = attr->sched_policy;
+        int policy = attr->sched_policy;
 
 	if (policy == SETPARAM_POLICY)
 		policy = p->policy;
+	else
+		policy &= ~SCHED_RESET_ON_FORK;
 
-	/* Replace SCHED_FIFO with SCHED_RR to reduce latency */
-	p->policy = policy == SCHED_FIFO ? SCHED_RR : policy;
+        p->policy = policy;
 
-	if (dl_policy(policy))
-		__setparam_dl(p, attr);
-	else if (fair_policy(policy))
-		p->static_prio = NICE_TO_PRIO(attr->sched_nice);
+        if (dl_policy(policy))
+                __setparam_dl(p, attr);
+        else if (fair_policy(policy))
+                p->static_prio = NICE_TO_PRIO(attr->sched_nice);
 
-	/*
-	 * __sched_setscheduler() ensures attr->sched_priority == 0 when
-	 * !rt_policy. Always setting this ensures that things like
-	 * getparam()/getattr() don't report silly values for !rt tasks.
-	 */
-	p->rt_priority = attr->sched_priority;
-	p->normal_prio = normal_prio(p);
-	set_load_weight(p);
+        /*
+         * __sched_setscheduler() ensures attr->sched_priority == 0 when
+         * !rt_policy. Always setting this ensures that things like
+         * getparam()/getattr() don't report silly values for !rt tasks.
+         */
+        p->rt_priority = attr->sched_priority;
+        p->normal_prio = normal_prio(p);
+        set_load_weight(p);
 }
 
 /* Actually do priority change: must hold pi & rq lock. */
@@ -7864,10 +7902,6 @@ void ia64_set_curr_task(int cpu, struct task_struct *p)
 
 #endif
 
-#ifdef CONFIG_CGROUP_SCHED
-/* task_group_lock serializes the addition/removal of task groups */
-static DEFINE_SPINLOCK(task_group_lock);
-
 static inline void alloc_uclamp_sched_group(struct task_group *tg,
 					    struct task_group *parent)
 {
@@ -7881,6 +7915,10 @@ static inline void alloc_uclamp_sched_group(struct task_group *tg,
 	}
 #endif
 }
+
+#ifdef CONFIG_CGROUP_SCHED
+/* task_group_lock serializes the addition/removal of task groups */
+static DEFINE_SPINLOCK(task_group_lock);
 
 static void sched_free_group(struct task_group *tg)
 {
@@ -8433,14 +8471,14 @@ static ssize_t cpu_uclamp_write(struct kernfs_open_file *of, char *buf,
 	return nbytes;
 }
 
-ssize_t cpu_uclamp_min_write(struct kernfs_open_file *of,
+static ssize_t cpu_uclamp_min_write(struct kernfs_open_file *of,
 				    char *buf, size_t nbytes,
 				    loff_t off)
 {
 	return cpu_uclamp_write(of, buf, nbytes, off, UCLAMP_MIN);
 }
 
-ssize_t cpu_uclamp_max_write(struct kernfs_open_file *of,
+static ssize_t cpu_uclamp_max_write(struct kernfs_open_file *of,
 				    char *buf, size_t nbytes,
 				    loff_t off)
 {
@@ -8470,19 +8508,19 @@ static inline void cpu_uclamp_print(struct seq_file *sf,
 	seq_printf(sf, "%llu.%0*u\n", percent, UCLAMP_PERCENT_SHIFT, rem);
 }
 
-int cpu_uclamp_min_show(struct seq_file *sf, void *v)
+static int cpu_uclamp_min_show(struct seq_file *sf, void *v)
 {
 	cpu_uclamp_print(sf, UCLAMP_MIN);
 	return 0;
 }
 
-int cpu_uclamp_max_show(struct seq_file *sf, void *v)
+static int cpu_uclamp_max_show(struct seq_file *sf, void *v)
 {
 	cpu_uclamp_print(sf, UCLAMP_MAX);
 	return 0;
 }
 
-int cpu_uclamp_ls_write_u64(struct cgroup_subsys_state *css,
+static int cpu_uclamp_ls_write_u64(struct cgroup_subsys_state *css,
 				   struct cftype *cftype, u64 ls)
 {
 	struct task_group *tg;
@@ -8495,13 +8533,14 @@ int cpu_uclamp_ls_write_u64(struct cgroup_subsys_state *css,
 	return 0;
 }
 
-u64 cpu_uclamp_ls_read_u64(struct cgroup_subsys_state *css,
+static u64 cpu_uclamp_ls_read_u64(struct cgroup_subsys_state *css,
 				  struct cftype *cft)
 {
 	struct task_group *tg = css_tg(css);
 
 	return (u64) tg->latency_sensitive;
 }
+
 #endif /* CONFIG_UCLAMP_TASK_GROUP */
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
@@ -8832,6 +8871,26 @@ static struct cftype cpu_files[] = {
 		.name = "rt_period_us",
 		.read_u64 = cpu_rt_period_read_uint,
 		.write_u64 = cpu_rt_period_write_uint,
+	},
+#endif
+#ifdef CONFIG_UCLAMP_TASK_GROUP
+	{
+		.name = "uclamp.min",
+		.flags = CFTYPE_NOT_ON_ROOT,
+		.seq_show = cpu_uclamp_min_show,
+		.write = cpu_uclamp_min_write,
+	},
+	{
+		.name = "uclamp.max",
+		.flags = CFTYPE_NOT_ON_ROOT,
+		.seq_show = cpu_uclamp_max_show,
+		.write = cpu_uclamp_max_write,
+	},
+	{
+		.name = "uclamp.latency_sensitive",
+		.flags = CFTYPE_NOT_ON_ROOT,
+		.read_u64 = cpu_uclamp_ls_read_u64,
+		.write_u64 = cpu_uclamp_ls_write_u64,
 	},
 #endif
 	{ }	/* Terminate */

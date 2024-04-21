@@ -35,6 +35,7 @@
 #include "dsi-panel-rm69299-visionox-amoled-fhd-plus-video.dtsi"
 #include "dsi-panel-ss-fhd-ea8076-cmd.dtsi"
 #include "dsi-panel-ss-fhd-ea8076-global-cmd.dtsi"
+#include "dsi-panel-visionox-fhd-r66456-f11-cmd.dtsi"
 #include <dt-bindings/clock/mdss-10nm-pll-clk.h>
 
 /*
@@ -504,6 +505,18 @@
 		qcom,dsi-panel = <&dsi_ss_fhd_ea8076_global_cmd>;
 	};
 
+	dsi_visionox_fhd_r66456_f11_cmd_display: qcom,dsi-display@26 {
+
+		label = "dsi_visionox_fhd_r66456_f11_cmd_display";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl-num = <0>;
+		qcom,dsi-phy-num = <0>;
+		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0";
+
+		qcom,dsi-panel = <&dsi_visionox_fhd_r66456_f11_cmd>;
+	};
+
 	sde_dsi: qcom,dsi-display-primary {
 		compatible = "qcom,dsi-display";
 		label = "primary";
@@ -560,7 +573,8 @@
 			&dsi_rm69299_visionox_amoled_vid_display
 			&dsi_dual_nt36850_truly_cmd_display
 			&dsi_ss_fhd_ea8076_cmd_display
-			&dsi_ss_fhd_ea8076_global_cmd_display>;
+			&dsi_ss_fhd_ea8076_global_cmd_display
+			&dsi_dual_nt36850_truly_cmd_display>;
 	};
 
 	sde_dsi1: qcom,dsi-display-secondary {
@@ -1058,6 +1072,19 @@
 	qcom,mdss-dsi-display-timings {
 		timing@0{
 			qcom,mdss-dsi-panel-phy-timings = [00 24 0A 0A 26 24 0A
+				0A 06 03 04 00 1E 1A];
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+		};
+	};
+};
+
+&dsi_visionox_fhd_r66456_f11_cmd {
+	qcom,mdss-dsi-t-clk-post = <0x0F>;
+	qcom,mdss-dsi-t-clk-pre = <0x37>;
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings = [00 24 0A 0A 26 25 09
 				0A 06 03 04 00 1E 1A];
 			qcom,display-topology = <1 0 1>;
 			qcom,default-topology-index = <0>;

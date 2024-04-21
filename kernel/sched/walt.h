@@ -19,11 +19,19 @@
 #include <linux/sched/sysctl.h>
 #include <linux/sched/core_ctl.h>
 
-/* Default window size (in ns) = 12ms */
-#define DEFAULT_SCHED_RAVG_WINDOW 12000000
+#ifdef CONFIG_HZ_300
+/*
+ * Tick interval becomes to 3333333 due to
+ * rounding error when HZ=300.
+ */
+#define DEFAULT_SCHED_RAVG_WINDOW (3333333 * 6)
+#else
+/* Default window size (in ns) = 8ms */
+#define DEFAULT_SCHED_RAVG_WINDOW 8000000
+#endif
 
 /* Max window size (in ns) = 600ms */
-#define MAX_SCHED_RAVG_WINDOW 600000000
+#define MAX_SCHED_RAVG_WINDOW 1000000000
 #define NR_WINDOWS_PER_SEC (NSEC_PER_SEC / DEFAULT_SCHED_RAVG_WINDOW)
 #define MAX_NR_CLUSTERS			3
 
@@ -42,7 +50,7 @@
 #define for_each_related_thread_group(grp) \
 	list_for_each_entry(grp, &active_related_thread_groups, list)
 
-#define NEW_TASK_ACTIVE_TIME 80000000
+#define NEW_TASK_ACTIVE_TIME 100000000
 
 extern unsigned int sched_ravg_window;
 extern unsigned int new_sched_ravg_window;

@@ -32,6 +32,10 @@ struct cass_cpu_cand {
 	unsigned long util;
 };
 
+unsigned int sched_util_threshold[NR_CPUS] = {
+	646, 646, 646, 646, 500, 500, 500, 450
+};
+
 static __always_inline
 unsigned long cass_cpu_util(int cpu, bool sync)
 {
@@ -53,14 +57,24 @@ unsigned long cass_cpu_util(int cpu, bool sync)
 static __always_inline
 bool cass_cpu_better(const struct cass_cpu_cand *a,
 		     const struct cass_cpu_cand *b,
-		     int prev_cpu, bool sync)
+		     int prev_cpu, bool sync,  struct task_struct *p)
 {
+#define cass_cmp_r(a, b, c) ({ res = ((a) - (b)) * (abs((a) - (b)) > (c)); })
 #define cass_cmp(a, b) ({ res = (a) - (b); })
 #define cass_eq(a, b) ({ res = (a) == (b); })
 	long res;
 
+	bool low_util = (a->util <= sched_util_threshold[a->cpu] &&
+            		 b->util <= sched_util_threshold[b->cpu]);
+	bool boosted = uclamp_boosted(p) && (p->prio <= DEFAULT_PRIO - 10);
+
+	/* Prefer the CPU with lower orig capacity when util is low */
+	if(low_util && !boosted && cass_cmp(capacity_orig_of(b->cpu),
+					    capacity_orig_of(a->cpu)))
+                goto done;
+
 	/* Prefer the CPU with lower relative utilization */
-	if (cass_cmp(b->util, a->util))
+	if (cass_cmp_r(b->util, a->util, 128))
 		goto done;
 
 	/* Prefer the current CPU for sync wakes */
@@ -69,12 +83,20 @@ bool cass_cpu_better(const struct cass_cpu_cand *a,
 		goto done;
 
 	/* Prefer the CPU with higher capacity */
-	if (cass_cmp(a->cap, b->cap))
+	if (cass_cmp_r(a->cap, b->cap, 128))
 		goto done;
 
 	/* Prefer the CPU with lower idle exit latency */
 	if (cass_cmp(b->exit_lat, a->exit_lat))
 		goto done;
+
+        /* Prefer the CPU with lower relative utilization */
+        if (cass_cmp_r(b->util, a->util, 64))
+                goto done;
+
+        /* Prefer the CPU with higher capacity */
+        if (cass_cmp_r(a->cap, b->cap, 64))
+                goto done;
 
 	/* Prefer the previous CPU */
 	if (cass_eq(a->cpu, prev_cpu) || !cass_cmp(b->cpu, prev_cpu))
@@ -83,6 +105,14 @@ bool cass_cpu_better(const struct cass_cpu_cand *a,
 	/* Prefer the CPU that shares a cache with the previous CPU */
 	if (cass_cmp(cpus_share_cache(a->cpu, prev_cpu),
 		     cpus_share_cache(b->cpu, prev_cpu)))
+		goto done;
+
+	/* Prefer the CPU with lower relative utilization */
+	if (cass_cmp(b->util, a->util))
+		goto done;
+
+	/* Prefer the CPU with higher capacity */
+	if (cass_cmp(a->cap, b->cap))
 		goto done;
 
 	/* @a isn't a better CPU than @b. @res must be <=0 to indicate such. */
@@ -162,14 +192,15 @@ static int cass_best_cpu(struct task_struct *p, int prev_cpu, bool sync)
 		curr->cap = capacity_of(cpu);
 
 		/* Calculate the relative utilization for this CPU candidate */
-		curr->util = curr->util * SCHED_CAPACITY_SCALE / curr->cap;
+		curr->util = min_t(unsigned long, SCHED_CAPACITY_SCALE,
+				   curr->util * SCHED_CAPACITY_SCALE / curr->cap);
 
 		/* If @best == @curr then there's no need to compare them */
 		if (best == curr)
 			continue;
 
 		/* Check if this CPU is better than the best CPU found */
-		if (cass_cpu_better(curr, best, prev_cpu, sync)) {
+		if (cass_cpu_better(curr, best, prev_cpu, sync, p)) {
 			best = curr;
 			cidx ^= 1;
 		}
