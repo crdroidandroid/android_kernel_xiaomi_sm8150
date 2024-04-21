@@ -166,7 +166,7 @@ __read_mostly unsigned int sysctl_sched_walt_cpu_high_irqload =
  */
 int __weak arch_asym_cpu_priority(int cpu)
 {
-	return -cpu;
+	return -arch_scale_cpu_capacity(NULL, cpu);
 }
 
 /*

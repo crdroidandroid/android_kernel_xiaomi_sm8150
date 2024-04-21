@@ -97,7 +97,7 @@ u64 select_estimate_accuracy(struct timespec64 *tv)
 struct poll_table_page {
 	struct poll_table_page * next;
 	struct poll_table_entry * entry;
-	struct poll_table_entry entries[];
+	struct poll_table_entry entries[0];
 };
 
 #define POLL_TABLE_FULL(table) \
@@ -450,8 +450,7 @@ static inline void wait_key_set(poll_table *wait, unsigned long in,
 		wait->_key |= POLLOUT_SET;
 }
 
-static int noinline_for_stack
-do_select(int n, fd_set_bits *fds, struct timespec64 *end_time)
+static noinline_for_stack int do_select(int n, fd_set_bits *fds, struct timespec64 *end_time)
 {
 	ktime_t expire, *to = NULL;
 	struct poll_wqueues table;
@@ -796,7 +795,7 @@ SYSCALL_DEFINE1(old_select, struct sel_arg_struct __user *, arg)
 struct poll_list {
 	struct poll_list *next;
 	int len;
-	struct pollfd entries[];
+	struct pollfd entries[0];
 };
 
 #define POLLFD_PER_PAGE  ((PAGE_SIZE-sizeof(struct poll_list)) / sizeof(struct pollfd))
@@ -1222,7 +1221,7 @@ static int compat_core_sys_select(int n, compat_ulong_t __user *inp,
 	size = FDS_BYTES(n);
 	bits = stack_fds;
 	if (size > sizeof(stack_fds) / 6) {
-		bits = kmalloc_array(6, size, GFP_KERNEL);
+		bits = kmalloc(6 * size, GFP_KERNEL);
 		ret = -ENOMEM;
 		if (!bits)
 			goto out_nofds;
