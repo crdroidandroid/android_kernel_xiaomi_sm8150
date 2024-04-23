@@ -1519,9 +1519,12 @@ static bool f2fs_map_blocks_cached(struct inode *inode,
 		*map->m_next_extent = pgoff + map->m_len;
 
 	/* for hardware encryption, but to avoid potential issue in future */
-	if (flag == F2FS_GET_BLOCK_DIO)
+	if (flag == F2FS_GET_BLOCK_DIO) {
 		f2fs_wait_on_block_writeback_range(inode,
 					map->m_pblk, map->m_len);
+		invalidate_mapping_pages(META_MAPPING(sbi),
+				map->m_pblk, map->m_pblk + map->m_len - 1);
+		}
 
 	if (f2fs_allow_multi_device_dio(sbi, flag)) {
 		int bidx = f2fs_target_device_index(sbi, map->m_pblk);
@@ -1750,6 +1753,8 @@ sync_out:
 		 */
 		f2fs_wait_on_block_writeback_range(inode,
 						map->m_pblk, map->m_len);
+		invalidate_mapping_pages(META_MAPPING(sbi),
+				map->m_pblk, map->m_pblk + map->m_len - 1);
 
 		if (map->m_multidev_dio) {
 			block_t blk_addr = map->m_pblk;
