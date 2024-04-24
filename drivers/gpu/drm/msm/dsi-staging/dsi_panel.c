@@ -23,6 +23,7 @@
 #include "dsi_panel.h"
 #include "dsi_ctrl_hw.h"
 #include "dsi_parser.h"
+#include "dsi_display.h"
 
 /**
  * topology is currently defined by a set of following 3 values:
@@ -741,10 +742,30 @@ int dsi_panel_set_fod_hbm(struct dsi_panel *panel, bool status)
 	return rc;
 }
 
+int dsi_panel_set_esd_check(struct dsi_panel *panel) {
+	int rc = 0;
+
+	if (!panel->cphy_esd_check)
+		return 0;
+
+	if (!panel->panel_initialized) {
+		pr_debug("[%s] panel not initialized\n", panel->name);
+		return 0;
+	}
+
+	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_ESD_CHECK);
+	if (rc)
+		pr_err("[%s] failed to send DSI_CMD_SET_ESD_CHECK cmd, rc=%d\n",
+				panel->name, rc);
+
+	return rc;
+}
+
 int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 {
 	int rc = 0;
 	struct dsi_backlight_config *bl = &panel->bl_config;
+	u32 last_backlight = dsi_panel_get_backlight(panel);
 
 	if (panel->host_config.ext_bridge_num)
 		return 0;
@@ -765,6 +786,10 @@ int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 	default:
 		pr_err("Backlight type(%d) not supported\n", bl->type);
 		rc = -ENOTSUPP;
+	}
+
+	if (last_backlight == 0 && panel->cphy_esd_check) {
+		schedule_delayed_work(&panel->esd_work, msecs_to_jiffies(300));
 	}
 
 	return rc;
@@ -1813,6 +1838,7 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-qsync-off-commands",
 	"qcom,mdss-dsi-dispparam-hbm-fod-on-command",
 	"qcom,mdss-dsi-dispparam-hbm-fod-off-command",
+	"qcom,mdss-dsi-esd-check-read-command",
 };
 
 const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
@@ -1841,6 +1867,7 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-qsync-off-commands-state",
 	"qcom,mdss-dsi-dispparam-hbm-fod-on-command-state",
 	"qcom,mdss-dsi-dispparam-hbm-fod-off-command-state",
+	"qcom,mdss-dsi-esd-check-read-command-state",
 };
 
 static int dsi_panel_get_cmd_pkt_count(const char *data, u32 length, u32 *cnt)
@@ -2137,6 +2164,10 @@ static int dsi_panel_parse_misc_features(struct dsi_panel *panel)
 
 	panel->lp11_init = utils->read_bool(utils->data,
 			"qcom,mdss-dsi-lp11-init");
+
+	panel->cphy_esd_check = utils->read_bool(utils->data,
+							"qcom,cphy-esd-check");
+
 	return 0;
 }
 
@@ -3399,6 +3430,23 @@ end:
 	utils->node = panel->panel_of_node;
 }
 
+static void dsi_panel_esd_enable_delayed_work(struct work_struct *work)
+{
+	struct dsi_panel *panel = container_of(work,
+				struct dsi_panel, esd_work.work);
+	struct dsi_display *display = NULL;
+	struct mipi_dsi_host *host = panel->host;
+
+	if (host)
+		display = container_of(host, struct dsi_display, host);
+
+	if (display) {
+		mutex_lock(&panel->panel_lock);
+		dsi_panel_set_esd_check(panel);
+		mutex_unlock(&panel->panel_lock);
+	}
+}
+
 struct dsi_panel *dsi_panel_get(struct device *parent,
 				struct device_node *of_node,
 				struct device_node *parser_node,
@@ -3508,6 +3556,8 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 	rc = dsi_panel_parse_esd_config(panel);
 	if (rc)
 		pr_debug("failed to parse esd config, rc=%d\n", rc);
+
+	INIT_DELAYED_WORK(&panel->esd_work, dsi_panel_esd_enable_delayed_work);
 
 	panel->power_mode = SDE_MODE_DPMS_OFF;
 	drm_panel_init(&panel->drm_panel);
