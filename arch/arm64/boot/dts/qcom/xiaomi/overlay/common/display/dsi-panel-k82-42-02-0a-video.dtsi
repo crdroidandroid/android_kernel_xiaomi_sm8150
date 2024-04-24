@@ -49,6 +49,7 @@
 		qcom,panel-cphy-mode;
 		qcom,mdss-dsi-cphy-strength;
 		qcom,cphy-esd-check;
+		qcom,sync-pen-fps;
 		mi,is-tddi-flag;
 		qcom,mdss-dsi-pan-enable-dynamic-fps;
 		qcom,mdss-dsi-pan-fps-update =
@@ -279,16 +280,16 @@
 				qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-displayoff-command-state = "dsi_hs_mode";
 				qcom,mdss-dsi-displayon-command-state = "dsi_hs_mode";
-				qcom,mdss-dsi-dispparam-pen-120hz-command = [
+				qcom,mdss-dsi-sync-pen-120hz-command = [
 						15 00 00 00 00 00 02 FF 2A
 						15 00 00 00 00 00 02 23 0D
 						15 01 00 00 00 00 02 FF 10];
-				qcom,mdss-dsi-dispparam-pen-60hz-command = [
+				qcom,mdss-dsi-sync-pen-60hz-command = [
 						15 00 00 00 00 00 02 FF 2A
 						15 00 00 00 00 00 02 23 0C
 						15 01 00 00 00 00 02 FF 10];
-				qcom,mdss-dsi-dispparam-pen-120hz-command-state = "dsi_lp_mode";
-				qcom,mdss-dsi-dispparam-pen-60hz-command-state = "dsi_lp_mode";
+				qcom,mdss-dsi-sync-pen-120hz-command-state = "dsi_lp_mode";
+				qcom,mdss-dsi-sync-pen-60hz-command-state = "dsi_lp_mode";
 
 						/* max brightness 85% */
 				qcom,mdss-dsi-dispparam-lcd-hbm-l1-on-command = [
