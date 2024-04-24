@@ -267,6 +267,10 @@ static void dsi_bridge_enable(struct drm_bridge *bridge)
 			sde_connector_schedule_status_work(display->drm_conn,
 				true);
 	}
+
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+	dsi_display_esd_irq_ctrl(display, true);
+#endif
 }
 
 static void dsi_bridge_disable(struct drm_bridge *bridge)
@@ -289,6 +293,10 @@ static void dsi_bridge_disable(struct drm_bridge *bridge)
 	msm_drm_notifier_call_chain(MSM_DRM_R_EARLY_EVENT_BLANK, &notify_data);
 
 	display = c_bridge->display;
+
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+	dsi_display_esd_irq_ctrl(display, false);
+#endif
 
 	private_flags =
 		bridge->encoder->crtc->state->adjusted_mode.private_flags;
