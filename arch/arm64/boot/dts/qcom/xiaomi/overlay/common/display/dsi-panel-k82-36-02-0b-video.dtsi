@@ -48,7 +48,7 @@
 		qcom,cmd-sync-wait-broadcast;
 		qcom,panel-cphy-mode;
 		qcom,mdss-dsi-cphy-strength;
-		mi,cphy-esd-check;
+		qcom,cphy-esd-check;
 		mi,is-tddi-flag;
 		qcom,mdss-dsi-pan-enable-dynamic-fps;
 		qcom,mdss-dsi-pan-fps-update =
@@ -339,14 +339,14 @@
 				qcom,mdss-dsi-dispparam-cabcoff-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-dispparam-dimmingon-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-dispparam-dimmingoff-command-state = "dsi_lp_mode";
-				mi,mdss-dsi-esd-check-read-command = [
+				qcom,mdss-dsi-esd-check-read-command = [
 						/* esd detect */
 						15 01 00 00 00 00 02 FF 27
 						15 01 00 00 00 00 02 D1 28
 						15 01 00 00 00 00 02 FF 10
 						15 01 00 00 00 00 02 53 2C
 				];
-				mi,mdss-dsi-esd-check-read-command-state = "dsi_lp_mode";
+				qcom,mdss-dsi-esd-check-read-command-state = "dsi_lp_mode";
 
 				qcom,mdss-dsi-dispparam-xy-coordinate-command = [
 						15 01 00 00 00 00 02 FF 10
