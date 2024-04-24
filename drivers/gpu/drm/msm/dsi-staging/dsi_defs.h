@@ -509,6 +509,7 @@ struct dsi_host_common_cfg {
 	bool force_hs_clk_lane;
 	enum dsi_phy_type phy_type;
 	struct dsi_split_link_config split_link;
+	bool cphy_strength;
 };
 
 /**
