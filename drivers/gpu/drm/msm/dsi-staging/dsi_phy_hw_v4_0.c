@@ -131,6 +131,9 @@ static void dsi_phy_hw_v4_0_lane_settings(struct dsi_phy_hw *phy,
 		 * to the logical data lane 0
 		 */
 		DSI_W32(phy, DSIPHY_LNX_LPRX_CTRL(i), 0);
+#ifdef CONFIG_MACH_XIAOMI_NABU
+		DSI_W32(phy, DSIPHY_LNX_PIN_SWAP(i), 0x0);
+#endif
 	}
 	dsi_phy_hw_v4_0_config_lpcdrx(phy, cfg, true);
 
@@ -140,8 +143,10 @@ static void dsi_phy_hw_v4_0_lane_settings(struct dsi_phy_hw *phy,
 		DSI_W32(phy, DSIPHY_LNX_CFG1(i), cfg->lanecfg.lane[i][1]);
 		DSI_W32(phy, DSIPHY_LNX_CFG2(i), cfg->lanecfg.lane[i][2]);
 		DSI_W32(phy, DSIPHY_LNX_TX_DCTRL(i), tx_dctrl[i]);
+#ifndef CONFIG_MACH_XIAOMI_NABU
 		DSI_W32(phy, DSIPHY_LNX_PIN_SWAP(i),
 					(cfg->lane_pnswap >> i) & 0x1);
+#endif
 	}
 }
 
