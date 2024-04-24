@@ -231,6 +231,8 @@ struct dsi_panel {
 
 	bool cphy_esd_check;
 	struct delayed_work esd_work;
+
+	bool sync_pen_fps;
 };
 
 static inline bool dsi_panel_ulps_feature_enabled(struct dsi_panel *panel)
@@ -356,5 +358,8 @@ int dsi_panel_set_fod_hbm(struct dsi_panel *panel, bool status);
 u32 dsi_panel_get_fod_dim_alpha(struct dsi_panel *panel);
 
 int dsi_panel_set_esd_check(struct dsi_panel *panel);
+
+int dsi_panel_sync_pen_fps(struct dsi_panel *panel,
+				struct dsi_display_mode *adj_mode);
 
 #endif /* _DSI_PANEL_H_ */
