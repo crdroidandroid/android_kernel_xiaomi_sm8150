@@ -761,6 +761,50 @@ int dsi_panel_set_esd_check(struct dsi_panel *panel) {
 	return rc;
 }
 
+int dsi_panel_sync_pen_fps(struct dsi_panel *panel,
+				struct dsi_display_mode *adj_mode)
+{
+	int rc = 0;
+	u32 refresh_rate;
+	enum dsi_cmd_set_type sync_pen_cmd_type;
+
+	if (!panel || !adj_mode) {
+		pr_err("invalid params\n");
+		return -EINVAL;
+	}
+
+	if (!panel->sync_pen_fps) {
+		pr_warn_once("[%s] sync pen fps called when disabled\n", panel->name);
+		return 0;
+	}
+
+	refresh_rate = adj_mode->timing.refresh_rate;
+
+	switch (refresh_rate) {
+		case 30:
+			sync_pen_cmd_type = DSI_CMD_SET_SYNC_PEN_30HZ;
+			break;
+		case 60:
+			sync_pen_cmd_type = DSI_CMD_SET_SYNC_PEN_60HZ;
+			break;
+		case 120:
+			sync_pen_cmd_type = DSI_CMD_SET_SYNC_PEN_120HZ;
+			break;
+		default:
+			pr_err("[%s] unsupported refresh rate %d\n",
+					panel->name, refresh_rate);
+			return -EINVAL;
+			break;
+	}
+
+	rc = dsi_panel_tx_cmd_set(panel, sync_pen_cmd_type);
+	if (rc)
+		pr_err("[%s] failed to send DSI_CMD_SET_SYNC_PEN_%dHZ cmd, rc=%d\n",
+				panel->name, refresh_rate, rc);
+
+	return rc;
+}
+
 int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 {
 	int rc = 0;
@@ -1839,6 +1883,9 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-dispparam-hbm-fod-on-command",
 	"qcom,mdss-dsi-dispparam-hbm-fod-off-command",
 	"qcom,mdss-dsi-esd-check-read-command",
+	"qcom,mdss-dsi-sync-pen-30hz-command",
+	"qcom,mdss-dsi-sync-pen-60hz-command",
+	"qcom,mdss-dsi-sync-pen-120hz-command",
 };
 
 const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
@@ -1868,6 +1915,9 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-dispparam-hbm-fod-on-command-state",
 	"qcom,mdss-dsi-dispparam-hbm-fod-off-command-state",
 	"qcom,mdss-dsi-esd-check-read-command-state",
+	"qcom,mdss-dsi-sync-pen-30hz-command-state",
+	"qcom,mdss-dsi-sync-pen-60hz-command-state",
+	"qcom,mdss-dsi-sync-pen-120hz-command-state",
 };
 
 static int dsi_panel_get_cmd_pkt_count(const char *data, u32 length, u32 *cnt)
@@ -2167,6 +2217,9 @@ static int dsi_panel_parse_misc_features(struct dsi_panel *panel)
 
 	panel->cphy_esd_check = utils->read_bool(utils->data,
 							"qcom,cphy-esd-check");
+
+	panel->sync_pen_fps = utils->read_bool(utils->data,
+			"qcom,sync-pen-fps");
 
 	return 0;
 }
@@ -4479,6 +4532,14 @@ int dsi_panel_post_enable(struct dsi_panel *panel)
 		goto error;
 	}
 error:
+	if (panel->sync_pen_fps) {
+		rc = dsi_panel_sync_pen_fps(panel, panel->cur_mode);
+		if (rc) {
+			pr_err("[%s] failed to update TP fps code setting, rc=%d\n",
+				panel->name, rc);
+		}
+	}
+
 	mutex_unlock(&panel->panel_lock);
 	return rc;
 }
