@@ -120,25 +120,26 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name,
 	struct my_dir_context *my_ctx =
 		container_of(ctx, struct my_dir_context, ctx);
 	struct file *file;
-	char *dirpath;
+	char dirpath[384]; // 384 is enough for /data/app/<package>/base.apk
 
 	if (!my_ctx) {
 		pr_err("Invalid context\n");
 		return FILLDIR_ACTOR_STOP;
 	}
 	if (my_ctx->stop && *my_ctx->stop) {
+		pr_info("Stop searching\n");
 		return FILLDIR_ACTOR_STOP;
 	}
 
 	if (!strncmp(name, "..", namelen) || !strncmp(name, ".", namelen))
 		return FILLDIR_ACTOR_CONTINUE; // Skip "." and ".."
 
-	dirpath = kmalloc(PATH_MAX, GFP_KERNEL);
-	if (!dirpath) {
-		return FILLDIR_ACTOR_STOP; // Failed to obtain directory path
+	if (snprintf(dirpath, sizeof(dirpath), "%s/%.*s", my_ctx->parent_dir,
+		     namelen, name) >= sizeof(dirpath)) {
+		pr_err("Path too long: %s/%.*s\n", my_ctx->parent_dir, namelen,
+		       name);
+		return FILLDIR_ACTOR_CONTINUE;
 	}
-	snprintf(dirpath, PATH_MAX, "%s/%.*s", my_ctx->parent_dir, namelen,
-		 name);
 
 	if (d_type == DT_DIR && my_ctx->depth > 0 &&
 	    (my_ctx->stop && !*my_ctx->stop)) {
@@ -148,19 +149,17 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name,
 							  my_ctx->private_data,
 						  .depth = my_ctx->depth - 1,
 						  .stop = my_ctx->stop };
-		file = ksu_filp_open_compat(dirpath, O_RDONLY, 0);
+		file = ksu_filp_open_compat(dirpath, O_RDONLY | O_NOFOLLOW, 0);
 		if (IS_ERR(file)) {
 			pr_err("Failed to open directory: %s, err: %ld\n",
 			       dirpath, PTR_ERR(file));
-			kfree(dirpath);
 			return FILLDIR_ACTOR_CONTINUE;
 		}
 
 		iterate_dir(file, &sub_ctx.ctx);
 		filp_close(file, NULL);
 	} else {
-		if ((strlen(name) == strlen("base.apk")) &&
-		    (strncmp(name, "base.apk", strlen("base.apk")) == 0)) {
+		if ((namelen == 8) && (strncmp(name, "base.apk", namelen) == 0)) {
 			bool is_manager = is_manager_apk(dirpath);
 			pr_info("Found base.apk at path: %s, is_manager: %d\n",
 				dirpath, is_manager);
@@ -169,7 +168,6 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name,
 				*my_ctx->stop = 1;
 			}
 		}
-		kfree(dirpath);
 	}
 
 	return FILLDIR_ACTOR_CONTINUE;
@@ -185,7 +183,7 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
 				      .depth = depth,
 				      .stop = &stop };
 
-	file = ksu_filp_open_compat(path, O_RDONLY, 0);
+	file = ksu_filp_open_compat(path, O_RDONLY | O_NOFOLLOW, 0);
 	if (IS_ERR(file)) {
 		pr_err("Failed to open directory: %s\n", path);
 		return;

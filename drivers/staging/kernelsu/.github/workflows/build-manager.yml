@@ -25,10 +25,23 @@ jobs:
       matrix:
         include:
           - target: aarch64-linux-android
+            os: ubuntu-latest
           - target: x86_64-linux-android
+            os: ubuntu-latest
+          - target: x86_64-pc-windows-gnu # windows pc
+            os: ubuntu-latest
+          - target: x86_64-apple-darwin # Intel mac
+            os: macos-latest
+          - target: aarch64-apple-darwin # M chip mac
+            os: macos-latest
+          - target: aarch64-unknown-linux-musl # arm64 Linux
+            os: ubuntu-latest
+          - target: x86_64-unknown-linux-musl # x86 Linux
+            os: ubuntu-latest
     uses: ./.github/workflows/ksud.yml
     with:
       target: ${{ matrix.target }}
+      os: ${{ matrix.os }}
 
   build-manager:
     needs: build-ksud
@@ -68,11 +81,11 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: "temurin"
-          java-version: "17"
+          distribution: temurin
+          java-version: 21
 
       - name: Setup Gradle
-        uses: gradle/gradle-build-action@v3
+        uses: gradle/actions/setup-gradle@v3
         with:
           gradle-home-cache-cleanup: true
 
