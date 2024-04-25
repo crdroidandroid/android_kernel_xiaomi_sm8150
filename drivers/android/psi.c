@@ -5,9 +5,6 @@
 #include <linux/uaccess.h>
 #include <linux/module.h>
 #include <linux/poll.h>
-#include <linux/types.h>
-
-typedef unsigned int __poll_t;
 
 static bool psi_enable = true;
 
