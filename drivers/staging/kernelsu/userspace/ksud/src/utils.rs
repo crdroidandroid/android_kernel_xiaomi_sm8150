@@ -1,11 +1,15 @@
 use anyhow::{bail, Context, Error, Ok, Result};
 use std::{
     fs::{create_dir_all, remove_file, write, File, OpenOptions},
-    io::{ErrorKind::AlreadyExists, ErrorKind::NotFound, Write},
+    io::{
+        ErrorKind::{AlreadyExists, NotFound},
+        Write,
+    },
     path::Path,
+    process::Command,
 };
 
-use crate::{assets, defs, ksucalls, restorecon};
+use crate::{assets, boot_patch, defs, ksucalls, module, restorecon};
 use std::fs::metadata;
 #[allow(unused_imports)]
 use std::fs::{set_permissions, Permissions};
@@ -214,6 +218,27 @@ pub fn install() -> Result<()> {
     #[cfg(target_os = "android")]
     link_ksud_to_bin()?;
 
+    Ok(())
+}
+
+pub fn uninstall(magiskboot_path: Option<PathBuf>) -> Result<()> {
+    if Path::new(defs::MODULE_DIR).exists() {
+        println!("- Uninstall modules..");
+        module::uninstall_all_modules()?;
+        module::prune_modules()?;
+    }
+    println!("- Removing directories..");
+    std::fs::remove_dir_all(defs::WORKING_DIR)?;
+    std::fs::remove_file(defs::DAEMON_PATH)?;
+    println!("- Restore boot image..");
+    boot_patch::restore(None, magiskboot_path, true)?;
+    println!("- Uninstall KernelSU manager..");
+    Command::new("pm")
+        .args(["uninstall", "me.weishu.kernelsu"])
+        .spawn()?;
+    println!("- Rebooting in 5 seconds..");
+    std::thread::sleep(std::time::Duration::from_secs(5));
+    Command::new("reboot").spawn()?;
     Ok(())
 }
 

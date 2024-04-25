@@ -123,11 +123,19 @@ fun InstallScreen(navigator: DestinationsNavigator) {
                 installMethod = method
             }
 
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
+                (lkmSelection as? LkmSelection.LkmUri)?.let {
+                    Text(
+                        stringResource(
+                            id = R.string.selected_lkm,
+                            it.uri.lastPathSegment ?: "(file)"
+                        )
+                    )
+                }
                 Button(modifier = Modifier.fillMaxWidth(),
                     enabled = installMethod != null,
                     onClick = {
@@ -266,7 +274,7 @@ fun rememberSelectKmiDialog(onSelected: (String?) -> Unit): DialogHandle {
             )
         }
 
-        var selection: String? = null
+        var selection by remember { mutableStateOf<String?>(null) }
         ListDialog(state = rememberUseCaseState(visible = true, onFinishedRequest = {
             onSelected(selection)
         }, onCloseRequest = {

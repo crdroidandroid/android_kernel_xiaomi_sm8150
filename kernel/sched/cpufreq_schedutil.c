@@ -15,6 +15,7 @@
 #include <linux/kthread.h>
 #include <uapi/linux/sched/types.h>
 #include <linux/slab.h>
+#include <linux/sched/cpufreq.h>
 #include <trace/events/power.h>
 
 #include "sched.h"
@@ -196,9 +197,9 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 	struct cpufreq_policy *policy = sg_policy->policy;
 	unsigned int freq = arch_scale_freq_invariant() ?
 				policy->cpuinfo.max_freq : policy->cur;
-	unsigned int idx, l_freq, h_freq;
 
-	freq = (freq + (freq >> 2)) * util / max;
+	unsigned int idx, l_freq, h_freq;
+	freq = map_util_freq(util, freq, max);
 
 	if (freq == sg_policy->cached_raw_freq && !sg_policy->need_freq_update)
 		return sg_policy->next_freq;
