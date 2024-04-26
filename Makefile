@@ -973,7 +973,6 @@ endif
 
 ifdef CONFIG_LTO_CLANG
 ifdef CONFIG_THINLTO
-lto-clang-flags	:= -funified-lto
 lto-clang-flags	+= -flto=thin
 LDFLAGS		+= --thinlto-cache-dir=.thinlto-cache
 else
@@ -982,7 +981,6 @@ endif
 lto-clang-flags += -fvisibility=default $(call cc-option, -fsplit-lto-unit)
 
 lto-clang-flags += -fwhole-program-vtables
-lto-clang-flags += -fsplit-machine-functions
 
 KBUILD_LDFLAGS_MODULE += -T scripts/module-lto.lds
 
