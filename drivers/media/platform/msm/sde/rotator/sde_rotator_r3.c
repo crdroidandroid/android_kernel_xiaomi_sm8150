@@ -917,15 +917,13 @@ static int sde_hw_rotator_irq_setup(struct sde_hw_rotator *rot)
 		SDEROT_ERR("fail to get rot irq, fallback to poll %d\n", rc);
 	} else {
 		if (rot->mode == ROT_REGDMA_OFF)
-			rc = devm_request_threaded_irq(&rot->pdev->dev,
+			rc = devm_request_irq (&rot->pdev->dev,
 					rot->irq_num,
-					sde_hw_rotator_rotirq_handler,
-					NULL, 0, "sde_rotator_r3", rot);
+					sde_hw_rotator_rotirq_handler, IRQF_NO_THREAD, "sde_rotator_r3", rot);
 		else
-			rc = devm_request_threaded_irq(&rot->pdev->dev,
+			rc = devm_request_irq (&rot->pdev->dev,
 					rot->irq_num,
-					sde_hw_rotator_regdmairq_handler,
-					NULL, 0, "sde_rotator_r3", rot);
+					sde_hw_rotator_regdmairq_handler, IRQF_NO_THREAD, "sde_rotator_r3", rot);
 		if (rc) {
 			SDEROT_ERR("fail to request irq r:%d\n", rc);
 			rot->irq_num = -1;
