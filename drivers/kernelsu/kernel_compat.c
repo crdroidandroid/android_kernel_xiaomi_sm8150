@@ -1,18 +1,19 @@
-#include "linux/version.h"
-#include "linux/fs.h"
-#include "linux/nsproxy.h"
+#include <linux/version.h>
+#include <linux/fs.h>
+#include <linux/nsproxy.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
-#include "linux/sched/task.h"
+#include <linux/sched/task.h>
 #else
-#include "linux/sched.h"
+#include <linux/sched.h>
 #endif
-#include "linux/uaccess.h"
+#include <linux/uaccess.h>
 #include "klog.h" // IWYU pragma: keep
+#include "kernel_compat.h" // Add check Huawei Device
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
-#include "linux/key.h"
-#include "linux/errno.h"
-#include "linux/cred.h"
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0) || defined(CONFIG_IS_HW_HISI)
+#include <linux/key.h>
+#include <linux/errno.h>
+#include <linux/cred.h>
 struct key *init_session_keyring = NULL;
 
 static inline int install_session_keyring(struct key *keyring)
@@ -78,7 +79,7 @@ void ksu_android_ns_fs_check()
 
 struct file *ksu_filp_open_compat(const char *filename, int flags, umode_t mode)
 {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0) || defined(CONFIG_IS_HW_HISI)
 	if (init_session_keyring != NULL && !current_cred()->session_keyring &&
 	    (current->flags & PF_WQ_WORKER)) {
 		pr_info("installing init session keyring for older kernel\n");
