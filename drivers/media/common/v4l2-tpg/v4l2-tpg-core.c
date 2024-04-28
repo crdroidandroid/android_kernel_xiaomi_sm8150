@@ -132,14 +132,14 @@ int tpg_alloc(struct tpg_data *tpg, unsigned max_w)
 		for (plane = 0; plane < TPG_MAX_PLANES; plane++) {
 			unsigned pixelsz = plane ? 2 : 4;
 
-			tpg->lines[pat][plane] = vzalloc(max_w * 2 * pixelsz);
+			tpg->lines[pat][plane] = vzalloc(array3_size(max_w, 2, pixelsz));
 			if (!tpg->lines[pat][plane]) {
 				ret = -ENOMEM;
 				goto free_lines;
 			}
 			if (plane == 0)
 				continue;
-			tpg->downsampled_lines[pat][plane] = vzalloc(max_w * 2 * pixelsz);
+			tpg->downsampled_lines[pat][plane] = vzalloc(array3_size(max_w, 2, pixelsz));
 			if (!tpg->downsampled_lines[pat][plane]) {
 				ret = -ENOMEM;
 				goto free_lines;
@@ -149,17 +149,17 @@ int tpg_alloc(struct tpg_data *tpg, unsigned max_w)
 	for (plane = 0; plane < TPG_MAX_PLANES; plane++) {
 		unsigned pixelsz = plane ? 2 : 4;
 
-		tpg->contrast_line[plane] = vzalloc(max_w * pixelsz);
+		tpg->contrast_line[plane] = vzalloc(array_size(pixelsz, max_w));
 		if (!tpg->contrast_line[plane]) {
 			ret = -ENOMEM;
 			goto free_contrast_line;
 		}
-		tpg->black_line[plane] = vzalloc(max_w * pixelsz);
+		tpg->black_line[plane] = vzalloc(array_size(pixelsz, max_w));
 		if (!tpg->black_line[plane]) {
 			ret = -ENOMEM;
 			goto free_contrast_line;
 		}
-		tpg->random_line[plane] = vzalloc(max_w * 2 * pixelsz);
+		tpg->random_line[plane] = vzalloc(array3_size(max_w, 2, pixelsz));
 		if (!tpg->random_line[plane]) {
 			ret = -ENOMEM;
 			goto free_contrast_line;
