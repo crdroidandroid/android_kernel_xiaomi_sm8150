@@ -1116,7 +1116,7 @@ static bool rcu_is_callbacks_kthread(void)
  */
 static void rcu_preempt_boost_start_gp(struct rcu_node *rnp)
 {
-	rnp->boost_time = jiffies + RCU_BOOST_DELAY_JIFFIES;
+	rnp->boost_time = jiffies;
 }
 
 /*
