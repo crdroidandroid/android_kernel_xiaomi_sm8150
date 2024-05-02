@@ -373,6 +373,7 @@ rcu_perf_writer(void *arg)
 	int i_max;
 	long me = (long)arg;
 	struct rcu_head *rhp = NULL;
+	struct sched_param sp;
 	bool started = false, done = false, alldone = false;
 	u64 t;
 	u64 *wdp;
@@ -381,7 +382,8 @@ rcu_perf_writer(void *arg)
 	VERBOSE_PERFOUT_STRING("rcu_perf_writer task started");
 	WARN_ON(!wdpp);
 	set_cpus_allowed_ptr(current, cpumask_of(me % nr_cpu_ids));
-	sched_set_fifo_low(current);
+	sp.sched_priority = 1;
+	sched_setscheduler_nocheck(current, SCHED_FIFO, &sp);
 
 	if (holdoff)
 		schedule_timeout_uninterruptible(holdoff * HZ);
@@ -442,7 +444,9 @@ retry:
 			started = true;
 		if (!done && i >= MIN_MEAS) {
 			done = true;
-			sched_set_normal(current, 0);
+			sp.sched_priority = 0;
+			sched_setscheduler_nocheck(current,
+						   SCHED_NORMAL, &sp);
 			pr_alert("%s%s rcu_perf_writer %ld has %d measurements\n",
 				 perf_type, PERF_FLAG, me, MIN_MEAS);
 			if (atomic_inc_return(&n_rcu_perf_writer_finished) >=
