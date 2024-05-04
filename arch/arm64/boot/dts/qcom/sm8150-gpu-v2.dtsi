@@ -13,7 +13,7 @@
 &soc {
 	gpu_opp_table_v2: gpu_opp_table_v2 {
 		compatible = "operating-points-v2";
-		opp-770000000 {
+		opp-810000000 {
 			opp-hz = /bits/ 64 <770000000>;
 			opp-microvolt = <296>;
 		};
