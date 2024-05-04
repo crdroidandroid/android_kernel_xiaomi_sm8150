@@ -503,7 +503,7 @@ config TCP_CONG_BIC
 
 config TCP_CONG_CUBIC
 	tristate "CUBIC TCP"
-	default m
+	default y
 	---help---
 	This is version 2.0 of BIC-TCP which uses a cubic growth function
 	among other techniques.
@@ -688,7 +688,7 @@ config TCP_CONG_BBR
 
 config TCP_CONG_BBR2
 	tristate "BBR2 TCP"
-	default n
+	default y
 	---help---
 
 	BBR2 TCP congestion control is a model-based congestion control
@@ -704,18 +704,9 @@ config TCP_CONG_BBR2
 	using either TCP internal pacing or the fq ("Fair Queue") pacing packet
 	scheduler.
 
-config TCP_CONG_BBRPLUS
-        tristate "BBRPLUS TCP"
-        default y
-        ---help---
-
-        BBRplus is an enhanced version of BBR (Bottleneck Bandwidth and RTT).
-        Originally introduced by dog250 & cx9208.
-        Same as BBR, it requires the fq ("Fair Queue") pacing packet scheduler.
-        
 choice
 	prompt "Default TCP congestion control"
-	default DEFAULT_BBRPLUS
+	default DEFAULT_CUBIC
 	help
 	  Select the TCP congestion control that will be used by default
 	  for all connections.
@@ -752,8 +743,6 @@ choice
 
 	config DEFAULT_BBR2
 		bool "BBR2" if TCP_CONG_BBR2=y
-        config DEFAULT_BBRPLUS
-                bool "BBRPLUS" if TCP_CONG_BBRPLUS=y
 
 	config DEFAULT_RENO
 		bool "Reno"
@@ -780,7 +769,6 @@ config DEFAULT_TCP_CONG
 	default "cdg" if DEFAULT_CDG
 	default "bbr" if DEFAULT_BBR
 	default "bbr2" if DEFAULT_BBR2
-        default "bbrplus" if DEFAULT_BBRPLUS
 
 config TCP_MD5SIG
 	bool "TCP: MD5 Signature Option support (RFC2385)"
