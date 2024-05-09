@@ -610,10 +610,7 @@ static void rcu_eqs_enter(bool user)
  */
 void rcu_idle_enter(void)
 {
-	struct rcu_data *rdp = this_cpu_ptr(&rcu_data);
-
 	lockdep_assert_irqs_disabled();
-	do_nocb_deferred_wakeup(rdp);
 	rcu_eqs_enter(false);
 }
 
@@ -1991,6 +1988,7 @@ rcu_report_qs_rdp(int cpu, struct rcu_data *rdp)
 	mask = rdp->grpmask;
 	rdp->core_needs_qs = false;
 	if ((rnp->qsmask & mask) == 0) {
+		rdp->core_needs_qs = false;
 		raw_spin_unlock_irqrestore_rcu_node(rnp, flags);
 	} else {
 		/*

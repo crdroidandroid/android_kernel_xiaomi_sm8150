@@ -1116,7 +1116,7 @@ static bool rcu_is_callbacks_kthread(void)
  */
 static void rcu_preempt_boost_start_gp(struct rcu_node *rnp)
 {
-	rnp->boost_time = jiffies + RCU_BOOST_DELAY_JIFFIES;
+	rnp->boost_time = jiffies;
 }
 
 /*
@@ -2201,6 +2201,11 @@ static void do_nocb_deferred_wakeup(struct rcu_data *rdp)
 {
 	if (rcu_nocb_need_deferred_wakeup(rdp))
 		do_nocb_deferred_wakeup_common(rdp);
+}
+
+void rcu_nocb_flush_deferred_wakeup(void)
+{
+	do_nocb_deferred_wakeup(this_cpu_ptr(&rcu_data));
 }
 
 void __init rcu_init_nohz(void)
