@@ -124,7 +124,7 @@ static ssize_t cpu_capacity_show(struct device *dev,
 	if (is_sched_lib_based_app(current->pid))
 		return scnprintf(buf, PAGE_SIZE, "%lu\n", SCHED_CAPACITY_SCALE);
 
-	return sprintf(buf, "%lu\n", topology_get_cpu_scale(NULL, cpu->dev.id));
+	return sprintf(buf, "%lu\n", topology_get_cpu_scale(cpu->dev.id));
 }
 
 static void update_topology_flags_workfn(struct work_struct *work);
@@ -165,7 +165,7 @@ static ssize_t cpu_capacity_store(struct device *dev,
 				topology_core_cpumask(this_cpu));
 
 		for_each_cpu(i, mask) {
-			if (topology_get_cpu_scale(NULL, i) ==
+			if (topology_get_cpu_scale(i) ==
 					SCHED_CAPACITY_SCALE) {
 				highest_score_cpu = 1;
 				break;
@@ -287,7 +287,7 @@ int topology_detect_flags(void)
 			goto check_core;
 
 		for_each_cpu(thread, topology_sibling_cpumask(cpu)) {
-			capacity = topology_get_cpu_scale(NULL, thread);
+			capacity = topology_get_cpu_scale(thread);
 
 			if (capacity > max_capacity) {
 				if (max_capacity != 0)
@@ -302,7 +302,7 @@ check_core:
 			goto check_die;
 
 		for_each_cpu(core, topology_core_cpumask(cpu)) {
-			capacity = topology_get_cpu_scale(NULL, core);
+			capacity = topology_get_cpu_scale(core);
 
 			if (capacity > max_capacity) {
 				if (max_capacity != 0)
@@ -313,7 +313,7 @@ check_core:
 		}
 check_die:
 		for_each_possible_cpu(die_cpu) {
-			capacity = topology_get_cpu_scale(NULL, die_cpu);
+			capacity = topology_get_cpu_scale(die_cpu);
 
 			if (capacity > max_capacity) {
 				if (max_capacity != 0) {
@@ -421,7 +421,7 @@ void topology_normalize_cpu_scale(void)
 			/ capacity_scale;
 		topology_set_cpu_scale(cpu, capacity);
 		pr_debug("cpu_capacity: CPU%d cpu_capacity=%lu raw_capacity=%u\n",
-			cpu, topology_get_cpu_scale(NULL, cpu),
+			cpu, topology_get_cpu_scale(cpu),
 			raw_capacity[cpu]);
 	}
 	mutex_unlock(&cpu_scale_mutex);
@@ -493,7 +493,7 @@ init_cpu_capacity_callback(struct notifier_block *nb,
 	cpumask_andnot(cpus_to_visit, cpus_to_visit, policy->related_cpus);
 
 	for_each_cpu(cpu, policy->related_cpus) {
-		raw_capacity[cpu] = topology_get_cpu_scale(NULL, cpu) *
+		raw_capacity[cpu] = topology_get_cpu_scale(cpu) *
 				    policy->cpuinfo.max_freq / 1000UL;
 		capacity_scale = max(raw_capacity[cpu], capacity_scale);
 	}

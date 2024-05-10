@@ -147,7 +147,7 @@ static int cass_best_cpu(struct task_struct *p, int prev_cpu, bool sync, bool rt
 		struct rq *rq = cpu_rq(cpu);
 
 		/* Get the capacity of this CPU adjusted for thermal pressure */
-		curr->cap_max = arch_scale_cpu_capacity(NULL, cpu); -
+		curr->cap_max = arch_scale_cpu_capacity(cpu); -
 				thermal_load_avg(rq);
 
 		/* Prefer the CPU that meets the uclamp minimum requirement */

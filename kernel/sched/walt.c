@@ -3108,7 +3108,7 @@ void walt_map_freq_to_load(void)
 
 			coloc_boost_load = div64_u64(
 				((u64)sched_ravg_window *
-				arch_scale_cpu_capacity(NULL, fcpu) *
+				arch_scale_cpu_capacity(fcpu) *
 				sysctl_sched_little_cluster_coloc_fmin_khz),
 				(u64)1024 * cpu_max_possible_freq(fcpu));
 			coloc_boost_load = div64_u64(coloc_boost_load << 2, 5);
@@ -3298,7 +3298,7 @@ unsigned int walt_get_default_coloc_group_load(void)
 
 	min_cap_cpu = this_rq()->rd->min_cap_orig_cpu;
 	if (min_cap_cpu != -1)
-		scale = arch_scale_cpu_capacity(NULL, min_cap_cpu);
+		scale = arch_scale_cpu_capacity(min_cap_cpu);
 
 	return div64_u64(total_demand * 1024 * 100,
 			(u64)sched_ravg_window * scale);
