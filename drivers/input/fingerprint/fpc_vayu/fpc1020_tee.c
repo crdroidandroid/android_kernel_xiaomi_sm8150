@@ -94,7 +94,6 @@ struct fpc1020_data {
 	struct notifier_block fb_notifier;
 	bool fb_black;
 	bool wait_finger_down;
-	struct work_struct work;
 	struct input_handler input_handler;
 };
 
@@ -668,7 +667,6 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 	if (fpc1020->wait_finger_down && fpc1020->fb_black && fpc1020->prepared) {
 		pr_debug("%s enter\n", __func__);
 		fpc1020->wait_finger_down = false;
-		schedule_work(&fpc1020->work);
 	}
 
 	return IRQ_HANDLED;
