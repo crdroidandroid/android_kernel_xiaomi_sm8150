@@ -639,22 +639,6 @@ static struct ctl_table kern_table[] = {
 #endif
 #ifndef CONFIG_SCHED_WALT
 	{
-		.procname	= "sched_lib_name",
-		.data		= sched_lib_name,
-		.maxlen		= LIB_PATH_LENGTH,
-		.mode		= 0644,
-		.proc_handler	= sysctl_sched_lib_name_handler,
-	},
-	{
-		.procname	= "sched_lib_mask_force",
-		.data		= &sched_lib_mask_force,
-		.maxlen		= sizeof(unsigned int),
-		.mode		= 0644,
-		.proc_handler	= proc_douintvec_minmax,
-		.extra1		= &zero,
-		.extra2		= &two_hundred_fifty_five,
-	},
-	{
 		.procname	= "sched_boost",
 		.data		= &sysctl_sched_boost,
 		.maxlen		= sizeof(unsigned int),
