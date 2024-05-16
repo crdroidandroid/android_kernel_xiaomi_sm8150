@@ -221,6 +221,13 @@ enum sysctl_writes_mode {
 
 static enum sysctl_writes_mode sysctl_writes_strict = SYSCTL_WRITES_STRICT;
 
+static int sysctl_sched_lib_name_handler(struct ctl_table *table, int write,
+                                         void __user *buffer, size_t *lenp,
+                                         loff_t *ppos)
+{
+    return 0;
+}
+
 static int proc_do_cad_pid(struct ctl_table *table, int write,
 		  void __user *buffer, size_t *lenp, loff_t *ppos);
 static int proc_taint(struct ctl_table *table, int write,
@@ -638,6 +645,22 @@ static struct ctl_table kern_table[] = {
 	},
 #endif
 #ifndef CONFIG_SCHED_WALT
+	{
+		.procname	= "sched_lib_name",
+		.data		= sched_lib_name,
+		.maxlen		= LIB_PATH_LENGTH,
+		.mode		= 0644,
+		.proc_handler	= sysctl_sched_lib_name_handler,
+	},
+	{
+		.procname	= "sched_lib_mask_force",
+		.data		= &sched_lib_mask_force,
+		.maxlen		= sizeof(unsigned int),
+		.mode		= 0644,
+		.proc_handler	= proc_douintvec_minmax,
+		.extra1		= &zero,
+		.extra2		= &two_hundred_fifty_five,
+	},
 	{
 		.procname	= "sched_boost",
 		.data		= &sysctl_sched_boost,
