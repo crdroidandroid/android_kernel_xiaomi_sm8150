@@ -838,7 +838,7 @@ static int lan78xx_read_raw_otp(struct lan78xx_net *dev, u32 offset,
 				u32 length, u8 *data)
 {
 	int i;
-	u32 buf;
+	u32 buf = 0;
 	unsigned long timeout;
 
 	lan78xx_read_reg(dev, OTP_PWR_DN, &buf);
@@ -891,7 +891,7 @@ static int lan78xx_write_raw_otp(struct lan78xx_net *dev, u32 offset,
 				 u32 length, u8 *data)
 {
 	int i;
-	u32 buf;
+	u32 buf = 0;
 	unsigned long timeout;
 
 	lan78xx_read_reg(dev, OTP_PWR_DN, &buf);
@@ -1679,7 +1679,7 @@ static int lan78xx_ioctl(struct net_device *netdev, struct ifreq *rq, int cmd)
 
 static void lan78xx_init_mac_address(struct lan78xx_net *dev)
 {
-	u32 addr_lo, addr_hi;
+	u32 addr_lo = 0, addr_hi = 0;
 	u8 addr[6];
 
 	lan78xx_read_reg(dev, RX_ADDRL, &addr_lo);
@@ -1929,7 +1929,7 @@ static void lan78xx_irq_bus_sync_unlock(struct irq_data *irqd)
 	struct irq_domain_data *data = irq_data_get_irq_chip_data(irqd);
 	struct lan78xx_net *dev =
 			container_of(data, struct lan78xx_net, domain_data);
-	u32 buf;
+	u32 buf = 0;
 
 	/* call register access here because irq_bus_lock & irq_bus_sync_unlock
 	 * are only two callbacks executed in non-atomic contex.
@@ -2002,7 +2002,7 @@ static void lan78xx_remove_irq_domain(struct lan78xx_net *dev)
 
 static int lan8835_fixup(struct phy_device *phydev)
 {
-	int buf;
+	int buf = 0;
 	struct lan78xx_net *dev = netdev_priv(phydev->attached_dev);
 
 	/* LED2/PME_N/IRQ_N/RGMII_ID pin to IRQ_N mode */
@@ -2131,7 +2131,7 @@ error:
 
 static int lan78xx_set_rx_max_frame_length(struct lan78xx_net *dev, int size)
 {
-	u32 buf;
+	u32 buf = 0;
 	bool rxenabled;
 
 	lan78xx_read_reg(dev, MAC_RX, &buf);
@@ -2541,7 +2541,7 @@ static int lan78xx_reset(struct lan78xx_net *dev)
 	struct lan78xx_priv *pdata = (struct lan78xx_priv *)(dev->data[0]);
 	unsigned long timeout;
 	int ret;
-	u32 buf;
+	u32 buf = 0;
 	u8 sig;
 
 	ret = lan78xx_read_reg(dev, HW_CFG, &buf);
