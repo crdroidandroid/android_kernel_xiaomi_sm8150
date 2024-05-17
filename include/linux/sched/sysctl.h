@@ -30,9 +30,6 @@ extern unsigned int sysctl_sched_cstate_aware;
 extern unsigned int sysctl_sched_energy_aware;
 extern unsigned int sysctl_sched_capacity_margin_up[MAX_MARGIN_LEVELS];
 extern unsigned int sysctl_sched_capacity_margin_down[MAX_MARGIN_LEVELS];
-extern unsigned int sysctl_sched_capacity_margin_up_boosted[MAX_MARGIN_LEVELS];
-extern unsigned int
-       sysctl_sched_capacity_margin_down_boosted[MAX_MARGIN_LEVELS];
 #ifdef CONFIG_SCHED_WALT
 extern unsigned int sysctl_sched_use_walt_cpu_util;
 extern unsigned int sysctl_sched_use_walt_task_util;
@@ -126,10 +123,6 @@ extern int sysctl_sched_uclamp_handler(struct ctl_table *table, int write,
 #endif
 
 extern int sched_updown_migrate_handler(struct ctl_table *table,
-					int write, void __user *buffer,
-					size_t *lenp, loff_t *ppos);
-
-extern int sched_updown_migrate_handler_boosted(struct ctl_table *table,
 					int write, void __user *buffer,
 					size_t *lenp, loff_t *ppos);
 
