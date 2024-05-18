@@ -2868,7 +2868,7 @@ static void smblib_reg_work(struct work_struct *work)
 	dump_regs(chg);
 	rc = smblib_get_prop_usb_present(chg, &val);
 	if (rc < 0) {
-		pr_err("Couldn't get usb present rc=%d\n", rc);
+		pr_debug("Couldn't get usb present rc=%d\n", rc);
 		schedule_delayed_work(&chg->reg_work,
 				NOT_CHARGING_PERIOD_S * HZ);
 		return;
@@ -3214,7 +3214,7 @@ int smblib_set_prop_system_temp_level(struct smb_charger *chg,
 	rc = smblib_get_prop_from_bms(chg,
 				POWER_SUPPLY_PROP_TEMP, &batt_temp);
 	if (rc < 0) {
-		pr_err("Couldn't get batt temp rc=%d\n", rc);
+		pr_debug("Couldn't get batt temp rc=%d\n", rc);
 		return -EINVAL;
 	}
 

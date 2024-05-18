@@ -3667,7 +3667,7 @@ static irqreturn_t fg_delta_msoc_irq_handler(int irq, void *data)
 
 	rc = fg_get_sram_prop(fg, FG_SRAM_BATT_SOC, &batt_soc);
 	if (rc < 0)
-		pr_err("Failed to read battery soc rc: %d\n", rc);
+		pr_debug("Failed to read battery soc rc: %d\n", rc);
 	else
 		cycle_count_update(chip->counter, (u32)batt_soc >> 24,
 			fg->charge_status, fg->charge_done,
@@ -3675,7 +3675,7 @@ static irqreturn_t fg_delta_msoc_irq_handler(int irq, void *data)
 
 	rc = fg_gen4_get_battery_temp(fg, &batt_temp);
 	if (rc < 0) {
-		pr_err("Failed to read battery temp rc: %d\n", rc);
+		pr_debug("Failed to read battery temp rc: %d\n", rc);
 	} else {
 		if (chip->cl->active) {
 			batt_soc_cp = div64_u64(
@@ -3688,25 +3688,25 @@ static irqreturn_t fg_delta_msoc_irq_handler(int irq, void *data)
 
 		rc = fg_gen4_slope_limit_config(chip, batt_temp);
 		if (rc < 0)
-			pr_err("Error in configuring slope limiter rc:%d\n",
+			pr_debug("Error in configuring slope limiter rc:%d\n",
 				rc);
 	}
 
 	rc = fg_gen4_charge_full_update(fg);
 	if (rc < 0)
-		pr_err("Error in charge_full_update, rc=%d\n", rc);
+		pr_debug("Error in charge_full_update, rc=%d\n", rc);
 
 	rc = fg_gen4_esr_soh_update(fg);
 	if (rc < 0)
-		pr_err("Error in updating ESR for SOH, rc=%d\n", rc);
+		pr_debug("Error in updating ESR for SOH, rc=%d\n", rc);
 
 	rc = fg_gen4_update_maint_soc(fg);
 	if (rc < 0)
-		pr_err("Error in updating maint_soc, rc=%d\n", rc);
+		pr_debug("Error in updating maint_soc, rc=%d\n", rc);
 
 	rc = fg_gen4_adjust_ki_coeff_dischg(fg);
 	if (rc < 0)
-		pr_err("Error in adjusting ki_coeff_dischg, rc=%d\n", rc);
+		pr_debug("Error in adjusting ki_coeff_dischg, rc=%d\n", rc);
 
 	/*
 	 * If ESR fast calibration is done even before 3 delta ESR interrupts
@@ -3719,7 +3719,7 @@ static irqreturn_t fg_delta_msoc_irq_handler(int irq, void *data)
 		(chip->delta_esr_count < 3) && !chip->esr_fast_calib_retry) {
 		rc = fg_gen4_esr_fast_calib_config(chip, true);
 		if (rc < 0)
-			pr_err("Error in configuring esr_fast_calib, rc=%d\n",
+			pr_debug("Error in configuring esr_fast_calib, rc=%d\n",
 				rc);
 		else
 			chip->esr_fast_calib_retry = true;
@@ -3727,7 +3727,7 @@ static irqreturn_t fg_delta_msoc_irq_handler(int irq, void *data)
 
 	rc = fg_gen4_validate_soc_scale_mode(chip);
 	if (rc < 0)
-		pr_err("Failed to validate SOC scale mode, rc=%d\n", rc);
+		pr_debug("Failed to validate SOC scale mode, rc=%d\n", rc);
 
 	if (batt_psy_initialized(fg))
 		power_supply_changed(fg->batt_psy);
