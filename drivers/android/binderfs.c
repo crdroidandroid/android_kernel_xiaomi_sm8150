@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+// SPDX-License-Identifier: GPL-2.0
 
 #include <linux/compiler_types.h>
 #include <linux/errno.h>
@@ -29,7 +29,7 @@
 #include <linux/types.h>
 #include <linux/uaccess.h>
 #include <linux/user_namespace.h>
-//#include <linux/xarray.h>
+#include <linux/xarray.h>
 #include <uapi/asm-generic/errno-base.h>
 #include <uapi/linux/android/binder.h>
 #include <uapi/linux/android/binderfs.h>
@@ -117,7 +117,7 @@ static int binderfs_binder_device_create(struct inode *ref_inode,
 	/* Reserve new minor number for the new device. */
 	mutex_lock(&binderfs_minors_mutex);
 	if (++info->device_count <= info->mount_opts.max)
-		minor = ida_simple_get(&binderfs_minors, 0,
+	        minor = ida_simple_get(&binderfs_minors, 0,
 				      use_reserve ? BINDERFS_MAX_MINOR + 1:
 						    BINDERFS_MAX_MINOR_CAPPED + 1,
 				      GFP_KERNEL);
@@ -432,7 +432,7 @@ static int binderfs_binder_ctl_create(struct super_block *sb)
 	/* Reserve a new minor number for the new device. */
 	mutex_lock(&binderfs_minors_mutex);
 	minor = ida_simple_get(&binderfs_minors, 0,
-			      use_reserve ? BINDERFS_MAX_MINOR  + 1:
+			      use_reserve ? BINDERFS_MAX_MINOR + 1:
 					    BINDERFS_MAX_MINOR_CAPPED + 1,
 			      GFP_KERNEL);
 	mutex_unlock(&binderfs_minors_mutex);
@@ -555,7 +555,6 @@ out:
 	return dentry;
 }
 
-#ifdef CONFIG_ANDROID_BINDER_LOGS
 static struct dentry *binderfs_create_dir(struct dentry *parent,
 					  const char *name)
 {
@@ -594,6 +593,7 @@ out:
 static int init_binder_logs(struct super_block *sb)
 {
 	struct dentry *binder_logs_root_dir, *dentry, *proc_log_dir;
+	const struct binder_debugfs_entry *db_entry;
 	struct binderfs_info *info;
 	int ret = 0;
 
@@ -604,43 +604,15 @@ static int init_binder_logs(struct super_block *sb)
 		goto out;
 	}
 
-	dentry = binderfs_create_file(binder_logs_root_dir, "stats",
-				      &binder_stats_fops, NULL);
-	if (IS_ERR(dentry)) {
-		ret = PTR_ERR(dentry);
-		goto out;
-	}
-
-	dentry = binderfs_create_file(binder_logs_root_dir, "state",
-				      &binder_state_fops, NULL);
-	if (IS_ERR(dentry)) {
-		ret = PTR_ERR(dentry);
-		goto out;
-	}
-
-	dentry = binderfs_create_file(binder_logs_root_dir, "transactions",
-				      &binder_transactions_fops, NULL);
-	if (IS_ERR(dentry)) {
-		ret = PTR_ERR(dentry);
-		goto out;
-	}
-
-	dentry = binderfs_create_file(binder_logs_root_dir,
-				      "transaction_log",
-				      &binder_transaction_log_fops,
-				      &binder_transaction_log);
-	if (IS_ERR(dentry)) {
-		ret = PTR_ERR(dentry);
-		goto out;
-	}
-
-	dentry = binderfs_create_file(binder_logs_root_dir,
-				      "failed_transaction_log",
-				      &binder_transaction_log_fops,
-				      &binder_transaction_log_failed);
-	if (IS_ERR(dentry)) {
-		ret = PTR_ERR(dentry);
-		goto out;
+	binder_for_each_debugfs_entry(db_entry) {
+		dentry = binderfs_create_file(binder_logs_root_dir,
+					      db_entry->name,
+					      db_entry->fops,
+					      db_entry->data);
+		if (IS_ERR(dentry)) {
+			ret = PTR_ERR(dentry);
+			goto out;
+		}
 	}
 
 	proc_log_dir = binderfs_create_dir(binder_logs_root_dir, "proc");
@@ -654,12 +626,6 @@ static int init_binder_logs(struct super_block *sb)
 out:
 	return ret;
 }
-#else
-static inline int init_binder_logs(struct super_block *sb)
-{
-	return 0;
-}
-#endif
 
 static int binderfs_fill_super(struct super_block *sb, void *data, int silent)
 {

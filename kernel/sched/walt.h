@@ -232,7 +232,7 @@ static inline unsigned int cpu_cur_freq(int cpu)
 
 static inline unsigned int sched_cpu_legacy_freq(int cpu)
 {
-	unsigned long curr_cap = arch_scale_freq_capacity(NULL, cpu);
+	unsigned long curr_cap = arch_scale_freq_capacity(cpu);
 
 	return (curr_cap * (u64) cpu_rq(cpu)->cluster->max_possible_freq) >>
 		SCHED_CAPACITY_SHIFT;

@@ -312,7 +312,7 @@ DEFINE_EVENT(binder_buffer_class, binder_transaction_update_buffer_release,
 
 TRACE_EVENT(binder_update_page_range,
 	TP_PROTO(struct binder_alloc *alloc, bool allocate,
-		 void __user *start, void __user *end),
+		 unsigned long start, unsigned long end),
 	TP_ARGS(alloc, allocate, start, end),
 	TP_STRUCT__entry(
 		__field(int, proc)
@@ -323,7 +323,7 @@ TRACE_EVENT(binder_update_page_range,
 	TP_fast_assign(
 		__entry->proc = alloc->pid;
 		__entry->allocate = allocate;
-		__entry->offset = start - alloc->buffer;
+		__entry->offset = start - (uintptr_t)alloc->buffer;
 		__entry->size = end - start;
 	),
 	TP_printk("proc=%d allocate=%d offset=%zu size=%zu",
@@ -385,7 +385,7 @@ DEFINE_EVENT(binder_lru_page_class, binder_unmap_kernel_start,
 DEFINE_EVENT(binder_lru_page_class, binder_unmap_kernel_end,
 	TP_PROTO(const struct binder_alloc *alloc, size_t page_index),
 	TP_ARGS(alloc, page_index));
-#ifdef CONFIG_ANDROID_BINDER_LOGS
+
 TRACE_EVENT(binder_command,
 	TP_PROTO(uint32_t cmd),
 	TP_ARGS(cmd),
@@ -417,7 +417,7 @@ TRACE_EVENT(binder_return,
 			  binder_return_strings[_IOC_NR(__entry->cmd)] :
 			  "unknown")
 );
-#endif
+
 #endif /* _BINDER_TRACE_H */
 
 #undef TRACE_INCLUDE_PATH

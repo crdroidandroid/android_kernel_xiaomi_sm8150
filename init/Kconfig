@@ -457,6 +457,11 @@ config SCHED_THERMAL_PRESSURE
 	bool "Enable periodic averaging of thermal pressure"
 	depends on SMP
 
+config HAVE_SCHED_AVG_IRQ
+	def_bool y
+	depends on IRQ_TIME_ACCOUNTING || PARAVIRT_TIME_ACCOUNTING
+	depends on SMP
+
 config BSD_PROCESS_ACCT
 	bool "BSD Process Accounting"
 	depends on MULTIUSER

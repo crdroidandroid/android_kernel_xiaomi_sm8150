@@ -421,12 +421,6 @@ struct util_est {
  * For cfs_rq, it is the aggregated load_avg of all runnable and
  * blocked sched_entities.
  *
- * load_avg may also take frequency scaling into account:
- *
- *   load_avg = runnable% * scale_load_down(load) * freq%
- *
- * where freq% is the CPU frequency normalized to the highest frequency.
- *
  * [util_avg definition]
  *
  *   util_avg = running% * SCHED_CAPACITY_SCALE
@@ -435,17 +429,14 @@ struct util_est {
  * a CPU. For cfs_rq, it is the aggregated util_avg of all runnable
  * and blocked sched_entities.
  *
- * util_avg may also factor frequency scaling and CPU capacity scaling:
+ * load_avg and util_avg don't direcly factor frequency scaling and CPU
+ * capacity scaling. The scaling is done through the rq_clock_pelt that
+ * is used for computing those signals (see update_rq_clock_pelt())
  *
- *   util_avg = running% * SCHED_CAPACITY_SCALE * freq% * capacity%
- *
- * where freq% is the same as above, and capacity% is the CPU capacity
- * normalized to the greatest capacity (due to uarch differences, etc).
- *
- * N.B., the above ratios (runnable%, running%, freq%, and capacity%)
- * themselves are in the range of [0, 1]. To do fixed point arithmetics,
- * we therefore scale them to as large a range as necessary. This is for
- * example reflected by util_avg's SCHED_CAPACITY_SCALE.
+ * N.B., the above ratios (runnable% and running%) themselves are in the
+ * range of [0, 1]. To do fixed point arithmetics, we therefore scale them
+ * to as large a range as necessary. This is for example reflected by
+ * util_avg's SCHED_CAPACITY_SCALE.
  *
  * [Overflow issue]
  *
@@ -514,13 +505,18 @@ struct sched_entity {
 	struct load_weight		load;
 	unsigned long			runnable_weight;
 	struct rb_node			run_node;
+	u64				deadline;
+	u64				min_vruntime;
+
 	struct list_head		group_node;
 	unsigned int			on_rq;
 
 	u64				exec_start;
 	u64				sum_exec_runtime;
-	u64				vruntime;
 	u64				prev_sum_exec_runtime;
+	u64				vruntime;
+	s64				vlag;
+	u64				slice;
 
 	u64				nr_migrations;
 
@@ -757,7 +753,6 @@ struct uclamp_se {
 	unsigned int bucket_id		: bits_per(UCLAMP_BUCKETS);
 	unsigned int active		: 1;
 	unsigned int user_defined	: 1;
-	unsigned int ignore_uclamp_max	: 1;
 };
 #endif /* CONFIG_UCLAMP_TASK */
 
