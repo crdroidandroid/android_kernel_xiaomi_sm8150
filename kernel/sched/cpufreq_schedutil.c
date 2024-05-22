@@ -228,7 +228,7 @@ static void sugov_get_util(unsigned long *util, unsigned long *max, int cpu)
 	unsigned long max_cap;
 	struct rq *rq = cpu_rq(cpu);
 
-	max_cap = arch_scale_cpu_capacity(NULL, cpu);
+	max_cap = arch_scale_cpu_capacity(cpu);
 
 	*util = boosted_cpu_util(cpu);
 	*util = min(*util, max_cap);
