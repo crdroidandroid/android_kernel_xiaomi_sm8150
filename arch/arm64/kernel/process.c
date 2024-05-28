@@ -108,17 +108,10 @@ static void __cpu_do_idle_irqprio(void)
  *	cpu_do_idle()
  *
  *	Idle the processor (wait for interrupt).
- *
- *	If the CPU supports priority masking we must do additional work to
- *	ensure that interrupts are not masked at the PMR (because the core will
- *	not wake up if we block the wake up signal in the interrupt controller).
  */
 void cpu_do_idle(void)
 {
-	if (system_uses_irq_prio_masking())
-		__cpu_do_idle_irqprio();
-	else
-		__cpu_do_idle();
+	__cpu_do_idle();
 }
 
 /*
