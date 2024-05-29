@@ -56,6 +56,7 @@ extern __read_mostly bool sched_predl;
 extern unsigned int sched_capacity_margin_up[NR_CPUS];
 extern unsigned int sched_capacity_margin_down[NR_CPUS];
 
+unsigned long apply_dvfs_headroom(unsigned long util, int cpu, bool tapered);
 #ifdef CONFIG_SCHED_WALT
 extern unsigned int sched_ravg_window;
 extern unsigned int walt_cpu_util_freq_divisor;
