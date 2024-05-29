@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/bin/bash 
+
+kernel_dir="${PWD}"
 rm .version
 rm build.log
 # Bash Color
@@ -10,15 +12,22 @@ restore='\033[0m'
 clear
 
 # Resources
+export SUBARCH=arm64
+export ARCH=arm64
 export CLANG_PATH="$HOME/toolchains/boolx-clang/bin"
 export PATH=${CLANG_PATH}:${PATH}
 export CLANG_TRIPLE=${CLANG_PATH}/aarch64-linux-gnu-
 export CROSS_COMPILE=${CLANG_PATH}/aarch64-linux-gnu-
 export CROSS_COMPILE_ARM32=${CLANG_PATH}/arm-linux-gnueabi-
-export SUBARCH=arm64
 # export DTC_EXT=dtc # we don needed it again
-export ARCH=arm64
 export CC=$HOME/toolchains/boolx-clang/bin/clang
+CLANG_DIR="$HOME/toolchains/boolx-clang"
+CLANG="${CLANG_DIR}/bin:$PATH"
+CLANG_BIN="${CLANG}/bin/"
+TARGET_IMAGE="Image.gz-dtb"
+cpus=`expr $(nproc --all)`
+objdir="${kernel_dir}/out"
+CONFIGS="raphael_defconfig"
 
 VER="V1.8-Picktobrut-DSP"
 KERNEL_DIR=`pwd`
@@ -34,25 +43,46 @@ KERNEL=out/arch/arm64/boot/Image.gz-dtb
 DTBO=out/arch/arm64/boot/dtbo.img
 
 #functions
+function makeconfig() {
+                PATH=${CLANG_BIN}:${PATH} \
+                make -s -j${cpus} \
+                LLVM=1 \
+                LLVM_IAS=1 \
+                CC="ccache clang" \
+                CROSS_COMPILE="aarch64-linux-gnu-" \
+                CROSS_COMPILE_ARM32="arm-linux-gnueabi-" \
+                O="${objdir}" ${1}
+}
+
+function build() {
+		PATH=${CLANG_BIN}:${PATH} \
+		make -s -j${cpus} \
+		LLVM=1 \
+		LLVM_IAS=1 \
+		CC="ccache clang" \
+		CROSS_COMPILE="aarch64-linux-gnu-" \
+		CROSS_COMPILE_ARM32="arm-linux-gnueabi-" \
+		O="${objdir}" ${1} \
+		KBUILD_BUILD_USER="OnettBoots" \
+		KBUILD_BUILD_HOST="OpenELA" \
+		dtbo.img
+}
+
 function create_out {
 		echo
 		git clone https://github.com/onettboots/boolx_anykernel.git $REPACK_DIR && mkdir $ZIP_MOVE
 }
 function clean_all {
 		echo
-		make clean && make mrproper && rm -rf out
+		echo -e "${red}Cleaning Kernel Projects .... ${restore}"
+		cd ${kernel_dir}
+		make -s clean
+		make -s -j${cpus} mrproper O=${objdir}
+		rm -rf out
 }
 function make_config {
 		echo
-		make CC=$HOME/toolchains/boolx-clang/bin/clang O=out raphael_defconfig
-}
-function make_menuconfig {
-		echo
-		make CC=$HOME/toolchains/boolx-clang/bin/clang O=out menuconfig
-}
-function building {
-		echo
-		make O=out CC=$HOME/toolchains/boolx-clang/bin/clang LLVM=1 LLVM_IAS=1 KBUILD_BUILD_USER=OnettBoots KBUILD_BUILD_HOST=OpenELA -j$(grep -c ^processor /proc/cpuinfo)
+		makeconfig ${CONFIGS}
 }
 function make_boot {
 		cp $KERNEL $REPACK_DIR && cp $DTBO $REPACK_DIR/oc
@@ -190,39 +220,14 @@ else
    echo -e "${restore}"
 fi
 
-if [ -f $CONFIG ]; then
-   echo -e "${green}"
-   while read -p "Do you want edit config via menuconfig ? (y/n)? " cchoice
-do
-case "$cchoice" in
-	y|Y )
-		make_menuconfig
-		echo
-		break
-		;;
-	n|N )
-		break
-		;;
-	* )
-		echo
-		echo "Invalid try again!"
-		echo
-		;;
-esac
-done
-   echo -e "${restore}"
-else
-   echo -e "${green}"
-   echo -e "${restore}"
-fi
-
 echo -e "${green}"
 echo "-----------------"
 echo "Building Kernel:"
 echo "-----------------"
 echo -e "${restore}"
 
-building
+cd ${kernel_dir}
+build ${TARGET_IMAGE}
 
 echo -e "${green}"
 echo "----------------------"
