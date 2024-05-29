@@ -19,7 +19,7 @@
 
 struct irq_sim_work_ctx {
 	struct irq_work		work;
-	unsigned long		*pending;
+	int			irq;
 };
 
 struct irq_sim_irq_ctx {
