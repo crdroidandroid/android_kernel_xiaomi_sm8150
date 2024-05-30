@@ -38,14 +38,13 @@ static struct cpuidle_governor * __cpuidle_find_governor(const char *str)
 /**
  * cpuidle_switch_governor - changes the governor
  * @gov: the new target governor
+ *
+ * NOTE: "gov" can be NULL to specify disabled
  * Must be called with cpuidle_lock acquired.
  */
 int cpuidle_switch_governor(struct cpuidle_governor *gov)
 {
 	struct cpuidle_device *dev;
-
-	if (!gov)
-		return -EINVAL;
 
 	if (gov == cpuidle_curr_governor)
 		return 0;
@@ -103,7 +102,7 @@ EXPORT_SYMBOL_GPL(cpuidle_register_governor);
  */
 int cpuidle_governor_latency_req(unsigned int cpu)
 {
-	int global_req = pm_qos_request_for_cpu(PM_QOS_CPU_DMA_LATENCY, cpu);
+	int global_req = pm_qos_request(PM_QOS_CPU_DMA_LATENCY);
 	struct device *device = get_cpu_device(cpu);
 	int device_req = dev_pm_qos_raw_read_value(device);
 

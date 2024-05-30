@@ -53,6 +53,7 @@
 #include <linux/prctl.h>
 
 #include <asm/alternative.h>
+#include <asm/arch_gicv3.h>
 #include <asm/compat.h>
 #include <asm/cacheflush.h>
 #include <asm/exec.h>
@@ -68,6 +69,9 @@ __visible unsigned long __stack_chk_guard  __ro_after_init;;
 EXPORT_SYMBOL(__stack_chk_guard);
 #endif
 
+static DEFINE_PER_CPU(struct hrtimer, wfi_timer);
+s64 teo_wfi_timeout_ns(void);
+
 /*
  * Function pointers to optional machine specific functions
  */
@@ -75,6 +79,74 @@ void (*pm_power_off)(void);
 EXPORT_SYMBOL_GPL(pm_power_off);
 
 void (*arm_pm_restart)(enum reboot_mode reboot_mode, const char *cmd);
+
+static void __cpu_do_idle(void)
+{
+	dsb(sy);
+	wfi();
+}
+
+static void __cpu_do_idle_irqprio(void)
+{
+	unsigned long pmr;
+	unsigned long daif_bits;
+
+	daif_bits = read_sysreg(daif);
+	write_sysreg(daif_bits | PSR_I_BIT, daif);
+
+	/*
+	 * Unmask PMR before going idle to make sure interrupts can
+	 * be raised.
+	 */
+	pmr = gic_read_pmr();
+	gic_write_pmr(GIC_PRIO_IRQON);
+
+	__cpu_do_idle();
+
+	gic_write_pmr(pmr);
+	write_sysreg(daif_bits, daif);
+}
+
+/*
+ *	cpu_do_idle()
+ *
+ *	Idle the processor (wait for interrupt).
+ */
+void cpu_do_idle(void)
+{
+	s64 wfi_timeout_ns = teo_wfi_timeout_ns();
+	struct hrtimer *timer = NULL;
+
+	/*
+	 * If the tick is stopped, arm a timer to ensure that the CPU doesn't
+	 * stay in WFI too long and burn power. That way, the CPU will be woken
+	 * up so it can enter a deeper idle state instead of staying in WFI.
+	 */
+	if (wfi_timeout_ns) {
+		/* Use TEO's estimated sleep duration with some slack added */
+		timer = this_cpu_ptr(&wfi_timer);
+		hrtimer_start(timer, ns_to_ktime(wfi_timeout_ns),
+			      HRTIMER_MODE_REL_PINNED_HARD);
+	}
+
+	__cpu_do_idle();
+
+	/* Cancel the timer if it was armed. This always succeeds. */
+	if (timer)
+		hrtimer_try_to_cancel(timer);
+}
+
+static int __init wfi_timer_init(void)
+{
+	int cpu;
+
+	/* No function is needed; the timer is canceled while IRQs are off */
+	for_each_possible_cpu(cpu)
+		hrtimer_init(&per_cpu(wfi_timer, cpu), CLOCK_MONOTONIC,
+			     HRTIMER_MODE_REL_HARD);
+	return 0;
+}
+pure_initcall(wfi_timer_init);
 
 /*
  * This is our default idle handler.
