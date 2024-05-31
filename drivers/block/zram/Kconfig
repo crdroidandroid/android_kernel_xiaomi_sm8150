@@ -2,8 +2,7 @@
 config ZRAM
 	tristate "Compressed RAM block device support"
 	depends on BLOCK && SYSFS && ZSMALLOC && CRYPTO
-	select CRYPTO_LZO
-	default n
+	depends on CRYPTO_LZO || CRYPTO_ZSTD || CRYPTO_LZ4
 	help
 	  Creates virtual block devices called /dev/zramX (X = 0, 1, ...).
 	  Pages written to these disks are compressed and stored in memory
@@ -13,26 +12,36 @@ config ZRAM
 	  It has several use cases, for example: /tmp storage, use as swap
 	  disks and maybe many more.
 
-	  See Documentation/blockdev/zram.txt for more information.
+	  See Documentation/admin-guide/blockdev/zram.rst for more information.
 
-config ZRAM_DEDUP
-	bool "Deduplication support for ZRAM data"
+choice
+	prompt "Default zram compressor"
+	default ZRAM_DEF_COMP_LZ4
 	depends on ZRAM
-	default n
-	help
-	  Deduplicate ZRAM data to reduce amount of memory consumption.
-	  Advantage largely depends on the workload. In some cases, this
-          option reduces memory usage to the half. However, if there is no
-	  duplicated data, the amount of memory consumption would be
-	  increased due to additional metadata usage. And, there is
-	  computation time trade-off. Please check the benefit before
-	  enabling this option. Experiment shows the positive effect when
-	  the zram is used as blockdev and is used to store build output.
+
+config ZRAM_DEF_COMP_ZSTD
+	bool "zstd"
+	depends on CRYPTO_ZSTD
+
+config ZRAM_DEF_COMP_LZ4
+	bool "lz4"
+	depends on CRYPTO_LZ4
+
+config ZRAM_DEF_COMP_LZO
+	bool "lzo"
+	depends on CRYPTO_LZO
+
+endchoice
+
+config ZRAM_DEF_COMP
+	string
+	default "zstd" if ZRAM_DEF_COMP_ZSTD
+	default "lz4" if ZRAM_DEF_COMP_LZ4
+	default "lzo" if ZRAM_DEF_COMP_LZO
 
 config ZRAM_WRITEBACK
        bool "Write back incompressible or idle page to backing device"
        depends on ZRAM
-       default n
        help
 	 With incompressible page, there is no memory saving to keep it
 	 in memory. Instead, write it out to backing device.
@@ -42,7 +51,7 @@ config ZRAM_WRITEBACK
 	 With /sys/block/zramX/{idle,writeback}, application could ask
 	 idle page's writeback to the backing device to save in memory.
 
-	 See Documentation/blockdev/zram.txt for more information.
+	 See Documentation/admin-guide/blockdev/zram.rst for more information.
 
 config ZRAM_MEMORY_TRACKING
 	bool "Track zRam block status"
@@ -52,4 +61,4 @@ config ZRAM_MEMORY_TRACKING
 	  of zRAM. Admin could see the information via
 	  /sys/kernel/debug/zram/zramX/block_state.
 
-	  See Documentation/blockdev/zram.txt for more information.
+	  See Documentation/admin-guide/blockdev/zram.rst for more information.
