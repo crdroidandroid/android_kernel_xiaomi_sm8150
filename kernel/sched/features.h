@@ -4,7 +4,7 @@
  * them to run sooner, but does not allow tons of sleepers to
  * rip the spread apart.
  */
-#define SCHED_FEAT_GENTLE_FAIR_SLEEPERS 0
+#define SCHED_FEAT_GENTLE_FAIR_SLEEPERS 1
 
 /*
  * Place new tasks ahead so that they do not starve already running
@@ -45,7 +45,7 @@
 
 #define SCHED_FEAT_HRTICK 0
 #define SCHED_FEAT_DOUBLE_TICK 0
-#define SCHED_FEAT_LB_BIAS 0
+#define SCHED_FEAT_LB_BIAS 1
 
 /*
  * Decrement CPU capacity based on time not spent running tasks
