@@ -149,6 +149,8 @@ enum print_reason {
 /* use for QC3P5 */
 #define QC3P5_VOTER			"QC3P5_VOTER"
 #define FCC_MAX_QC3P5_VOTER		"FCC_MAX_QC3P5_VOTER"
+#endif
+#ifdef CONFIG_CHARGER_LN8000
 /* use for Ln8000 */
 #define BATT_LN8000_VOTER		"BATT_LN8000_VOTER"
 #define BATT_BQ2597X_VOTER		"BATT_BQ2597X_VOTER"
@@ -812,7 +814,7 @@ struct smb_charger {
 	struct delayed_work	reduce_fcc_work;
 	struct delayed_work	thermal_setting_work;
 #endif
-#ifdef CONFIG_MACH_XIAOMI_NABU
+#ifdef CONFIG_CHARGER_LN8000
 	struct delayed_work	check_vbat_work;
 #endif
 	struct alarm		lpd_recheck_timer;
