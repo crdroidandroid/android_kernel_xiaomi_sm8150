@@ -924,7 +924,7 @@ int smb5_config_iterm(struct smb_charger *chg, int hi_thresh, int low_thresh)
 	return 0;
 }
 
-#ifdef CONFIG_MACH_XIAOMI_NABU
+#ifdef CONFIG_CHARGER_LN8000
 static int set_ln8000_fv(struct smb_charger *chg) {
 	int rc;
 	union power_supply_propval val;
@@ -1007,7 +1007,7 @@ int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable)
 	if (enable) {
 		/* ffc need clear non_fcc_vfloat_voter first */
 		vote(chg->fv_votable, NON_FFC_VFLOAT_VOTER, false, 0);
-#ifdef CONFIG_MACH_XIAOMI_NABU
+#ifdef CONFIG_CHARGER_LN8000
 		set_ln8000_fv(chg);
 #endif
 		rc = power_supply_get_property(chg->bms_psy,
@@ -2942,7 +2942,7 @@ static bool is_bq25970_available(struct smb_charger *chg)
 	if (!chg->cp_psy)
 		chg->cp_psy = power_supply_get_by_name("bq2597x-standalone");
 
-#ifdef CONFIG_MACH_XIAOMI_NABU
+#ifdef CONFIG_CHARGER_LN8000
 	if (!chg->cp_psy)
 		chg->cp_psy = power_supply_get_by_name("ln8000");
 #endif
@@ -7420,7 +7420,7 @@ static void smb_check_init_boot(struct work_struct *work)
 		power_supply_changed(chg->usb_psy);
 }
 
-#ifdef CONFIG_MACH_XIAOMI_NABU
+#ifdef CONFIG_CHARGER_LN8000
 static int fv_over_limit_times;
 #define OVER_FV_MAX_TIMES	10
 static void smblib_check_vbat_work(struct work_struct *work)
@@ -7489,7 +7489,7 @@ static int check_reduce_fcc_condition(struct smb_charger *chg)
 		chg->cp_psy = power_supply_get_by_name("bq2597x-standalone");
 	}
 
-#ifdef CONFIG_MACH_XIAOMI_NABU
+#ifdef CONFIG_CHARGER_LN8000
 	if (!chg->cp_psy){
 		chg->cp_psy = power_supply_get_by_name("ln8000");
 	}
@@ -7758,7 +7758,7 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 					msecs_to_jiffies(CHARGER_RECHECK_DELAY_MS));
 		schedule_delayed_work(&chg->cc_un_compliant_charge_work,
 					msecs_to_jiffies(CC_UN_COMPLIANT_START_DELAY_MS));
-#ifdef CONFIG_MACH_XIAOMI_NABU
+#ifdef CONFIG_CHARGER_LN8000
 		schedule_delayed_work(&chg->check_vbat_work, msecs_to_jiffies(200));
 #endif
 #if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
@@ -9066,7 +9066,7 @@ static void typec_src_removal(struct smb_charger *chg)
 	cancel_delayed_work_sync(&chg->check_init_boot);
 #endif
 #endif
-#ifdef CONFIG_MACH_XIAOMI_NABU
+#ifdef CONFIG_CHARGER_LN8000
 	cancel_delayed_work_sync(&chg->check_vbat_work);
 #endif
 
@@ -9154,7 +9154,7 @@ static void typec_src_removal(struct smb_charger *chg)
 		cancel_delayed_work_sync(&chg->six_pin_batt_step_chg_work);
 	}
 #endif
-#ifdef CONFIG_MACH_XIAOMI_NABU
+#ifdef CONFIG_CHARGER_LN8000
 	vote(chg->fv_votable, BATT_BQ2597X_VOTER, false, 0);
 #endif
 
@@ -9252,7 +9252,7 @@ static void typec_src_removal(struct smb_charger *chg)
 	chg->slowly_charging = false;
 	chg->pps_thermal_level = -EINVAL;
 #endif
-#ifdef CONFIG_MACH_XIAOMI_NABU
+#ifdef CONFIG_CHARGER_LN8000
 	fv_over_limit_times = 0;
 #endif
 	pr_err("%s:", __func__);
@@ -11703,7 +11703,7 @@ int smblib_init(struct smb_charger *chg)
 					smblib_dual_role_check_work);
 	INIT_DELAYED_WORK(&chg->pr_swap_detach_work,
 					smblib_pr_swap_detach_work);
-#ifdef CONFIG_MACH_XIAOMI_NABU
+#ifdef CONFIG_CHARGER_LN8000
 	INIT_DELAYED_WORK(&chg->check_vbat_work, smblib_check_vbat_work);
 #endif
 #if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
@@ -11905,7 +11905,7 @@ int smblib_deinit(struct smb_charger *chg)
 		cancel_delayed_work_sync(&chg->report_soc_decimal_work);
 		cancel_delayed_work_sync(&chg->check_init_boot);
 #endif
-#ifdef CONFIG_MACH_XIAOMI_NABU
+#ifdef CONFIG_CHARGER_LN8000
 		cancel_delayed_work_sync(&chg->check_vbat_work);
 #endif
 		power_supply_unreg_notifier(&chg->nb);
