@@ -45,7 +45,9 @@
 #ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 #include "../xiaomi/xiaomi_touch.h"
 #endif
+#ifdef CONFIG_TOUCHSCREEN_GOODIX_GTX8_TEST
 #include "test_core/test_param_init.h"
+#endif
 
 #ifdef CONFIG_TOUCHSCREEN_COMMON
 #include <linux/input/tp_common.h>
@@ -640,6 +642,7 @@ static ssize_t goodix_ts_irq_info_store(struct device *dev,
 	return count;
 }
 
+#ifdef CONFIG_TOUCHSCREEN_GOODIX_GTX8_TEST
 /* open short test */
 static ssize_t goodix_ts_tp_test_show(struct device *dev,
 				      struct device_attribute *attr, char *buf)
@@ -700,6 +703,7 @@ static ssize_t goodix_ts_tp_rawdata_show(struct device *dev,
 	ts_info("test finish!");
 	return ret;
 }
+#endif
 
 static ssize_t goodix_ts_power_reset_show(struct device *dev,
 					  struct device_attribute *attr,
@@ -719,6 +723,7 @@ static ssize_t goodix_ts_power_reset_show(struct device *dev,
 	return ret;
 }
 
+#ifdef CONFIG_TOUCHSCREEN_GOODIX_GTX8_TEST
 /* tp get test config */
 static ssize_t goodix_ts_tp_get_testcfg_show(struct device *dev,
 					     struct device_attribute *attr,
@@ -745,6 +750,7 @@ static ssize_t goodix_ts_tp_get_testcfg_show(struct device *dev,
 	ts_info("test finish!");
 	return ret;
 }
+#endif
 
 #ifdef CONFIG_TOUCHSCREEN_COMMON
 static ssize_t double_tap_show(struct kobject *kobj,
@@ -793,10 +799,12 @@ static DEVICE_ATTR(send_cfg, S_IWUSR | S_IWGRP, NULL, goodix_ts_send_cfg_store);
 static DEVICE_ATTR(read_cfg, S_IRUGO, goodix_ts_read_cfg_show, NULL);
 static DEVICE_ATTR(irq_info, S_IRUGO | S_IWUSR | S_IWGRP,
 		   goodix_ts_irq_info_show, goodix_ts_irq_info_store);
+#ifdef CONFIG_TOUCHSCREEN_GOODIX_GTX8_TEST
 static DEVICE_ATTR(tp_test, S_IRUGO, goodix_ts_tp_test_show, NULL);
 static DEVICE_ATTR(tp_rawdata, S_IRUGO, goodix_ts_tp_rawdata_show, NULL);
 static DEVICE_ATTR(tp_get_testcfg, S_IRUGO, goodix_ts_tp_get_testcfg_show,
 		   NULL);
+#endif
 static DEVICE_ATTR(tp_power_reset, S_IRUGO, goodix_ts_power_reset_show, NULL);
 
 static struct attribute *sysfs_attrs[] = {
@@ -808,9 +816,11 @@ static struct attribute *sysfs_attrs[] = {
 	&dev_attr_send_cfg.attr,
 	&dev_attr_read_cfg.attr,
 	&dev_attr_irq_info.attr,
+#ifdef CONFIG_TOUCHSCREEN_GOODIX_GTX8_TEST
 	&dev_attr_tp_test.attr,
 	&dev_attr_tp_rawdata.attr,
 	&dev_attr_tp_get_testcfg.attr,
+#endif
 	&dev_attr_tp_power_reset.attr,
 	NULL,
 };
@@ -2285,6 +2295,7 @@ static struct attribute *goodix_attr_group[] = {
 	NULL,
 };
 
+#ifdef CONFIG_TOUCHSCREEN_GOODIX_GTX8_TEST
 static int gtp_i2c_test(void)
 {
 	int ret = 0;
@@ -2375,6 +2386,7 @@ static const struct file_operations gtp_selftest_ops = {
 	.read = gtp_selftest_read,
 	.write = gtp_selftest_write,
 };
+#endif
 
 static void gtp_power_supply_work(struct work_struct *work)
 {
@@ -2859,8 +2871,10 @@ static int goodix_ts_probe(struct platform_device *pdev)
 		goto out;
 	}
 
+#ifdef CONFIG_TOUCHSCREEN_GOODIX_GTX8_TEST
 	core_data->tp_selftest_proc =
 		proc_create("tp_selftest", 0644, NULL, &gtp_selftest_ops);
+#endif
 
 #ifdef CONFIG_GOODIX_HWINFO
 	core_data->dbclick_count = 0;
