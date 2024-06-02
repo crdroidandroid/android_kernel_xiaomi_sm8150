@@ -24,10 +24,8 @@ extern void pm_runtime_remove(struct device *dev);
 
 #define WAKE_IRQ_DEDICATED_ALLOCATED	BIT(0)
 #define WAKE_IRQ_DEDICATED_MANAGED	BIT(1)
-#define WAKE_IRQ_DEDICATED_REVERSE	BIT(2)
 #define WAKE_IRQ_DEDICATED_MASK		(WAKE_IRQ_DEDICATED_ALLOCATED | \
-					 WAKE_IRQ_DEDICATED_MANAGED | \
-					 WAKE_IRQ_DEDICATED_REVERSE)
+					 WAKE_IRQ_DEDICATED_MANAGED)
 
 struct wake_irq {
 	struct device *dev;
@@ -39,8 +37,7 @@ extern void dev_pm_arm_wake_irq(struct wake_irq *wirq);
 extern void dev_pm_disarm_wake_irq(struct wake_irq *wirq);
 extern void dev_pm_enable_wake_irq_check(struct device *dev,
 					 bool can_change_status);
-extern void dev_pm_disable_wake_irq_check(struct device *dev, bool cond_disable);
-extern void dev_pm_enable_wake_irq_complete(struct device *dev);
+extern void dev_pm_disable_wake_irq_check(struct device *dev);
 
 #ifdef CONFIG_PM_SLEEP
 
