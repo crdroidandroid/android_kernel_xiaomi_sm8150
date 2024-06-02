@@ -42,4 +42,14 @@ config TOUCHSCREEN_GOODIX_GTX8_TOOLS
 
 	  To compile this driver as a module, choose M here.
 
+config TOUCHSCREEN_GOODIX_GTX8_TEST
+	tristate "Goodix touch tools test"
+	default n
+	help
+	  Say Y here to enable debug tools.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here.
+
 endif
