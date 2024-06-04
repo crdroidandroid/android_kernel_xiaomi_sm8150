@@ -329,7 +329,7 @@ int vlan_vids_add_by_dev(struct net_device *dev,
 		return 0;
 
 	list_for_each_entry(vid_info, &vlan_info->vid_list, list) {
-		if (!vlan_hw_filter_capable(by_dev, vid_info->proto))
+		if (!vlan_hw_filter_capable(by_dev, vid_info))
 			continue;
 		err = vlan_vid_add(dev, vid_info->proto, vid_info->vid);
 		if (err)
@@ -341,7 +341,7 @@ unwind:
 	list_for_each_entry_continue_reverse(vid_info,
 					     &vlan_info->vid_list,
 					     list) {
-		if (!vlan_hw_filter_capable(by_dev, vid_info->proto))
+		if (!vlan_hw_filter_capable(by_dev, vid_info))
 			continue;
 		vlan_vid_del(dev, vid_info->proto, vid_info->vid);
 	}
@@ -363,7 +363,7 @@ void vlan_vids_del_by_dev(struct net_device *dev,
 		return;
 
 	list_for_each_entry(vid_info, &vlan_info->vid_list, list) {
-		if (!vlan_hw_filter_capable(by_dev, vid_info->proto))
+		if (!vlan_hw_filter_capable(by_dev, vid_info))
 			continue;
 		vlan_vid_del(dev, vid_info->proto, vid_info->vid);
 	}
