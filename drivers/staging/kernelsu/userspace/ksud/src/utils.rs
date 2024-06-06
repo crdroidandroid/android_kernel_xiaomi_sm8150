@@ -1,12 +1,13 @@
 use anyhow::{bail, Context, Error, Ok, Result};
 use std::{
-    fs::{create_dir_all, remove_file, write, File, OpenOptions},
+    fs::{self, create_dir_all, remove_file, write, File, OpenOptions},
     io::{
         ErrorKind::{AlreadyExists, NotFound},
         Write,
     },
     path::Path,
     process::Command,
+    sync::OnceLock,
 };
 
 use crate::{assets, boot_patch, defs, ksucalls, module, restorecon};
@@ -188,14 +189,66 @@ pub fn has_magisk() -> bool {
     which::which("magisk").is_ok()
 }
 
+fn is_ok_empty(dir: &str) -> bool {
+    use std::result::Result::Ok;
+
+    match fs::read_dir(dir) {
+        Ok(mut entries) => entries.next().is_none(),
+        Err(_) => false,
+    }
+}
+
+fn find_temp_path() -> String {
+    use std::result::Result::Ok;
+
+    if is_ok_empty(defs::TEMP_DIR) {
+        return defs::TEMP_DIR.to_string();
+    }
+
+    // Try to create a random directory in /dev/
+    let r = tempdir::TempDir::new_in("/dev/", "");
+    match r {
+        Ok(tmp_dir) => {
+            if let Some(path) = tmp_dir.into_path().to_str() {
+                return path.to_string();
+            }
+        }
+        Err(_e) => {}
+    }
+
+    let dirs = [
+        defs::TEMP_DIR,
+        "/patch_hw",
+        "/oem",
+        "/root",
+        defs::TEMP_DIR_LEGACY,
+    ];
+
+    // find empty directory
+    for dir in dirs {
+        if is_ok_empty(dir) {
+            return dir.to_string();
+        }
+    }
+
+    // Fallback to non-empty directory
+    for dir in dirs {
+        if metadata(dir).is_ok() {
+            return dir.to_string();
+        }
+    }
+
+    "".to_string()
+}
+
 pub fn get_tmp_path() -> &'static str {
-    if metadata(defs::TEMP_DIR_LEGACY).is_ok() {
-        return defs::TEMP_DIR_LEGACY;
-    }
-    if metadata(defs::TEMP_DIR).is_ok() {
-        return defs::TEMP_DIR;
-    }
-    ""
+    static CHOSEN_TMP_PATH: OnceLock<String> = OnceLock::new();
+
+    CHOSEN_TMP_PATH.get_or_init(|| {
+        let r = find_temp_path();
+        log::info!("Chosen temp_path: {}", r);
+        r
+    })
 }
 
 #[cfg(target_os = "android")]
@@ -233,8 +286,11 @@ pub fn uninstall(magiskboot_path: Option<PathBuf>) -> Result<()> {
         module::prune_modules()?;
     }
     println!("- Removing directories..");
-    std::fs::remove_dir_all(defs::WORKING_DIR)?;
-    std::fs::remove_file(defs::DAEMON_PATH)?;
+    std::fs::remove_dir_all(defs::WORKING_DIR).ok();
+    std::fs::remove_file(defs::DAEMON_PATH).ok();
+    crate::mount::umount_dir(defs::MODULE_DIR).ok();
+    std::fs::remove_dir_all(defs::MODULE_DIR).ok();
+    std::fs::remove_dir_all(defs::MODULE_UPDATE_TMP_DIR).ok();
     println!("- Restore boot image..");
     boot_patch::restore(None, magiskboot_path, true)?;
     println!("- Uninstall KernelSU manager..");
