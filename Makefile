@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 VERSION = 4
 PATCHLEVEL = 14
-SUBLEVEL = 344
+SUBLEVEL = 348
 EXTRAVERSION = -openela
 NAME = Petit Gorille
 
@@ -739,7 +739,7 @@ export LLVM_AR LLVM_NM
 # Set O3 optimization level for LTO with most linkers
 LDFLAGS		+= -O3
 LDFLAGS		+= --plugin-opt=O3
-LDFLAGS		+= --plugin-opt=-import-instr-limit=40
+LDFLAGS		+= --lto-O3
 endif
 
 
@@ -980,15 +980,12 @@ lto-clang-flags	:= -flto
 endif
 lto-clang-flags += -fvisibility=default $(call cc-option, -fsplit-lto-unit)
 
-lto-clang-flags += -fwhole-program-vtables
-lto-clang-flags += -fsplit-machine-functions
-
 KBUILD_LDFLAGS_MODULE += -T scripts/module-lto.lds
 
 KBUILD_LDS_MODULE += $(srctree)/scripts/module-lto.lds
 
 # allow disabling only clang LTO where needed
-DISABLE_LTO_CLANG := -fno-lto -fno-whole-program-vtables
+DISABLE_LTO_CLANG := -fno-lto
 export DISABLE_LTO_CLANG
 endif
 

@@ -56,6 +56,7 @@ extern __read_mostly bool sched_predl;
 extern unsigned int sched_capacity_margin_up[NR_CPUS];
 extern unsigned int sched_capacity_margin_down[NR_CPUS];
 
+unsigned long apply_dvfs_headroom(unsigned long util, int cpu, bool tapered);
 #ifdef CONFIG_SCHED_WALT
 extern unsigned int sched_ravg_window;
 extern unsigned int walt_cpu_util_freq_divisor;
@@ -601,6 +602,7 @@ struct cfs_rq {
 	} removed;
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
+	u64			last_update_tg_load_avg;
 	unsigned long tg_load_avg_contrib;
 	long propagate;
 	long prop_runnable_sum;
@@ -640,8 +642,9 @@ struct cfs_rq {
 	int runtime_enabled;
 	s64 runtime_remaining;
 
-	u64 throttled_clock, throttled_clock_task;
-	u64 throttled_clock_task_time;
+	u64			throttled_clock;
+	u64			throttled_clock_pelt;
+	u64			throttled_clock_pelt_time;
 	int throttled, throttle_count;
 	struct list_head throttled_list;
 #ifdef CONFIG_SCHED_WALT
