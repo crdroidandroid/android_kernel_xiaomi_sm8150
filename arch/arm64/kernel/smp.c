@@ -62,7 +62,6 @@
 #include <soc/qcom/minidump.h>
 
 #include <soc/qcom/scm.h>
-#include <soc/qcom/lpm_levels.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/ipi.h>
@@ -933,21 +932,9 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
 	set_irq_regs(old_regs);
 }
 
-extern void update_ipi_history(int cpu);
-
-void smp_send_ipi(const struct cpumask *cpus)
-{
-	int cpu;
-
-	for_each_cpu(cpu, cpus)
-		update_ipi_history(cpu);
-	arch_send_wakeup_ipi_mask(cpus);
-}
-
 void smp_send_reschedule(int cpu)
 {
 	BUG_ON(cpu_is_offline(cpu));
-	update_ipi_history(cpu);
 	smp_cross_call_common(cpumask_of(cpu), IPI_RESCHEDULE);
 }
 
