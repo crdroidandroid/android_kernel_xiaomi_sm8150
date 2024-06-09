@@ -86,7 +86,7 @@ static void __cpu_do_idle(void)
 	wfi();
 }
 
-static void __cpu_do_idle_irqprio(void)
+__maybe_unused static void __cpu_do_idle_irqprio(void)
 {
 	unsigned long pmr;
 	unsigned long daif_bits;
