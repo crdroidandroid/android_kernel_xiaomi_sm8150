@@ -979,8 +979,11 @@ static inline void uclamp_boost_write(struct task_struct *p) {
 		if (kp_active_mode() == 3) {
 			task_group(p)->uclamp[UCLAMP_MIN].value = 512;
 			task_group(p)->latency_sensitive = 1;
-		} else {
+		} else if (time_before(jiffies, last_input_time + msecs_to_jiffies(3500))) {
 			task_group(p)->uclamp[UCLAMP_MIN].value = 358;
+			task_group(p)->latency_sensitive = 1;
+		} else {
+			task_group(p)->uclamp[UCLAMP_MIN].value = 154;
 			task_group(p)->latency_sensitive = 0;
 		}
 	}
