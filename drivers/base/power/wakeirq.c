@@ -342,9 +342,6 @@ void dev_pm_disable_wake_irq_check(struct device *dev, bool cond_disable)
 	if (!wirq || !((wirq->status & WAKE_IRQ_DEDICATED_MASK)))
 		return;
 
-	if (cond_disable && (wirq->status & WAKE_IRQ_DEDICATED_REVERSE))
-		return;
-
 	if (wirq->status & WAKE_IRQ_DEDICATED_MANAGED) {
 		wirq->status &= ~WAKE_IRQ_DEDICATED_ENABLED;
 		disable_irq_nosync(wirq->irq);
@@ -369,8 +366,10 @@ void dev_pm_enable_wake_irq_complete(struct device *dev)
 		return;
 
 	if (wirq->status & WAKE_IRQ_DEDICATED_MANAGED &&
-	    wirq->status & WAKE_IRQ_DEDICATED_REVERSE)
+	    wirq->status & WAKE_IRQ_DEDICATED_REVERSE) {
 		enable_irq(wirq->irq);
+		wirq->status |= WAKE_IRQ_DEDICATED_ENABLED;
+	}
 }
 
 /**
