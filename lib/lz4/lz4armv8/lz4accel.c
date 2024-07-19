@@ -46,3 +46,4 @@ int (*lz4_decompress_asm_fn[NR_CPUS])(uint8_t **dst_ptr, uint8_t *dst_begin,
 __read_mostly = {
 	[0 ... NR_CPUS-1]  = lz4_decompress_asm_select,
 };
+
