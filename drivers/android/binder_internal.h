@@ -425,40 +425,42 @@ enum binder_prio_state {
  *
  * Bookkeeping structure for binder processes
  */
-struct binder_proc {
-	struct hlist_node proc_node;
-	struct rb_root threads;
-	struct rb_root nodes;
-	struct rb_root refs_by_desc;
-	struct rb_root refs_by_node;
-	struct list_head waiting_threads;
-	int pid;
-	struct task_struct *tsk;
-	const struct cred *cred;
-	struct hlist_node deferred_work_node;
-	int deferred_work;
-	int outstanding_txns;
-	bool is_dead;
-	bool is_frozen;
-	bool sync_recv;
-	bool async_recv;
-	wait_queue_head_t freeze_wait;
 
-	struct list_head todo;
-	struct binder_stats stats;
-	struct list_head delivered_death;
-	int max_threads;
-	int requested_threads;
-	int requested_threads_started;
-	int tmp_ref;
+struct binder_proc {
+        struct hlist_node proc_node;
+        struct rb_root threads;
+        struct rb_root nodes;
+        struct rb_root refs_by_desc;
+        struct rb_root refs_by_node;
+        struct list_head waiting_threads;
+        int pid;
+        struct task_struct *tsk;
+        struct files_struct *files;
+        struct mutex files_lock;
+        const struct cred *cred;
+        struct hlist_node deferred_work_node;
+        int deferred_work;
+        int outstanding_txns;
+        bool is_dead;
+        bool is_frozen;
+        bool sync_recv;
+        bool async_recv;
+        wait_queue_head_t freeze_wait;
+
+        struct list_head todo;
+        wait_queue_head_t wait;
+        struct binder_stats stats;
+        struct list_head delivered_death;
+        u32 max_threads;
+        int requested_threads;
+        int requested_threads_started;                                                          int tmp_ref;
 	struct binder_priority default_priority;
+        struct dentry *binderfs_entry;
 	struct dentry *debugfs_entry;
-	struct binder_alloc alloc;
-	struct binder_context *context;
-	spinlock_t inner_lock;
-	spinlock_t outer_lock;
-	struct dentry *binderfs_entry;
-	bool oneway_spam_detection_enabled;
+        struct binder_alloc alloc;                                                              struct binder_context *context;
+        spinlock_t inner_lock;
+        spinlock_t outer_lock;
+        bool oneway_spam_detection_enabled;
 };
 
 struct binder_proc_wrap {
