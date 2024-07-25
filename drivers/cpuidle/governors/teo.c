@@ -148,6 +148,7 @@ struct teo_cpu {
 	unsigned int total;
 	int next_recent_idx;
 	int recent_idx[NR_RECENT];
+	s64 wfi_timeout_ns;
 };
 
 static DEFINE_PER_CPU(struct teo_cpu, teo_cpus);
@@ -176,7 +177,7 @@ static void teo_update(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		/*
 		 * The computations below are to determine whether or not the
 		 * (saved) time till the next timer event and the measured idle
-		 * duration fall into the same "bin", so use last_residency_ns
+		 * duration fall into the same "bin", so use last_residency
 		 * for that instead of time_span_ns which includes the cpuidle
 		 * overhead.
 		 */
@@ -307,8 +308,10 @@ static int teo_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 
 	cpu_data->time_span_ns = local_clock();
 
-	cpu_data->sleep_length_ns = tick_nohz_get_sleep_length(&delta_tick);
 	duration_us = ktime_to_us(cpu_data->sleep_length_ns);
+	if (duration_us <= 0)
+		duration_us = S64_MAX;
+	cpu_data->sleep_length_ns = tick_nohz_get_sleep_length(&delta_tick);
 
 	/* Check if there is any choice in the first place. */
 	if (drv->state_count < 2) {
@@ -473,7 +476,32 @@ end:
 			idx = teo_find_shallower_state(drv, dev, idx, delta_tick_us);
 	}
 
+	/*
+	 * Set a limit to how long the CPU can remain in WFI in case of a
+	 * misprediction that results in too much time spent in WFI. This way,
+	 * the CPU can be kicked out of WFI and enter a deeper idle state if a
+	 * deeper state fits within the residency requirement.
+	 */
+#define WFI_TIMEOUT_NS (1 * NSEC_PER_MSEC)
+	cpu_data->wfi_timeout_ns = 0;
+	if (drv->state_count > 1 && !idx && constraint_idx) {
+		if (*stop_tick)
+			delta_tick = cpu_data->sleep_length_ns;
+
+		if (delta_tick > duration_us &&
+		    (delta_tick - duration_us - WFI_TIMEOUT_NS) >
+		    drv->states[1].target_residency)
+			cpu_data->wfi_timeout_ns = duration_us + WFI_TIMEOUT_NS;
+	}
+
 	return idx;
+}
+
+s64 teo_wfi_timeout_ns(void)
+{
+	struct teo_cpu *cpu_data = this_cpu_ptr(&teo_cpus);
+
+	return cpu_data->wfi_timeout_ns;
 }
 
 /**

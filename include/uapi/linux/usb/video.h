@@ -27,19 +27,6 @@
 #define UVC_EVENT_DATA			(V4L2_EVENT_PRIVATE_START + 5)
 #define UVC_EVENT_LAST			(V4L2_EVENT_PRIVATE_START + 5)
 
-struct uvc_request_data {
-	__s32 length;
-	__u8 data[60];
-};
-
-struct uvc_event {
-	union {
-		enum usb_device_speed speed;
-		struct usb_ctrlrequest req;
-		struct uvc_request_data data;
-	};
-};
-
 #define UVCIOC_SEND_RESPONSE		_IOW('U', 1, struct uvc_request_data)
 
 #define UVC_INTF_CONTROL		0
