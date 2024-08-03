@@ -15,6 +15,7 @@
 #include "xiaomi_keyboard.h"
 #include <linux/msm_drm_notify.h>
 #include <linux/notifier.h>
+#include <linux/input/usbkbd-xiaomi.h>
 
 static struct xiaomi_keyboard_data *mdata;
 
@@ -104,6 +105,10 @@ static irqreturn_t xiaomi_keyboard_irq_func(int irq, void *data)
 	mutex_unlock(&mdata->rw_mutex);
 
 	xiaomi_keyboard_connected_notify(&mdata->pdev->dev);
+
+	// Notify the input driver
+	xiaomi_keyboard_connection_change(!!mdata->keyboard_conn_status);
+
 	MI_KB_INFO("keyboard connected status: %d",
 		   mdata->keyboard_conn_status);
 	return IRQ_HANDLED;
