@@ -106,6 +106,17 @@ static void xiaomi_connection_work(struct work_struct *work)
 	xiaomi_safe_toggle(hdev, connected);
 }
 
+static int xiaomi_input_configured(struct hid_device *hdev,
+				   struct hid_input *hi)
+{
+	struct input_dev *input = hi->input;
+
+	// Drop EV_REL, the keyboard doesn't have a touchpad
+	__clear_bit(EV_REL, input->evbit);
+
+	return 0;
+}
+
 static int xiaomi_probe(struct hid_device *hdev, const struct hid_device_id *id)
 {
 	struct xiaomi_priv *priv;
@@ -207,6 +218,7 @@ static struct hid_driver hid_xiaomi = {
 	.id_table = xiaomi_devices,
 	.probe = xiaomi_probe,
 	.remove = xiaomi_remove,
+	.input_configured = xiaomi_input_configured,
 };
 module_hid_driver(hid_xiaomi);
 
