@@ -93,6 +93,53 @@ DEVICE_ATTR(xiaomi_keyboard_conn_status, (S_IRUGO | S_IWUSR | S_IWGRP),
 	    xiaomi_keyboard_conn_status_show,
 	    xiaomi_keyboard_conn_status_store);
 
+static ssize_t xiaomi_keyboard_enabled_show(struct device *dev,
+					    struct device_attribute *attr,
+					    char *buf)
+{
+	if (!mdata)
+		return -EINVAL;
+
+	return scnprintf(buf, PAGE_SIZE, "%d", mdata->user_enabled);
+}
+
+static ssize_t xiaomi_keyboard_enabled_store(struct device *dev,
+					     struct device_attribute *attr,
+					     const char *buf, size_t count)
+{
+	int rc, val;
+
+	rc = kstrtoint(buf, 10, &val);
+	if (rc)
+		return -EINVAL;
+
+	if (!mdata)
+		return -EINVAL;
+
+	mdata->user_enabled = !!val;
+
+	sysfs_notify(&mdata->pdev->dev.kobj, NULL,
+		     "xiaomi_keyboard_enabled");
+
+	// Notify the input driver
+	xiaomi_keyboard_connection_change(!!(mdata->keyboard_conn_status && mdata->user_enabled));
+
+	return count;
+}
+
+DEVICE_ATTR(xiaomi_keyboard_enabled, (S_IRUGO | S_IWUSR | S_IWGRP),
+	    xiaomi_keyboard_enabled_show, xiaomi_keyboard_enabled_store);
+
+static struct attribute *sysfs_attrs[] = {
+	&dev_attr_xiaomi_keyboard_conn_status.attr,
+	&dev_attr_xiaomi_keyboard_enabled.attr,
+	NULL,
+};
+
+static const struct attribute_group xiaomi_attribute_group = {
+	.attrs = sysfs_attrs,
+};
+
 static irqreturn_t xiaomi_keyboard_irq_func(int irq, void *data)
 {
 	int value = 0;
@@ -107,7 +154,7 @@ static irqreturn_t xiaomi_keyboard_irq_func(int irq, void *data)
 	xiaomi_keyboard_connected_notify(&mdata->pdev->dev);
 
 	// Notify the input driver
-	xiaomi_keyboard_connection_change(!!mdata->keyboard_conn_status);
+	xiaomi_keyboard_connection_change(!!(mdata->keyboard_conn_status && mdata->user_enabled));
 
 	MI_KB_INFO("keyboard connected status: %d",
 		   mdata->keyboard_conn_status);
@@ -538,12 +585,12 @@ static int xiaomi_keyboard_probe(struct platform_device *pdev)
 	mdata->dev_pm_suspend = false;
 	mdata->keyboard_is_enable = false;
 	mdata->is_in_suspend = false;
+	mdata->user_enabled = true;
 
-	ret = sysfs_create_file(&mdata->pdev->dev.kobj,
-				&dev_attr_xiaomi_keyboard_conn_status.attr);
+	ret = sysfs_create_group(&mdata->pdev->dev.kobj,
+				 &xiaomi_attribute_group);
 	if (ret < 0) {
-		MI_KB_ERR(
-			"Create sysfs attribute xiaomi_keyboard_conn_status Failed\n");
+		MI_KB_ERR("Create sysfs group Failed\n");
 		goto err_pinctrl_select;
 	}
 
