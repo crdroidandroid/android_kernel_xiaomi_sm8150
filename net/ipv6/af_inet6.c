@@ -283,24 +283,163 @@ out_rcu_unlock:
 /* bind for INET6 API */
 int inet6_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 {
+	struct sockaddr_in6 *addr = (struct sockaddr_in6 *)uaddr;
 	struct sock *sk = sock->sk;
+	const struct proto *prot;
+	struct inet_sock *inet = inet_sk(sk);
+	struct ipv6_pinfo *np = inet6_sk(sk);
+	struct net *net = sock_net(sk);
+	__be32 v4addr = 0;
+	unsigned short snum;
+	bool saved_ipv6only;
+	int addr_type = 0;
 	int err = 0;
 
+	/* IPV6_ADDRFORM can change sk->sk_prot under us. */
+	prot = READ_ONCE(sk->sk_prot);
 	/* If the socket has its own bind function then use it. */
-	if (sk->sk_prot->bind)
-		return sk->sk_prot->bind(sk, uaddr, addr_len);
+	if (prot->bind)
+		return prot->bind(sk, uaddr, addr_len);
 
 	if (addr_len < SIN6_LEN_RFC2133)
 		return -EINVAL;
 
-	/* BPF prog is run before any checks are done so that if the prog
-	 * changes context in a wrong way it will be caught.
-	 */
-	err = BPF_CGROUP_RUN_PROG_INET6_BIND(sk, uaddr);
-	if (err)
-		return err;
+	if (addr->sin6_family != AF_INET6)
+		return -EAFNOSUPPORT;
 
-	return __inet6_bind(sk, uaddr, addr_len, false, true);
+	addr_type = ipv6_addr_type(&addr->sin6_addr);
+	if ((addr_type & IPV6_ADDR_MULTICAST) && sock->type == SOCK_STREAM)
+		return -EINVAL;
+
+	snum = ntohs(addr->sin6_port);
+	if (snum && snum < inet_prot_sock(net) &&
+	    !ns_capable(net->user_ns, CAP_NET_BIND_SERVICE))
+		return -EACCES;
+
+	lock_sock(sk);
+
+	/* Check these errors (active socket, double bind). */
+	if (sk->sk_state != TCP_CLOSE || inet->inet_num) {
+		err = -EINVAL;
+		goto out;
+	}
+
+	/* Check if the address belongs to the host. */
+	if (addr_type == IPV6_ADDR_MAPPED) {
+		struct net_device *dev = NULL;
+		int chk_addr_ret;
+
+		/* Binding to v4-mapped address on a v6-only socket
+		 * makes no sense
+		 */
+		if (sk->sk_ipv6only) {
+			err = -EINVAL;
+			goto out;
+		}
+
+		rcu_read_lock();
+		if (sk->sk_bound_dev_if) {
+			dev = dev_get_by_index_rcu(net, sk->sk_bound_dev_if);
+			if (!dev) {
+				err = -ENODEV;
+				goto out_unlock;
+			}
+		}
+
+		/* Reproduce AF_INET checks to make the bindings consistent */
+		v4addr = addr->sin6_addr.s6_addr32[3];
+		chk_addr_ret = inet_addr_type_dev_table(net, dev, v4addr);
+		rcu_read_unlock();
+
+		if (!net->ipv4.sysctl_ip_nonlocal_bind &&
+		    !(inet->freebind || inet->transparent) &&
+		    v4addr != htonl(INADDR_ANY) &&
+		    chk_addr_ret != RTN_LOCAL &&
+		    chk_addr_ret != RTN_MULTICAST &&
+		    chk_addr_ret != RTN_BROADCAST) {
+			err = -EADDRNOTAVAIL;
+			goto out;
+		}
+	} else {
+		if (addr_type != IPV6_ADDR_ANY) {
+			struct net_device *dev = NULL;
+
+			rcu_read_lock();
+			if (__ipv6_addr_needs_scope_id(addr_type)) {
+				if (addr_len >= sizeof(struct sockaddr_in6) &&
+				    addr->sin6_scope_id) {
+					/* Override any existing binding, if another one
+					 * is supplied by user.
+					 */
+					sk->sk_bound_dev_if = addr->sin6_scope_id;
+				}
+
+				/* Binding to link-local address requires an interface */
+				if (!sk->sk_bound_dev_if) {
+					err = -EINVAL;
+					goto out_unlock;
+				}
+			}
+
+			if (sk->sk_bound_dev_if) {
+				dev = dev_get_by_index_rcu(net, sk->sk_bound_dev_if);
+				if (!dev) {
+					err = -ENODEV;
+					goto out_unlock;
+				}
+			}
+
+			/* ipv4 addr of the socket is invalid.  Only the
+			 * unspecified and mapped address have a v4 equivalent.
+			 */
+			v4addr = LOOPBACK4_IPV6;
+			if (!(addr_type & IPV6_ADDR_MULTICAST))	{
+				if (!net->ipv6.sysctl.ip_nonlocal_bind &&
+				    !(inet->freebind || inet->transparent) &&
+				    !ipv6_chk_addr(net, &addr->sin6_addr,
+						   dev, 0)) {
+					err = -EADDRNOTAVAIL;
+					goto out_unlock;
+				}
+			}
+			rcu_read_unlock();
+		}
+	}
+
+	inet->inet_rcv_saddr = v4addr;
+	inet->inet_saddr = v4addr;
+
+	sk->sk_v6_rcv_saddr = addr->sin6_addr;
+
+	if (!(addr_type & IPV6_ADDR_MULTICAST))
+		np->saddr = addr->sin6_addr;
+
+	saved_ipv6only = sk->sk_ipv6only;
+	if (addr_type != IPV6_ADDR_ANY && addr_type != IPV6_ADDR_MAPPED)
+		sk->sk_ipv6only = 1;
+
+	/* Make sure we are allowed to bind here. */
+	if ((snum || !inet->bind_address_no_port) &&
+	    sk->sk_prot->get_port(sk, snum)) {
+		sk->sk_ipv6only = saved_ipv6only;
+		inet_reset_saddr(sk);
+		err = -EADDRINUSE;
+		goto out;
+	}
+
+	if (addr_type != IPV6_ADDR_ANY)
+		sk->sk_userlocks |= SOCK_BINDADDR_LOCK;
+	if (snum)
+		sk->sk_userlocks |= SOCK_BINDPORT_LOCK;
+	inet->inet_sport = htons(inet->inet_num);
+	inet->inet_dport = 0;
+	inet->inet_daddr = 0;
+out:
+	release_sock(sk);
+	return err;
+out_unlock:
+	rcu_read_unlock();
+	goto out;
 }
 EXPORT_SYMBOL(inet6_bind);
 
@@ -559,6 +698,7 @@ int inet6_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)
 {
 	struct sock *sk = sock->sk;
 	struct net *net = sock_net(sk);
+	const struct proto *prot;
 
 	switch (cmd) {
 	case SIOCGSTAMP:
@@ -579,9 +719,11 @@ int inet6_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)
 	case SIOCSIFDSTADDR:
 		return addrconf_set_dstaddr(net, (void __user *) arg);
 	default:
-		if (!sk->sk_prot->ioctl)
+		/* IPV6_ADDRFORM can change sk->sk_prot under us. */
+		prot = READ_ONCE(sk->sk_prot);
+		if (!prot->ioctl)
 			return -ENOIOCTLCMD;
-		return sk->sk_prot->ioctl(sk, cmd, arg);
+		return prot->ioctl(sk, cmd, arg);
 	}
 	/*NOTREACHED*/
 	return 0;
