@@ -23,9 +23,6 @@
 
 #include <linux/moduleparam.h>
 
-#define SHORTCIRCUIT_IOCB_MASK                                                  \
-	(IOCB_APPEND | IOCB_DSYNC | IOCB_HIPRI | IOCB_NOWAIT | IOCB_SYNC)
-
 int __read_mostly sct_mode = 2;
 module_param(sct_mode, int, 0644);
 
@@ -172,6 +169,24 @@ static void fuse_copyattr(struct file *dst_file, struct file *src_file)
 	i_size_write(dst, i_size_read(src));
 }
 
+static inline rwf_t iocb_to_rw_flags(int ifl)
+{
+	rwf_t flags = 0;
+
+	if (ifl & IOCB_APPEND)
+		flags |= RWF_APPEND;
+	if (ifl & IOCB_DSYNC)
+		flags |= RWF_DSYNC;
+	if (ifl & IOCB_HIPRI)
+		flags |= RWF_HIPRI;
+	if (ifl & IOCB_NOWAIT)
+		flags |= RWF_NOWAIT;
+	if (ifl & IOCB_SYNC)
+		flags |= RWF_SYNC;
+
+	return flags;
+}
+
 static void fuse_aio_cleanup_handler(struct fuse_aio_req *aio_req)
 {
 	struct kiocb *iocb = &aio_req->iocb;
@@ -224,8 +239,7 @@ ssize_t fuse_shortcircuit_read_iter(struct kiocb *iocb_fuse,
 	old_cred = override_creds(ff->sct.cred);
 	if (is_sync_kiocb(iocb_fuse)) {
 		ret = vfs_iter_read(lower_filp, iter, &iocb_fuse->ki_pos,
-				     iocb_to_rw_flags(iocb_fuse->ki_flags,
-						      SHORTCIRCUIT_IOCB_MASK));
+				    iocb_to_rw_flags(iocb_fuse->ki_flags));
 	} else {
 		struct fuse_aio_req *aio_req;
 
@@ -263,8 +277,7 @@ ssize_t fuse_shortcircuit_write_iter(struct kiocb *iocb_fuse,
 	if (is_sync_kiocb(iocb_fuse)) {
 		file_start_write(lower_filp);
 		ret = vfs_iter_write(lower_filp, iter, &iocb_fuse->ki_pos,
-				     iocb_to_rw_flags(iocb_fuse->ki_flags,
-						      SHORTCIRCUIT_IOCB_MASK));
+				     iocb_to_rw_flags(iocb_fuse->ki_flags));
 		file_end_write(lower_filp);
 		if (ret > 0)
 			fuse_copyattr(fuse_filp, lower_filp);
