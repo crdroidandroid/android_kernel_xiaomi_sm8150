@@ -1,0 +1,9 @@
+&qupv3_se1_spi {
+	status = "ok";
+	irled@0 {
+		compatible = "ir-spi";
+		reg = <0x0>;
+		status = "ok";
+		spi-max-frequency = <19200000>;
+	};
+};
