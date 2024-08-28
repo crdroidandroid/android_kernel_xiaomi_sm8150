@@ -1539,15 +1539,7 @@ And public attribution of xiaomi platforms(like J20S and so and)
 	};
 };
 
-&qupv3_se1_spi {
-	status = "ok";
-	irled@0 {
-		compatible = "ir-spi";
-		reg = <0x0>;
-		status = "ok";
-		spi-max-frequency = <19200000>;
-	};
-};
+#include "../common/ir.dtsi"
 
 &pm8150l_lpg {
 	qcom,lut-patterns = <0 1 2 3 4 5 7 9 11 13 15
