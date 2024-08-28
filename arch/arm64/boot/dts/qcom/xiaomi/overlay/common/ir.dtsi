@@ -1,8 +1,16 @@
+&soc {
+	irda_regulator: irda-regulator {
+		compatible = "regulator-dummy";
+		regulator-name = "irda_regulator";
+	};
+};
+
 &qupv3_se1_spi {
 	status = "ok";
 	irled@0 {
-		compatible = "ir-spi";
+		compatible = "ir-spi-led";
 		reg = <0x0>;
+		power-supply = <&irda_regulator>;
 		status = "ok";
 		spi-max-frequency = <19200000>;
 	};
