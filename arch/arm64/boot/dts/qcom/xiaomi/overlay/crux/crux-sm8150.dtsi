@@ -789,15 +789,7 @@ And public attribution of xiaomi platforms(like F1X and so and)
 //	qcom,esd-err-irq-gpio = <&tlmm 101 0x2002>;
 //};
 
-&qupv3_se1_spi {
-	status = "ok";
-	irled@0 {
-		compatible = "ir-spi";
-		reg = <0x0>;
-		status = "ok";
-		spi-max-frequency = <19200000>;
-	};
-};
+#include "../common/ir.dtsi"
 
 &qupv3_se7_i2c {
 	status = "ok";
