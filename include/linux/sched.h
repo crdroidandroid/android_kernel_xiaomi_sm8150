@@ -618,6 +618,7 @@ struct ravg {
 	u16 pred_demand_scaled;
 	u64 active_time;
 	u64 last_win_size;
+	u16 active_windows;
 };
 #else
 static inline void sched_exit(struct task_struct *p) { }
