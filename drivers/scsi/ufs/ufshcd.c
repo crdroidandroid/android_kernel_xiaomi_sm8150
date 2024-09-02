@@ -3662,36 +3662,6 @@ static inline void ufshcd_put_read_lock(struct ufs_hba *hba)
 	up_read(&hba->lock);
 }
 
-static void ufshcd_pm_qos_get_worker(struct work_struct *work)
-{
-	struct ufs_hba *hba = container_of(work, typeof(*hba), pm_qos.get_work);
-
-	if (!atomic_read(&hba->pm_qos.count))
-		return;
-
-	mutex_lock(&hba->pm_qos.lock);
-	if (atomic_read(&hba->pm_qos.count) && !hba->pm_qos.active) {
-		pm_qos_update_request(&hba->pm_qos.req, 100);
-		hba->pm_qos.active = true;
-	}
-	mutex_unlock(&hba->pm_qos.lock);
-}
-
-static void ufshcd_pm_qos_put_worker(struct work_struct *work)
-{
-	struct ufs_hba *hba = container_of(work, typeof(*hba), pm_qos.put_work);
-
-	if (atomic_read(&hba->pm_qos.count))
-		return;
-
-	mutex_lock(&hba->pm_qos.lock);
-	if (!atomic_read(&hba->pm_qos.count) && hba->pm_qos.active) {
-		pm_qos_update_request(&hba->pm_qos.req, PM_QOS_DEFAULT_VALUE);
-		hba->pm_qos.active = false;
-	}
-	mutex_unlock(&hba->pm_qos.lock);
-}
-
 static void ufshcd_pm_qos_get(struct ufs_hba *hba)
 {
 	if (atomic_inc_return(&hba->pm_qos.count) == 1)
@@ -11099,14 +11069,6 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 	 * status is cleared before registering UFS interrupt handler.
 	 */
 	ufshcd_readl(hba, REG_INTERRUPT_ENABLE);
-
-	mutex_init(&hba->pm_qos.lock);
-	INIT_WORK(&hba->pm_qos.get_work, ufshcd_pm_qos_get_worker);
-	INIT_WORK(&hba->pm_qos.put_work, ufshcd_pm_qos_put_worker);
-	hba->pm_qos.req.type = PM_QOS_REQ_AFFINE_IRQ;
-	hba->pm_qos.req.irq = irq;
-	pm_qos_add_request(&hba->pm_qos.req, PM_QOS_CPU_DMA_LATENCY,
-			   PM_QOS_DEFAULT_VALUE);
 
 	/* IRQ registration */
 	err = devm_request_irq(dev, irq, ufshcd_intr, IRQF_SHARED,

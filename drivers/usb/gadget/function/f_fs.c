@@ -821,8 +821,6 @@ static void ffs_user_copy_worker(struct work_struct *work)
 	bool kiocb_has_eventfd = io_data->kiocb->ki_flags & IOCB_EVENTFD;
 	unsigned long flags;
 
-	ffs_log("enter: ret %d for %s", ret, io_data->read ? "read" : "write");
-
 	if (io_data->read && ret > 0) {
 		mm_segment_t oldfs = get_fs();
 
