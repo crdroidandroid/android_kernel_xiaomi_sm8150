@@ -54,6 +54,14 @@ config ANDROID_BINDER_IPC_SELFTEST
 	  exhaustively with combinations of various buffer sizes and
 	  alignments.
 
+config ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF
+	bool "Spoof kernel version for bpfloader"
+	default y
+	---help---
+	  Spoofs the kernel version for bpfloader/netbpfload to allow
+	  booting newer Android versions without system-side patches.
+	  Also pretends to support ANY attach_type and prog_type.
+
 endif # if ANDROID
 
 endmenu

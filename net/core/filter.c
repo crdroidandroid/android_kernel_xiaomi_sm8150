@@ -4819,6 +4819,35 @@ const struct bpf_verifier_ops sk_skb_prog_ops = {
 	.gen_prologue		= sk_skb_prologue,
 };
 
+#ifdef CONFIG_ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF
+static const struct bpf_func_proto *
+dummy_func_proto(enum bpf_func_id func_id, const struct bpf_prog *prog)
+{
+	return bpf_base_func_proto(func_id);
+}
+
+static bool dummy_is_valid_access(int off, int size,
+				  enum bpf_access_type type,
+				  const struct bpf_prog *prog,
+				  struct bpf_insn_access_aux *info)
+{
+	return true;
+}
+
+static int dummy_prologue(struct bpf_insn *insn_buf, bool direct_write,
+			  const struct bpf_prog *prog)
+{
+	return bpf_unclone_prologue(insn_buf, direct_write, prog, SK_DROP);
+}
+
+const struct bpf_verifier_ops dummy_prog_ops = {
+	.get_func_proto		= dummy_func_proto,
+	.is_valid_access	= dummy_is_valid_access,
+	.convert_ctx_access	= bpf_convert_ctx_access,
+	.gen_prologue		= dummy_prologue,
+};
+#endif
+
 int sk_detach_filter(struct sock *sk)
 {
 	int ret = -ENOENT;

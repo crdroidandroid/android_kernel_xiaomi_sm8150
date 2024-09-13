@@ -1304,10 +1304,22 @@ static int bpf_prog_load(union bpf_attr *attr)
 			goto free_prog;
 	}
 
+#ifdef CONFIG_ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF
+retry_find_prog_type:
+#endif
 	/* find program type: socket_filter vs tracing_filter */
 	err = find_prog_type(type, prog);
-	if (err < 0)
+	if (err < 0) {
+#ifdef CONFIG_ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF
+		if (err == -EINVAL && type != BPF_PROG_TYPE_DUMMY) {
+			pr_err("Overriding type = %d to BPF_PROG_TYPE_DUMMY", type);
+
+			type = BPF_PROG_TYPE_DUMMY;
+			goto retry_find_prog_type;
+		}
+#endif
 		goto free_prog;
+	}
 
 	prog->aux->load_time = ktime_get_boot_ns();
 	err = bpf_obj_name_cpy(prog->aux->name, attr->prog_name);
@@ -1461,7 +1473,12 @@ static int bpf_prog_attach(const union bpf_attr *attr)
 	case BPF_SK_SKB_STREAM_VERDICT:
 		return sockmap_get_from_fd(attr, true);
 	default:
+#ifdef CONFIG_ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF
+		pr_err("Pretending to support BPF attach_type = %d", attr->attach_type);
+		return 0;
+#else
 		return -EINVAL;
+#endif
 	}
 
 	prog = bpf_prog_get_type(attr->attach_bpf_fd, ptype);
@@ -1526,7 +1543,12 @@ static int bpf_prog_detach(const union bpf_attr *attr)
 	case BPF_SK_SKB_STREAM_VERDICT:
 		return sockmap_get_from_fd(attr, false);
 	default:
+#ifdef CONFIG_ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF
+		pr_err("Pretending to support detach for BPF attach_type = %d", attr->attach_type);
+		return 0;
+#else
 		return -EINVAL;
+#endif
 	}
 
 	cgrp = cgroup_get_from_fd(attr->target_fd);
@@ -1572,7 +1594,13 @@ static int bpf_prog_query(const union bpf_attr *attr,
 	case BPF_CGROUP_SOCK_OPS:
 		break;
 	default:
+#ifdef CONFIG_ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF
+		pr_err("Pretending to support query for BPF attach_type = %d",
+		       attr->query.attach_type);
+		return 1;
+#else
 		return -EINVAL;
+#endif
 	}
 	cgrp = cgroup_get_from_fd(attr->query.target_fd);
 	if (IS_ERR(cgrp))
