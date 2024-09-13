@@ -48,3 +48,6 @@ BPF_MAP_TYPE(BPF_MAP_TYPE_DEVMAP_HASH, dev_map_hash_ops)
 BPF_MAP_TYPE(BPF_MAP_TYPE_SOCKMAP, sock_map_ops)
 #endif
 #endif
+#ifdef CONFIG_ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF
+BPF_MAP_TYPE(BPF_MAP_TYPE_DUMMY, array_map_ops)
+#endif

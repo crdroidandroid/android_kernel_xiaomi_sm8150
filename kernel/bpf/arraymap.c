@@ -66,7 +66,10 @@ static struct bpf_map *array_map_alloc(union bpf_attr *attr)
 	    attr->value_size == 0 ||
 	    attr->map_flags & ~ARRAY_CREATE_FLAG_MASK ||
 	    (percpu && numa_node != NUMA_NO_NODE))
-		return ERR_PTR(-EINVAL);
+#ifdef CONFIG_ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF
+		if (attr->map_type != BPF_MAP_TYPE_DUMMY)
+#endif
+			return ERR_PTR(-EINVAL);
 
 	if (attr->value_size > KMALLOC_MAX_SIZE)
 		/* if value_size is bigger, the user space won't be able to

@@ -388,6 +388,9 @@ static int map_create(union bpf_attr *attr)
 	struct bpf_map *map;
 	int f_flags;
 	int err;
+#ifdef CONFIG_ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF
+	int map_type = attr->map_type;
+#endif
 
 	err = CHECK_ATTR(BPF_MAP_CREATE);
 	if (err)
@@ -402,10 +405,30 @@ static int map_create(union bpf_attr *attr)
 	     !node_online(numa_node)))
 		return -EINVAL;
 
+#ifdef CONFIG_ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF
+retry_find_and_alloc_map:
+#endif
 	/* find map type and init map: hashtable vs rbtree vs bloom vs ... */
 	map = find_and_alloc_map(attr);
-	if (IS_ERR(map))
+	if (IS_ERR(map)) {
+#ifdef CONFIG_ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF
+		if (PTR_ERR(map) == -EINVAL && attr->map_type != BPF_MAP_TYPE_DUMMY) {
+			pr_err("Overriding map_type = %d to BPF_MAP_TYPE_DUMMY", attr->map_type);
+
+			attr->map_type = BPF_MAP_TYPE_DUMMY;
+			goto retry_find_and_alloc_map;
+		}
+#endif
 		return PTR_ERR(map);
+	}
+
+#ifdef CONFIG_ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF
+	/* Restore real map type for dummy map */
+	if (map && map->map_type == BPF_MAP_TYPE_DUMMY) {
+		attr->map_type = map_type;
+		map->map_type = map_type;
+	}
+#endif
 
 	err = bpf_obj_name_cpy(map->name, attr->map_name);
 	if (err)
