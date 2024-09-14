@@ -499,6 +499,10 @@ struct bpf_prog {
 		struct sock_filter	insns[0];
 		struct bpf_insn		insnsi[0];
 	};
+
+#ifdef CONFIG_ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF
+	bool 			disabled;	/* If set this program should not be executed */
+#endif
 };
 
 struct sk_filter {

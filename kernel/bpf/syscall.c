@@ -1261,6 +1261,7 @@ static int bpf_prog_load(union bpf_attr *attr)
 	int err;
 	char license[128];
 	bool is_gpl;
+	bool disabled = false;
 
 	if (CHECK_ATTR(BPF_PROG_LOAD))
 		return -EINVAL;
@@ -1290,8 +1291,15 @@ static int bpf_prog_load(union bpf_attr *attr)
 		return -EPERM;
 
 	bpf_prog_load_fixup_attach_type(attr);
-	if (bpf_prog_load_check_attach_type(type, attr->expected_attach_type))
+	if (bpf_prog_load_check_attach_type(type, attr->expected_attach_type)) {
+#ifdef CONFIG_ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF
+		disabled = true;
+		pr_err("Pretending to support BPF expected_attach_type %d",
+			attr->expected_attach_type);
+#else
 		return -EINVAL;
+#endif
+	}
 
 	/* plain bpf_prog allocation */
 	prog = bpf_prog_alloc(bpf_prog_size(attr->insn_cnt), GFP_USER);
@@ -1299,6 +1307,9 @@ static int bpf_prog_load(union bpf_attr *attr)
 		return -ENOMEM;
 
 	prog->expected_attach_type = attr->expected_attach_type;
+#ifdef CONFIG_ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF
+	prog->disabled = disabled;
+#endif
 
 	err = security_bpf_prog_alloc(prog->aux);
 	if (err)
@@ -1351,14 +1362,25 @@ retry_find_prog_type:
 
 	/* run eBPF verifier */
 	err = bpf_check(&prog, attr);
-	if (err < 0)
+	if (err < 0) {
+#ifdef CONFIG_ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF
+		if (err == -EINVAL) {
+			pr_err("eBPF verifier checks failed, keeping prog in disabled state");
+			prog->disabled = true;
+			goto skip_jit;
+		}
+#endif
 		goto free_used_maps;
+	}
 
 	/* eBPF program is ready to be JITed */
 	prog = bpf_prog_select_runtime(prog, &err);
 	if (err < 0)
 		goto free_used_maps;
 
+#ifdef CONFIG_ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF
+skip_jit:
+#endif
 	err = bpf_prog_alloc_id(prog);
 	if (err)
 		goto free_used_maps;
@@ -1508,6 +1530,11 @@ static int bpf_prog_attach(const union bpf_attr *attr)
 	if (IS_ERR(prog))
 		return PTR_ERR(prog);
 
+#ifdef CONFIG_ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF
+	if (prog->disabled)
+		return 0;
+#endif
+
 	if (bpf_prog_attach_check_attach_type(prog, attr->attach_type)) {
 		bpf_prog_put(prog);
 		return -EINVAL;
@@ -1594,6 +1621,9 @@ static int bpf_prog_detach(const union bpf_attr *attr)
 static int bpf_prog_query(const union bpf_attr *attr,
 			  union bpf_attr __user *uattr)
 {
+#ifdef CONFIG_ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF
+	return 1;
+#else
 	struct cgroup *cgrp;
 	int ret;
 
@@ -1617,13 +1647,7 @@ static int bpf_prog_query(const union bpf_attr *attr,
 	case BPF_CGROUP_SOCK_OPS:
 		break;
 	default:
-#ifdef CONFIG_ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF
-		pr_err("Pretending to support query for BPF attach_type = %d",
-		       attr->query.attach_type);
-		return 1;
-#else
 		return -EINVAL;
-#endif
 	}
 	cgrp = cgroup_get_from_fd(attr->query.target_fd);
 	if (IS_ERR(cgrp))
@@ -1631,6 +1655,7 @@ static int bpf_prog_query(const union bpf_attr *attr,
 	ret = cgroup_bpf_query(cgrp, attr, uattr);
 	cgroup_put(cgrp);
 	return ret;
+#endif /* CONFIG_ANDROID_SPOOF_KERNEL_VERSION_FOR_BPF */
 }
 #endif /* CONFIG_CGROUP_BPF */
 
