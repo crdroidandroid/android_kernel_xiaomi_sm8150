@@ -7600,6 +7600,14 @@ typedef struct {
      * bin2 contains the number of sampling windows that had > 4 interrupts
      */
     A_UINT32 interrupts_hist[HTT_INTERRUPTS_LATENCY_PROFILE_MAX_HIST];
+    /* min time in us for pcycles spent on q6 core on all HW threads */
+    A_UINT32 min_pcycles_time;
+    /* max time in us for pcycles spent on q6 core on all HW threads */
+    A_UINT32 max_pcycles_time;
+    /* total time in us for pcycles spent on q6 core on all HW threads */
+    A_UINT32 tot_pcycles_time;
+    /* avg time in us for pcycles spent on q6 core on all HW threads */
+    A_UINT32 avg_pcycles_time;
 } htt_stats_latency_prof_stats_tlv;
 /* preserve old name alias for new name consistent with the tag name */
 typedef htt_stats_latency_prof_stats_tlv htt_latency_prof_stats_tlv;
@@ -10862,38 +10870,6 @@ typedef struct {
     htt_stats_pdev_bw_mgr_stats_tlv bw_mgr_tlv;
 } htt_pdev_bw_mgr_stats_t;
 #endif /* ATH_TARGET */
-
-typedef struct {
-    A_UINT32 total_done;
-    A_UINT32 trigger_requests_count;
-    A_UINT32 total_trig_dropped;
-    A_UINT32 umac_disengaged_count;
-    A_UINT32 umac_soft_reset_count;
-    A_UINT32 umac_engaged_count;
-    A_UINT32 last_trigger_request_ms;
-    A_UINT32 last_start_ms;
-    A_UINT32 last_start_disengage_umac_ms;
-    A_UINT32 last_enter_ssr_platform_thread_ms;
-    A_UINT32 last_exit_ssr_platform_thread_ms;
-    A_UINT32 last_start_engage_umac_ms;
-    A_UINT32 last_done_successful_ms;
-    A_UINT32 last_e2e_delta_ms;
-    A_UINT32 max_e2e_delta_ms;
-    A_UINT32 trigger_count_for_umac_hang;
-    A_UINT32 trigger_count_for_mlo_quick_ssr;
-    A_UINT32 trigger_count_for_unknown_signature;
-    A_UINT32 post_reset_tqm_sync_cmd_completion_ms;
-    A_UINT32 htt_sync_mlo_initiate_umac_recovery_ms;
-    A_UINT32 htt_sync_do_pre_reset_ms;
-    A_UINT32 htt_sync_do_post_reset_start_ms;
-    A_UINT32 htt_sync_do_post_reset_complete_ms;
-} htt_umac_ssr_stats_t;
-
-typedef struct {
-    htt_tlv_hdr_t tlv_hdr;
-    htt_umac_ssr_stats_t stats;
-} htt_umac_ssr_stats_tlv;
-
 
 /*============= start MLO UMAC SSR stats ============= { */
 

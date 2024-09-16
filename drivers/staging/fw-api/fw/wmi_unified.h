@@ -1308,6 +1308,9 @@ typedef enum {
     /** WMI command to Request Opportunistic Power Mgmt (OPM) stats */
     WMI_REQUEST_OPM_STATS_CMDID,
 
+    /** WMI command to Request SAP suspend/resume */
+    WMI_SET_AP_SUSPEND_RESUME_CMDID,
+
 
     /*  Offload 11k related requests */
     WMI_11K_OFFLOAD_REPORT_CMDID = WMI_CMD_GRP_START_ID(WMI_GRP_11K_OFFLOAD),
@@ -4618,8 +4621,12 @@ typedef struct {
      *           and 255 indicates an invalid service class
      *      Refer to WMI_RSRC_CFG_FLAGS2_SAWF_255_SVC_CLASS_SUPPORT_GET/SET
      *      macros.
+     *  Bit 20 - enable feature EPM (Enhanced Power Management)
+     *      0 -> disable the feature
+     *      1 -> enable the feature
+     *      Refer to the below WMI_RSRC_CFG_FLAGS2_EPM_GET/SET macros.
      *
-     *  Bits 31:20 - Reserved
+     *  Bits 31:21 - Reserved
      */
     A_UINT32 flags2;
     /** @brief host_service_flags - can be used by Host to indicate
@@ -5114,6 +5121,10 @@ typedef struct {
 #define WMI_RSRC_CFG_FLAGS2_SAWF_255_SVC_CLASS_SUPPORT_SET(flags2, value) \
     WMI_SET_BITS(flags2, 19, 1, value)
 
+#define WMI_RSRC_CFG_FLAGS2_EPM_GET(flags2) \
+    WMI_GET_BITS(flags2, 20, 1)
+#define WMI_RSRC_CFG_FLAGS2_EPM_SET(flags2, value) \
+    WMI_SET_BITS(flags2, 20, 1, value)
 
 #define WMI_RSRC_CFG_HOST_SERVICE_FLAG_NAN_IFACE_SUPPORT_GET(host_service_flags) \
     WMI_GET_BITS(host_service_flags, 0, 1)
@@ -9609,6 +9620,23 @@ typedef enum {
      * E.g. a value of 4 will result in a 1.0 dB tx power reduction.
      */
     WMI_PDEV_PARAM_PWR_REDUCTION_IN_QUARTER_DB,
+
+    WMI_PDEV_PARAM_ENABLE_CHIPSET_LOGGING,
+
+    /** SCAN MODE:
+     *  bit   | scan_mode
+     * -----------------
+     *  0     | SISO SCAN - 1x1 scan
+     *        |     If this bit is 0, then use default scan (NxN).
+     *  1-31  | Reserved.
+     */
+    WMI_PDEV_PARAM_SCAN_MODE,
+
+    /** configure datastall consecutive no ack interval (units = ms) */
+    WMI_PDEV_PARAM_DSTALL_CONSECUTIVE_TX_NO_ACK_INTERVAL,
+    /** configure datastall consecutive no ack threshold */
+    WMI_PDEV_PARAM_DSTALL_CONSECUTIVE_TX_NO_ACK_THRESHOLD,
+
 } WMI_PDEV_PARAM;
 
 #define WMI_PDEV_ONLY_BSR_TRIG_IS_ENABLED(trig_type) WMI_GET_BITS(trig_type, 0, 1)
@@ -26398,6 +26426,15 @@ typedef enum
      */
     WMI_VENDOR_OUI_ACTION_SEND_SMPS_FRAME_WITH_OMN = 12,
 
+    /* Restrict SLO if specific vendor OUI received in beacon. */
+    WMI_VENDOR_OUI_ACTION_RESTRICT_SLO = 13,
+
+    /*
+     * Force MLSR mode if specific vendor OUI received in beacon
+     * when connect with MLO.
+     */
+    WMI_VENDOR_OUI_ACTION_FORCE_MLSR = 14,
+
 
     /* Add any action before this line */
     WMI_VENDOR_OUI_ACTION_MAX_ACTION_ID
@@ -27742,7 +27779,9 @@ typedef enum {
     /** Lower threshold for beacon-RSSI. Used to increase RX chainmask. */
     WMI_STA_SMPS_PARAM_LOWER_BRSSI_THRESH = 4,
     /** Enable/Disable DTIM 1chRx feature */
-    WMI_STA_SMPS_PARAM_DTIM_1CHRX_ENABLE = 5
+    WMI_STA_SMPS_PARAM_DTIM_1CHRX_ENABLE = 5,
+    /** Enable/Disable dynamic bw feature */
+    WMI_STA_SMPS_PARAM_DYNAMIC_BW_SWITCH = 6,
 } wmi_sta_smps_param;
 
 typedef struct {
@@ -38505,6 +38544,7 @@ static INLINE A_UINT8 *wmi_id_to_name(A_UINT32 wmi_command)
         WMI_RETURN_STRING(WMI_PEER_ACTIVE_TRAFFIC_MAP_CMDID);
         WMI_RETURN_STRING(WMI_REQUEST_OPM_STATS_CMDID);
         WMI_RETURN_STRING(WMI_SOC_TX_PACKET_CUSTOM_CLASSIFY_CMDID);
+        WMI_RETURN_STRING(WMI_SET_AP_SUSPEND_RESUME_CMDID);
     }
 
     return (A_UINT8 *) "Invalid WMI cmd";
@@ -49210,6 +49250,17 @@ typedef struct {
     A_UINT32 tlv_header; /** TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_request_opm_stats_cmd_fixed_param */
     A_UINT32 pdev_id; /** pdev_id for identifying the MAC */
 } wmi_request_opm_stats_cmd_fixed_param;
+
+/* wmi command to suspend SAP vdev */
+typedef struct {
+    /** TLV tag and len; tag equals
+     * WMITLV_TAG_STRUC_wmi_set_ap_suspend_resume_cmd_fixed_param */
+    A_UINT32 tlv_header;
+    /* VDEV identifier */
+    A_UINT32 vdev_id; /* If 0xFF, find vdevs corresponding to MLD MAC address */
+    wmi_mac_addr mld_mac_address; /* MLD MAC address */
+    A_UINT32 is_ap_suspend; /* 1 = suspend, 0 = resume */
+} wmi_set_ap_suspend_resume_fixed_param;
 
 
 /* ADD NEW DEFS HERE */
