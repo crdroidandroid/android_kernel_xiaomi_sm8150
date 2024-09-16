@@ -148,7 +148,6 @@ void handle_session_unregister_buffer_done(enum hal_command_response cmd,
 			break;
 		}
 	}
-	mutex_unlock(&inst->cvpbufs.lock);
 	if (!found) {
 		dprintk(VIDC_ERR, "%s: client_data %x not found\n",
 			__func__, response->data.unregbuf.client_data);
@@ -170,12 +169,11 @@ void handle_session_unregister_buffer_done(enum hal_command_response cmd,
 	data[3] = cbuf->buf.offset;
 	v4l2_event_queue_fh(&inst->event_handler, &event);
 
-	mutex_lock(&inst->cvpbufs.lock);
 	list_del(&cbuf->list);
-	mutex_unlock(&inst->cvpbufs.lock);
 	kfree(cbuf);
 	cbuf = NULL;
 exit:
+	mutex_unlock(&inst->cvpbufs.lock);
 	put_inst(inst);
 }
 
@@ -440,9 +438,9 @@ static int msm_cvp_unregister_buffer(struct msm_vidc_inst *inst,
 			break;
 		}
 	}
-	mutex_unlock(&inst->cvpbufs.lock);
 	if (!found) {
 		print_client_buffer(VIDC_ERR, "invalid", inst, buf);
+		mutex_unlock(&inst->cvpbufs.lock);
 		return -EINVAL;
 	}
 
@@ -458,6 +456,7 @@ static int msm_cvp_unregister_buffer(struct msm_vidc_inst *inst,
 	if (rc)
 		print_cvp_buffer(VIDC_ERR, "unregister failed", inst, cbuf);
 
+	mutex_unlock(&inst->cvpbufs.lock);
 	return rc;
 }
 
