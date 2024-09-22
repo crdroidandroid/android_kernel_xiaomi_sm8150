@@ -1,15 +1,6 @@
 /*
  * Copyright (c) 2013-2019, Linux Foundation. All rights reserved.
- *
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 and
- * only version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include <linux/fs.h>
 #include <linux/mutex.h>
@@ -1821,6 +1812,12 @@ static int q6lsm_mmapcallback(struct apr_client_data *data, void *priv)
 			lsm_common.cal_data);
 		lsm_common.set_custom_topology = 1;
 		return 0;
+	}
+
+	if (data->payload_size < (2 * sizeof(uint32_t))) {
+		pr_err("%s: payload has invalid size[%d]\n", __func__,
+			data->payload_size);
+		return -EINVAL;
 	}
 
 	command = payload[0];
