@@ -2511,9 +2511,6 @@ static const struct hid_device_id hid_have_special_driver[] = {
 #if IS_ENABLED(CONFIG_HID_ZYDACRON)
 	{ HID_USB_DEVICE(USB_VENDOR_ID_ZYDACRON, USB_DEVICE_ID_ZYDACRON_REMOTE_CONTROL) },
 #endif
-#if IS_ENABLED(CONFIG_XIAOMI_KEYBOARD)
-	{ HID_USB_DEVICE(USB_VENDOR_ID_NANO_IC, 0x3FFC) },
-#endif
 	{ }
 };
 
