@@ -12,6 +12,8 @@ restore='\033[0m'
 clear
 
 # Resources
+export LC_ALL=C && export USE_CCACHE=1
+ccache -M 100G
 export SUBARCH=arm64
 export ARCH=arm64
 export CLANG_PATH="$HOME/toolchains/boolx-clang/bin"
@@ -92,6 +94,11 @@ function make_zip {
 		zip -r9 `echo $ZIP_NAME`.zip *
 		mv  `echo $ZIP_NAME`*.zip $ZIP_MOVE
 		cd $KERNEL_DIR
+}
+
+function upload()
+{
+curl bashupload.com -T $ZIP_NAME*.zip
 }
 
 DATE_START=$(date +"%s")
@@ -251,6 +258,7 @@ if [ -f $KERNEL ]; then
    echo "------------------------------------------"
    echo $ZIP_NAME*.zip
    echo "------------------------------------------"
+   upload
    echo -e "${restore}"
 else
    echo -e "${red}"
