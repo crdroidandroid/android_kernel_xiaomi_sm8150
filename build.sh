@@ -237,6 +237,12 @@ echo -e "${restore}"
 cd ${kernel_dir}
 build ${TARGET_IMAGE}
 
+function build_time {
+   DATE_END=$(date +"%s")
+   DIFF=$(($DATE_END - $DATE_START))
+   echo "Time: $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds."
+}
+
 echo -e "${green}"
 echo "----------------------"
 echo "Checking output files"
@@ -258,17 +264,17 @@ if [ -f $KERNEL ]; then
    echo "------------------------------------------"
    echo $ZIP_NAME*.zip
    echo "------------------------------------------"
-   upload
    echo -e "${restore}"
+   build_time
+   upload
+   echo
 else
    echo -e "${red}"
    echo "-------------------------------------"
    echo "Building failed, Fix it and rebuild...!!!"
    echo "-------------------------------------"
    echo -e "${restore}"
+   build_time
 fi
 
-DATE_END=$(date +"%s")
-DIFF=$(($DATE_END - $DATE_START))
-echo "Time: $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds."
 echo
