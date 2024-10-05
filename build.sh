@@ -12,6 +12,8 @@ restore='\033[0m'
 clear
 
 # Resources
+export LC_ALL=C && export USE_CCACHE=1
+ccache -M 100G
 export SUBARCH=arm64
 export ARCH=arm64
 export CLANG_PATH="$HOME/toolchains/boolx-clang/bin"
@@ -29,7 +31,7 @@ cpus=`expr $(nproc --all)`
 objdir="${kernel_dir}/out"
 CONFIGS="raphael_defconfig"
 
-VER="V1.9-PickSakahayang-DSP"
+VER="V2.0-MoZoiD-DSP-Pixel"
 KERNEL_DIR=`pwd`
 REPACK_DIR=$HOME/AnyKernel3
 ZIP_MOVE=$HOME/Boolx
@@ -92,6 +94,11 @@ function make_zip {
 		zip -r9 `echo $ZIP_NAME`.zip *
 		mv  `echo $ZIP_NAME`*.zip $ZIP_MOVE
 		cd $KERNEL_DIR
+}
+
+function upload()
+{
+curl bashupload.com -T $ZIP_NAME*.zip
 }
 
 DATE_START=$(date +"%s")
@@ -230,6 +237,12 @@ echo -e "${restore}"
 cd ${kernel_dir}
 build ${TARGET_IMAGE}
 
+function build_time {
+   DATE_END=$(date +"%s")
+   DIFF=$(($DATE_END - $DATE_START))
+   echo "Time: $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds."
+}
+
 echo -e "${green}"
 echo "----------------------"
 echo "Checking output files"
@@ -252,15 +265,16 @@ if [ -f $KERNEL ]; then
    echo $ZIP_NAME*.zip
    echo "------------------------------------------"
    echo -e "${restore}"
+   build_time
+   upload
+   echo
 else
    echo -e "${red}"
    echo "-------------------------------------"
    echo "Building failed, Fix it and rebuild...!!!"
    echo "-------------------------------------"
    echo -e "${restore}"
+   build_time
 fi
 
-DATE_END=$(date +"%s")
-DIFF=$(($DATE_END - $DATE_START))
-echo "Time: $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds."
 echo
