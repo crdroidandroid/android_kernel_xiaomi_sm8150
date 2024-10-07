@@ -36,6 +36,10 @@
 #include <linux/khugepaged.h>
 #include <linux/hugetlb.h>
 
+#ifdef CONFIG_KSU_SUSFS
+#include <linux/susfs.h>
+#endif
+
 #include <asm/tlbflush.h> /* for arch/microblaze update_mmu_cache() */
 
 static struct vfsmount *shm_mnt;
@@ -3792,6 +3796,13 @@ SYSCALL_DEFINE2(memfd_create,
 		error = -EFAULT;
 		goto err_name;
 	}
+
+#ifdef CONFIG_KSU_SUSFS_SUS_MEMFD
+	if (susfs_sus_memfd(name)) {
+		error = -EFAULT;
+		goto err_name;
+	}
+#endif
 
 	fd = get_unused_fd_flags((flags & MFD_CLOEXEC) ? O_CLOEXEC : 0);
 	if (fd < 0) {

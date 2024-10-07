@@ -34,6 +34,10 @@
 
 #include "internal.h"
 
+#ifdef CONFIG_KSU_SUSFS
+#include <linux/susfs.h>
+#endif
+
 int do_truncate2(struct vfsmount *mnt, struct dentry *dentry, loff_t length,
 		unsigned int time_attrs, struct file *filp)
 {
@@ -140,6 +144,19 @@ static long do_sys_truncate(const char __user *pathname, loff_t length)
 	unsigned int lookup_flags = LOOKUP_FOLLOW;
 	struct path path;
 	int error;
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	struct filename* fname;
+	int status;
+
+	fname = getname_safe(pathname);
+	status = susfs_sus_path_by_filename(fname, &error, SYSCALL_FAMILY_ALL_ENOENT);
+	putname_safe(fname);
+
+	if (status) {
+		return error;
+	}
+#endif
+
 
 	if (length < 0)	/* sorry, but loff_t says... */
 		return -EINVAL;
@@ -374,8 +391,24 @@ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
 	int res;
 	unsigned int lookup_flags = LOOKUP_FOLLOW;
 
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+       struct filename* fname;
+       int status;
+       int error;
+#endif	
+
 #ifdef CONFIG_KSU
 	ksu_handle_faccessat(&dfd, &filename, &mode, NULL);
+#endif
+
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+       fname = getname_safe(filename);
+       status = susfs_sus_path_by_filename(fname, &error, SYSCALL_FAMILY_ALL_ENOENT);
+       putname_safe(fname);
+
+       if (status) {
+              return error;
+       }
 #endif
 
 	if (mode & ~S_IRWXO)	/* where's F_OK, X_OK, W_OK, R_OK? */
@@ -475,6 +508,19 @@ SYSCALL_DEFINE1(chdir, const char __user *, filename)
 	struct path path;
 	int error;
 	unsigned int lookup_flags = LOOKUP_FOLLOW | LOOKUP_DIRECTORY;
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	struct filename* fname;
+	int status;
+
+	fname = getname_safe(filename);
+	status = susfs_sus_path_by_filename(fname, &error, SYSCALL_FAMILY_ALL_ENOENT);
+	putname_safe(fname);
+
+	if (status) {
+		return error;
+	}
+#endif
+
 retry:
 	error = user_path_at(AT_FDCWD, filename, lookup_flags, &path);
 	if (error)
