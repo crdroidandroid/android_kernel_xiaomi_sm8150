@@ -245,7 +245,6 @@ static void do_idle(void)
 
 	while (!need_resched()) {
 		check_pgt_cache();
-		rmb();
 
 		if (cpu_is_offline(cpu)) {
 			tick_nohz_idle_stop_tick_protected();
