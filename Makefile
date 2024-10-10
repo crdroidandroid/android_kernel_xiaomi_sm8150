@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0
 VERSION = 4
 PATCHLEVEL = 14
-SUBLEVEL = 352
-EXTRAVERSION = 
+SUBLEVEL = 353
+EXTRAVERSION = -crdroid-version
 NAME = Petit Gorille
 
 # *DOCUMENTATION*
