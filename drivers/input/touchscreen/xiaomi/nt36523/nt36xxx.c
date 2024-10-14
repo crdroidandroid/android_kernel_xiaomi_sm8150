@@ -3158,9 +3158,9 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 
 		if (ts->wgp_stylus) {
 			input_set_abs_params(ts->pen_input_dev, ABS_X, 0,
-					     ts->abs_x_max * 2 - 1, 0, 0);
+					     ts->abs_x_max * 8 - 1, 0, 0);
 			input_set_abs_params(ts->pen_input_dev, ABS_Y, 0,
-					     ts->abs_y_max * 2 - 1, 0, 0);
+					     ts->abs_y_max * 8 - 1, 0, 0);
 		} else {
 			input_set_abs_params(ts->pen_input_dev, ABS_X, 0,
 					     ts->abs_x_max - 1, 0, 0);
