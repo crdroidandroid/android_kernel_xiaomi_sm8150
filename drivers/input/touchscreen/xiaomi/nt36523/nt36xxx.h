@@ -223,6 +223,7 @@ struct nvt_ts_data {
 #ifndef NVT_SAVE_TESTDATA_IN_FILE
 	void *testdata;
 #endif
+	bool pen_gen2_force;
 };
 
 #if NVT_TOUCH_PROC

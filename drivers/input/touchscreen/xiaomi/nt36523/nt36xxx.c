@@ -2127,6 +2127,32 @@ static struct tp_common_ops pen_ops = {
 	.show = pen_show,
 	.store = pen_store,
 };
+
+static ssize_t pen_gen2_force_show(struct kobject *kobj, struct kobj_attribute *attr,
+			char *buf)
+{
+	return sprintf(buf, "%d\n", ts->pen_gen2_force);
+}
+
+static ssize_t pen_gen2_force_store(struct kobject *kobj, struct kobj_attribute *attr,
+			 const char *buf, size_t count)
+{
+	int rc, val;
+
+	rc = kstrtoint(buf, 10, &val);
+	if (rc)
+		return -EINVAL;
+
+	ts->pen_gen2_force = !!val;
+
+	return count;
+}
+
+static struct tp_common_ops pen_gen2_force_ops = {
+	.show = pen_gen2_force_show,
+	.store = pen_gen2_force_store,
+};
+
 #endif
 
 #ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
@@ -3168,6 +3194,12 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 		ret = tp_common_set_pen_ops(&pen_ops);
 		if (ret < 0) {
 			NVT_ERR("%s: Failed to create pen node err=%d\n",
+				__func__, ret);
+		}
+
+		ret = tp_common_set_pen_gen2_force_ops(&pen_gen2_force_ops);
+		if (ret < 0) {
+			NVT_ERR("%s: Failed to create pen gen2 force node err=%d\n",
 				__func__, ret);
 		}
 #endif
