@@ -366,7 +366,7 @@ static int32_t update_firmware_request(const char *filename)
 	if (ts->pen_gen2_force) {
 		NVT_LOG("pen_gen2_force is enabled, force new pen fw.\n");
 		// clear the file name
-		filename = "novatek_nt36523_k82_fw01_pen.bin";
+		filename = "novatek_nt36523_fw01_pen.bin";
 		NVT_LOG("filename was changed to %s\n", filename);
 	}
 
