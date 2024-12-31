@@ -386,22 +386,6 @@ static struct ctl_table kern_table[] = {
 #endif
 #ifdef CONFIG_SCHED_WALT
 	{
-                .procname       = "sched_lib_name",
-                .data           = sched_lib_name,
-                .maxlen         = LIB_PATH_LENGTH,
-                .mode           = 0644,
-                .proc_handler   = proc_dostring,
-        },
-        {
-                .procname       = "sched_lib_mask_force",
-                .data           = &sched_lib_mask_force,
-                .maxlen         = sizeof(unsigned int),
-                .mode           = 0644,
-                .proc_handler   = proc_douintvec_minmax,
-                .extra1         = &zero,
-                .extra2         = &two_hundred_fifty_five,
-        },
-	{
 		.procname       = "sched_cpu_high_irqload",
 		.data           = &sysctl_sched_cpu_high_irqload,
 		.maxlen         = sizeof(unsigned int),
@@ -464,6 +448,16 @@ static struct ctl_table kern_table[] = {
 		.extra1		= &zero,
 		.extra2		= &one_thousand,
 	},
+	{
+                .procname       = "sched_asym_cap_sibling_freq_match_pct",
+                .data           = &sysctl_sched_asym_cap_sibling_freq_match_pct,
+                .maxlen         = sizeof(unsigned int),
+                .mode           = 0644,
+                .proc_handler   = proc_dointvec_minmax,
+                .extra1         = &one,
+                .extra2         = &one_hundred,
+        },
+
 #endif
 	{
 		.procname	= "sched_upmigrate",
@@ -751,6 +745,22 @@ static struct ctl_table kern_table[] = {
 		.extra1		= &one,
 	},
 #endif
+	{
+                .procname       = "sched_lib_name",
+                .data           = sched_lib_name,
+                .maxlen         = LIB_PATH_LENGTH,
+                .mode           = 0644,
+                .proc_handler   = proc_dostring,
+        },
+        {
+                .procname       = "sched_lib_mask_force",
+                .data           = &sched_lib_mask_force,
+                .maxlen         = sizeof(unsigned int),
+                .mode           = 0644,
+                .proc_handler   = proc_douintvec_minmax,
+                .extra1         = &zero,
+                .extra2         = &two_hundred_fifty_five,
+        },
 #ifndef CONFIG_SCHED_WALT
         {
                 .procname       = "sched_boost",
