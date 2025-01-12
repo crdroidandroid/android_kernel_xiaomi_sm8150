@@ -13424,10 +13424,20 @@ static void walt_rotate_work_func(struct work_struct *work)
 	struct walt_rotate_work *wr = container_of(work,
 				struct walt_rotate_work, w);
 
+	struct rq *src_rq = cpu_rq(wr->src_cpu), *dst_rq = cpu_rq(wr->dst_cpu);
+	unsigned long flags;
+
 	migrate_swap(wr->src_task, wr->dst_task, wr->dst_cpu, wr->src_cpu);
 
 	put_task_struct(wr->src_task);
 	put_task_struct(wr->dst_task);
+
+	local_irq_save(flags);
+	double_rq_lock(src_rq, dst_rq);
+	dst_rq->active_balance = 0;
+	src_rq->active_balance = 0;
+	double_rq_unlock(src_rq, dst_rq);
+	local_irq_restore(flags);
 
 	clear_reserved(wr->src_cpu);
 	clear_reserved(wr->dst_cpu);
@@ -13531,6 +13541,8 @@ static void walt_check_for_rotation(struct rq *src_rq)
 
 		wr->src_cpu = src_cpu;
 		wr->dst_cpu = dst_cpu;
+		dst_rq->active_balance = 1;
+		src_rq->active_balance = 1;
 	}
 	double_rq_unlock(src_rq, dst_rq);
 
@@ -13564,6 +13576,13 @@ void check_for_migration(struct rq *rq, struct task_struct *p)
 		if (task_will_be_throttled(p))
 			return;
 
+		if (walt_rotation_enabled) {
+			raw_spin_lock(&migration_lock);
+			walt_check_for_rotation(rq);
+			raw_spin_unlock(&migration_lock);
+			return;
+		}
+
 		raw_spin_lock(&migration_lock);
 		rcu_read_lock();
 		new_cpu = find_energy_efficient_cpu(sd, p, cpu, prev_cpu, 0, 1);
@@ -13583,8 +13602,6 @@ void check_for_migration(struct rq *rq, struct task_struct *p)
 					wake_up_if_idle(new_cpu);
 				return;
 			}
-		} else {
-			walt_check_for_rotation(rq);
 		}
 		raw_spin_unlock(&migration_lock);
 	}

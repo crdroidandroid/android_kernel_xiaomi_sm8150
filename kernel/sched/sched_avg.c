@@ -35,7 +35,7 @@ static s64 last_get_time;
 
 static DEFINE_PER_CPU(atomic64_t, last_busy_time) = ATOMIC64_INIT(0);
 
-#define NR_THRESHOLD_PCT		15
+#define NR_THRESHOLD_PCT		40
 
 /**
  * sched_get_nr_running_avg
