@@ -1014,7 +1014,7 @@ uclamp_tg_restrict(struct task_struct *p, enum uclamp_id clamp_id)
 		return uc_req;
 
 	//battery kprofile optimization
-        if (kp_active_mode() == 1) {
+        if (kp_active_mode() != 3) {
                 tg_min = 0;
         } else {
                 //Run for clamp boosting
