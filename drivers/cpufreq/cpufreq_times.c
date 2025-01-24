@@ -327,6 +327,14 @@ void cpufreq_task_times_init(struct task_struct *p)
 	p->time_in_state = temp;
 	spin_unlock_irqrestore(&task_time_in_state_lock, flags);
 	p->max_state = max_state;
+
+	spin_lock_irqsave(&task_concurrent_active_time_lock, flags);
+	p->concurrent_active_time = NULL;
+	spin_unlock_irqrestore(&task_concurrent_active_time_lock, flags);
+
+	spin_lock_irqsave(&task_concurrent_policy_time_lock, flags);
+	p->concurrent_policy_time = NULL;
+	spin_unlock_irqrestore(&task_concurrent_policy_time_lock, flags);
 }
 
 /* Caller must hold task_time_in_state_lock */
