@@ -239,6 +239,7 @@ static void ptrace_unfreeze_traced(struct task_struct *task)
 static int ptrace_check_attach(struct task_struct *child, bool ignore_state)
 {
 	int ret = -ESRCH;
+	child->ptrace_message = 0;
 
 	/*
 	 * We take the read lock around doing both checks to close a
