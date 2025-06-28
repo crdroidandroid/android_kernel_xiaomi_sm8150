@@ -450,9 +450,12 @@ dload_error:
 	if (type == WDSP_ELF_FLAG_RE) {
 		wdsp_broadcast_event_downseq(wdsp, post, NULL);
 		ret = 0;
-	} else
-#endif
+	} else {
+		wdsp_broadcast_event_downseq(wdsp, WDSP_EVENT_DLOAD_FAILED, NULL);
+	}
+#else
 	wdsp_broadcast_event_downseq(wdsp, WDSP_EVENT_DLOAD_FAILED, NULL);
+#endif
 	return ret;
 }
 
