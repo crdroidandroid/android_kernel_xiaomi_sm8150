@@ -6263,38 +6263,7 @@ static struct snd_soc_dai_link msm_common_misc_fe_dai_links[] = {
 		.ignore_pmdown_time = 1,
 		.id = MSM_FRONTEND_DAI_MULTIMEDIA31,
 	},
-#if !(defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU))
-	{
-		.name = "Quaternary MI2S_RX Hostless Playback",
-		.stream_name = "Quaternary MI2S_RX Hostless Playback",
-		.cpu_dai_name = "QUAT_MI2S_RX_HOSTLESS",
-		.platform_name = "msm-pcm-hostless",
-		.dynamic = 1,
-		.dpcm_playback = 1,
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			SND_SOC_DPCM_TRIGGER_POST},
-		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
-		.ignore_suspend = 1,
-		.ignore_pmdown_time = 1,
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-	},
-	{
-		.name = "Quaternary MI2S_TX Hostless Capture",
-		.stream_name = "Quaternary MI2S_TX Hostless Capture",
-		.cpu_dai_name = "QUAT_MI2S_TX_HOSTLESS",
-		.platform_name = "msm-pcm-hostless",
-		.dynamic = 1,
-		.dpcm_capture = 1,
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			SND_SOC_DPCM_TRIGGER_POST},
-		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
-		.ignore_suspend = 1,
-		.ignore_pmdown_time = 1,
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-	},
-#endif
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
 /* Voice Stub */
 	{
 		.name = "Voice Stub",
@@ -6313,6 +6282,7 @@ static struct snd_soc_dai_link msm_common_misc_fe_dai_links[] = {
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 	},
+#endif
 };
 
 static struct snd_soc_dai_link msm_common_be_dai_links[] = {
