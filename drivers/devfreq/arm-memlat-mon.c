@@ -103,7 +103,7 @@ static inline unsigned long read_event(struct event_data *event)
 		return 0;
 
 	if (event->any_cpu_readable) {
-		if (perf_event_read_local(event->pevent, &total))
+		if (perf_event_read_local(event->pevent, &total, NULL, NULL))
 			return 0;
 	} else {
 		unsigned int ev_cpu = READ_ONCE(event->pevent->oncpu);
@@ -115,7 +115,7 @@ static inline unsigned long read_event(struct event_data *event)
 
 		local_irq_disable();
 		if ((local_read = (ev_cpu == raw_smp_processor_id())))
-			ret = perf_event_read_local(event->pevent, &total);
+			ret = perf_event_read_local(event->pevent, &total, NULL, NULL);
 		local_irq_enable();
 
 		if (!local_read) {
