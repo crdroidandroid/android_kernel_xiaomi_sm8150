@@ -115,11 +115,22 @@ static int read_pages(struct address_space *mapping, struct file *filp,
 	unsigned page_idx;
 	int ret;
 
+	if (!mapping || !mapping->a_ops) {
+		put_pages_list(pages);
+		return -EINVAL;
+	}
+
 	blk_start_plug(&plug);
 
 	if (mapping->a_ops->readpages) {
 		ret = mapping->a_ops->readpages(filp, mapping, pages, nr_pages);
 		/* Clean up the remaining pages */
+		put_pages_list(pages);
+		goto out;
+	}
+
+	if (!mapping->a_ops->readpage) {
+		ret = -EINVAL;
 		put_pages_list(pages);
 		goto out;
 	}
