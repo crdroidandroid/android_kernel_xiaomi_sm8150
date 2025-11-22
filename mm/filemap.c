@@ -2179,7 +2179,12 @@ readpage:
 		 */
 		ClearPageError(page);
 		/* Start the actual read. The read will unlock the page. */
-		error = mapping->a_ops->readpage(filp, page);
+		if (unlikely(!mapping->a_ops || !mapping->a_ops->readpage)) {
+			unlock_page(page);
+			error = -EIO;
+		} else {
+			error = mapping->a_ops->readpage(filp, page);
+		}
 
 		if (unlikely(error)) {
 			if (error == AOP_TRUNCATED_PAGE) {
@@ -2581,11 +2586,16 @@ page_not_uptodate:
 	 */
 	ClearPageError(page);
 	fpin = maybe_unlock_mmap_for_io(vmf, fpin);
-	error = mapping->a_ops->readpage(file, page);
-	if (!error) {
-		wait_on_page_locked(page);
-		if (!PageUptodate(page))
-			error = -EIO;
+	if (unlikely(!mapping->a_ops || !mapping->a_ops->readpage)) {
+		unlock_page(page);
+		error = -EIO;
+	} else {
+		error = mapping->a_ops->readpage(file, page);
+		if (!error) {
+			wait_on_page_locked(page);
+			if (!PageUptodate(page))
+				error = -EIO;
+		}
 	}
 	if (fpin)
 		goto out_retry;
