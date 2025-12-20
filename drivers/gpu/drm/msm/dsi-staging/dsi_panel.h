@@ -216,6 +216,7 @@ struct dsi_panel {
 	struct dsi_cmd_engine_cfg cmd_config;
 	enum dsi_op_mode panel_mode;
 	bool panel_mode_switch_enabled;
+    bool hbm_requested;
 
 	struct dsi_dfps_capabilities dfps_caps;
 	struct dsi_dyn_clk_caps dyn_clk_caps;
@@ -385,6 +386,8 @@ struct dsi_panel *dsi_panel_ext_bridge_get(struct device *parent,
 int dsi_panel_parse_esd_reg_read_configs(struct dsi_panel *panel);
 
 void dsi_panel_ext_bridge_put(struct dsi_panel *panel);
+
+int dsi_panel_set_hbm(struct dsi_panel *panel, bool status);
 
 int dsi_panel_set_fod_hbm(struct dsi_panel *panel, bool status);
 

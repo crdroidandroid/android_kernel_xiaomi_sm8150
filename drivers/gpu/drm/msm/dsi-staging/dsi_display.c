@@ -49,6 +49,7 @@
 
 DEFINE_MUTEX(dsi_display_clk_mutex);
 
+static int hbm;
 static char dsi_display_primary[MAX_CMDLINE_PARAM_LEN];
 static char dsi_display_secondary[MAX_CMDLINE_PARAM_LEN];
 static struct dsi_display_boot_param boot_displays[MAX_DSI_ACTIVE_DISPLAY] = {
@@ -62,6 +63,37 @@ static const struct of_device_id dsi_display_dt_match[] = {
 };
 
 struct dsi_display *primary_display;
+
+static ssize_t hbm_show(struct device *dev,
+                             struct device_attribute *attr, char *buf)
+{
+    return scnprintf(buf, PAGE_SIZE, "%d\n", hbm);
+}
+
+static ssize_t hbm_store(struct device *dev,
+                              struct device_attribute *attr,
+                              const char *buf, size_t count)
+{
+    struct dsi_display *display = dev_get_drvdata(dev);
+    int val, rc;
+
+    if (!display || !display->panel)
+        return -ENODEV;
+
+    if (kstrtoint(buf, 0, &val))
+        return -EINVAL;
+
+    val = !!val;
+
+    dsi_panel_acquire_panel_lock(display->panel);
+    rc = dsi_panel_set_hbm(display->panel, val);
+    dsi_panel_release_panel_lock(display->panel);
+
+    if (rc)
+        return rc;
+
+    return count;
+}
 
 static void dsi_display_mask_ctrl_error_interrupts(struct dsi_display *display,
 			u32 mask, bool enable)
@@ -5002,6 +5034,9 @@ static DEVICE_ATTR(dynamic_dsi_clock, 0644,
 			sysfs_dynamic_dsi_clk_read,
 			sysfs_dynamic_dsi_clk_write);
 
+static DEVICE_ATTR(hbm, 0644,
+                   hbm_show, hbm_store);
+
 static struct attribute *dynamic_dsi_clock_fs_attrs[] = {
 	&dev_attr_dynamic_dsi_clock.attr,
 	NULL,
@@ -5069,6 +5104,7 @@ static DEVICE_ATTR(fod_ui, 0444,
 
 static struct attribute *display_fs_attrs[] = {
 	&dev_attr_fod_ui.attr,
+    &dev_attr_hbm.attr,
 	NULL,
 };
 static struct attribute_group display_fs_attrs_group = {
