@@ -16,6 +16,7 @@ TS_ENABLE_FOPS(double_tap)
 TS_ENABLE_FOPS(fod_status)
 TS_ENABLE_FOPS(pen)
 TS_ENABLE_FOPS(pen_gen2_force)
+TS_ENABLE_FOPS(game_mode)
 
 static int __init tp_common_init(void)
 {
