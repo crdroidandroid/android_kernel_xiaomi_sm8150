@@ -370,6 +370,20 @@ static int32_t update_firmware_request(const char *filename)
 		NVT_LOG("filename was changed to %s\n", filename);
 	}
 
+#ifdef CONFIG_TOUCHSCREEN_COMMON
+	if (ts->nvt_game_mode) {
+		u8 *lockdown = ts->lockdown_info;
+
+		if (lockdown[1] == 0x42) {
+			pr_info("[touch]: cur csot Display panel use 0042 firmware\n");
+			filename = "novatek_nt36523_fw01_0042.bin";
+		} else if (lockdown[1] == 0x36) {
+			pr_info("[touch]: cur tianma Display panel use 0036 firmware\n");
+			filename = "novatek_nt36523_fw02_0036.bin";
+		}
+	}
+#endif
+
 	if (NULL == filename) {
 		return -ENOENT;
 	}

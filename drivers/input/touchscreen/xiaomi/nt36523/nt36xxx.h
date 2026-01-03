@@ -224,6 +224,9 @@ struct nvt_ts_data {
 	void *testdata;
 #endif
 	bool pen_gen2_force;
+#ifdef CONFIG_TOUCHSCREEN_COMMON
+	bool nvt_game_mode;
+#endif
 };
 
 #if NVT_TOUCH_PROC
