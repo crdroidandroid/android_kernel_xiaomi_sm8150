@@ -1781,7 +1781,7 @@ int goodix_ts_suspend(struct goodix_ts_core *core_data)
 				} else if (core_data->double_tap_enabled) {
 					atomic_set(&core_data->suspend_stat,
 						   TP_GESTURE_DBCLK);
-				} else if (core_data->udfps_enabled || core_data->single_tap_enabled)) {
+				} else if (core_data->udfps_enabled || core_data->single_tap_enabled) {
 					atomic_set(&core_data->suspend_stat,
 						   TP_GESTURE_FOD);
 				}
