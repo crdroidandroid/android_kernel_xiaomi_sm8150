@@ -191,7 +191,7 @@ static inline void update_used_max(struct zram *zram,
 	do {
 		if (cur_max >= pages)
 			return;
-	} while (!atomic_long_try_cmpxchg(&zram->stats.max_used_pages,
+	} while (!atomic_long_cmpxchg(&zram->stats.max_used_pages,
 					  &cur_max, pages));
 }
 
