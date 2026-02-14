@@ -1089,6 +1089,29 @@ static int watch_one_dir(struct watch_dir *wd)
 	return 0;
 }
 
+/*
+ * Deferred cleanup work - must run outside of the fsnotify callback to avoid
+ * deadlock: fsnotify_destroy_group() calls flush_work() which waits for all
+ * pending event handlers to finish, but if called FROM an event handler it
+ * waits for itself indefinitely.
+ */
+static void susfs_sdcard_cleanup_work_fn(struct work_struct *work)
+{
+	SUSFS_LOGI("deferred cleanup: destroying fsnotify group\n");
+	if (g) {
+		fsnotify_destroy_group(g);
+		g = NULL;
+	}
+	if (g_watch.inode) {
+		iput(g_watch.inode);
+		g_watch.inode = NULL;
+	}
+	path_put(&g_watch.kpath);
+	SUSFS_LOGI("deferred cleanup: done\n");
+}
+
+static DECLARE_WORK(susfs_sdcard_cleanup_work, susfs_sdcard_cleanup_work_fn);
+
 static int susfs_handle_sdcard_inode_event(struct fsnotify_group *group,
 											struct inode *to_tell,
 											struct fsnotify_mark *inode_mark,
@@ -1108,15 +1131,8 @@ static int susfs_handle_sdcard_inode_event(struct fsnotify_group *group,
 		msleep(5000);
 		SUSFS_LOGI("set susfs_is_sdcard_android_data_decrypted to true\n");
 		WRITE_ONCE(susfs_is_sdcard_android_data_decrypted, true);
-		SUSFS_LOGI("cleaning up\n");
-		if (g) {
-			fsnotify_destroy_group(g);
-		}
-		if (g_watch.inode) {
-			iput(g_watch.inode);
-			g_watch.inode = NULL;
-		}
-		path_put(&g_watch.kpath);
+		SUSFS_LOGI("scheduling deferred cleanup\n");
+		schedule_work(&susfs_sdcard_cleanup_work);
 	}
 	return 0;
 }
