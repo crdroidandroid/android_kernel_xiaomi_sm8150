@@ -6597,8 +6597,7 @@ int smblib_set_prop_pd_active(struct smb_charger *chg,
 		}
 	}
 
-	smblib_usb_pd_adapter_allowance_override(chg,
-			!!chg->pd_active ? FORCE_5V : FORCE_NULL);
+	smblib_usb_pd_adapter_allowance_override(chg, FORCE_NULL);
 
 #if !(defined(CONFIG_MACH_XIAOMI_SM8150) && !(defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)))
 	smblib_update_usb_type(chg);
