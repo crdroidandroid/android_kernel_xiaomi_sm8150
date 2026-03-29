@@ -488,7 +488,7 @@ struct usbpd {
 	struct list_head	svid_handlers;
 	ktime_t			svdm_start_time;
 	bool			vdm_in_suspend;
-#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU) || defined(CONFIG_MACH_XIAOMI_RAPHAEL)
 	bool			verify_process;
 #endif
 
@@ -2782,9 +2782,11 @@ static void usbpd_sm(struct work_struct *w)
 #ifdef CONFIG_MACH_XIAOMI_SM8150
 		pd->verifed = false;
 		pd->uvdm_state = USBPD_UVDM_DISCONNECT;
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU) || defined(CONFIG_MACH_XIAOMI_RAPHAEL)
+        pd->verify_process = 0;
+#endif
 #if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
-		pd->verify_process = 0;
-		pd->pps_weak_limit = false;
+        pd->pps_weak_limit = false;
 #endif
 #endif
 
@@ -4734,7 +4736,7 @@ static ssize_t adapter_svid_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(adapter_svid);
 
-#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU) || defined(CONFIG_MACH_XIAOMI_RAPHAEL)
 static ssize_t verify_process_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
@@ -4949,7 +4951,7 @@ static struct attribute *usbpd_attrs[] = {
 	&dev_attr_adapter_id.attr,
 	&dev_attr_adapter_svid.attr,
 	&dev_attr_adapter_version.attr,
-#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU) || defined(CONFIG_MACH_XIAOMI_RAPHAEL)
 	&dev_attr_verify_process.attr,
 #endif
 	&dev_attr_usbpd_verifed.attr,
