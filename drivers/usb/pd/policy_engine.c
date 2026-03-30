@@ -359,7 +359,7 @@ static void *usbpd_ipc_log;
 #if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
 #define PD_MAX_CURRENT_LIMIT		4000000
 #endif
-#define MAX_FIXED_PDO_MA		2000
+#define MAX_FIXED_PDO_MA		2500
 #define MAX_NON_COMPLIANT_PPS_UA		2000000
 #endif
 
@@ -398,6 +398,7 @@ struct usbpd {
 	struct work_struct	sm_work;
 	struct work_struct	start_periph_work;
 	struct work_struct	restart_host_work;
+    struct delayed_work	request_9v_after_verify_work;
 	struct hrtimer		timer;
 	bool			sm_queued;
 
@@ -1953,6 +1954,17 @@ static void usbpd_set_state(struct usbpd *pd, enum usbpd_state next_state)
 					SVDM_CMD_TYPE_INITIATOR, 0, NULL, 0);
 
 		kobject_uevent(&pd->dev.kobj, KOBJ_CHANGE);
+
+    	if (pd->current_pr == PR_SINK &&
+    			pd->selected_pdo <= 1 &&
+    			pd->received_pdos[1] &&
+    			PD_SRC_PDO_TYPE(pd->received_pdos[1]) == PD_SRC_PDO_TYPE_FIXED &&
+    			PD_SRC_PDO_FIXED_VOLTAGE(pd->received_pdos[1]) * 50 == 9000) {
+    		usbpd_info(&pd->dev, "SNK_READY: schedule generic PDO2 request\n");
+    		schedule_delayed_work(&pd->request_9v_after_verify_work,
+    				msecs_to_jiffies(700));
+    	}
+
 		complete(&pd->is_ready);
 		break;
 
@@ -2726,6 +2738,104 @@ static inline bool is_sink_tx_ok(struct usbpd *pd)
 	return true;
 }
 
+static void request_9v_after_verify_work(struct work_struct *w)
+{
+	struct usbpd *pd = container_of(to_delayed_work(w),
+			struct usbpd, request_9v_after_verify_work);
+	u32 pdo;
+	int ret;
+	bool retry = false;
+
+	mutex_lock(&pd->swap_lock);
+
+	usbpd_err(&pd->dev,
+		"9V work: verifed=%d state=%s pr=%d selected=%d requested=%d src_cap_id=%d\n",
+		pd->verifed,
+		usbpd_state_strings[pd->current_state],
+		pd->current_pr,
+		pd->selected_pdo,
+		pd->requested_pdo,
+		pd->src_cap_id);
+
+    if (!pd->verifed)
+    	usbpd_info(&pd->dev,
+    		"9V work: charger not verified, trying generic PD path\n");
+
+	if (pd->current_pr != PR_SINK) {
+		usbpd_err(&pd->dev, "9V work: skip, not sink\n");
+		goto out;
+	}
+
+	if (pd->current_state != PE_SNK_READY || !is_sink_tx_ok(pd)) {
+		usbpd_err(&pd->dev, "9V work: sink not ready, retry later\n");
+		retry = true;
+		goto out;
+	}
+
+	pdo = pd->received_pdos[1]; /* PDO2 */
+	if (!pdo) {
+		usbpd_err(&pd->dev, "9V work: PDO2 missing\n");
+		goto out;
+	}
+
+	if (PD_SRC_PDO_TYPE(pdo) != PD_SRC_PDO_TYPE_FIXED) {
+		usbpd_err(&pd->dev, "9V work: PDO2 not fixed\n");
+		goto out;
+	}
+
+	if (PD_SRC_PDO_FIXED_VOLTAGE(pdo) * 50 != 9000) {
+		usbpd_err(&pd->dev, "9V work: PDO2 is not 9V\n");
+		goto out;
+	}
+
+	if (pd->selected_pdo == 2 && pd->requested_pdo == 2) {
+		usbpd_err(&pd->dev, "9V work: already on PDO2\n");
+		goto out;
+	}
+
+	usbpd_err(&pd->dev, "9V work: requesting PDO2\n");
+
+	ret = pd_select_pdo(pd, 2, 0, 0);
+	if (ret) {
+		usbpd_err(&pd->dev, "9V work: pd_select_pdo failed ret=%d\n", ret);
+		retry = true;
+		goto out;
+	}
+
+	reinit_completion(&pd->is_ready);
+	pd->send_request = true;
+	kick_sm(pd, 0);
+
+	if (!wait_for_completion_timeout(&pd->is_ready,
+			msecs_to_jiffies(1000))) {
+		usbpd_err(&pd->dev, "9V work: request timed out\n");
+		pd->send_request = false;
+		retry = true;
+		goto out;
+	}
+
+	if (pd->selected_pdo != pd->requested_pdo ||
+			pd->current_voltage != pd->requested_voltage) {
+		usbpd_err(&pd->dev,
+			"9V work: request rejected sel=%d req=%d cur_v=%d req_v=%d\n",
+			pd->selected_pdo, pd->requested_pdo,
+			pd->current_voltage, pd->requested_voltage);
+		pd->send_request = false;
+		retry = true;
+		goto out;
+	}
+
+	usbpd_err(&pd->dev, "9V work: PDO2 accepted\n");
+
+out:
+	mutex_unlock(&pd->swap_lock);
+
+	if (retry && pd->verifed) {
+		schedule_delayed_work(&pd->request_9v_after_verify_work,
+				msecs_to_jiffies(500));
+	}
+}
+
 /* Handles current state and determines transitions */
 static void usbpd_sm(struct work_struct *w)
 {
@@ -2776,6 +2886,7 @@ static void usbpd_sm(struct work_struct *w)
 		pd->requested_voltage = 0;
 		pd->requested_current = 0;
 		pd->selected_pdo = pd->requested_pdo = 0;
+        cancel_delayed_work_sync(&pd->request_9v_after_verify_work);
 		pd->peer_usb_comm = pd->peer_pr_swap = pd->peer_dr_swap = false;
 		memset(&pd->received_pdos, 0, sizeof(pd->received_pdos));
 		rx_msg_cleanup(pd);
@@ -2870,6 +2981,7 @@ static void usbpd_sm(struct work_struct *w)
 
 		pd->in_explicit_contract = false;
 		pd->selected_pdo = pd->requested_pdo = 0;
+        cancel_delayed_work_sync(&pd->request_9v_after_verify_work);
 		pd->rdo = 0;
 		rx_msg_cleanup(pd);
 		reset_vdm_state(pd);
@@ -4694,6 +4806,7 @@ static ssize_t usbpd_verifed_store(struct device *dev,
 		pd->verifed = 0;
 		return -EINVAL;
 	}
+
 	usbpd_err(&pd->dev, "batterysecret set usbpd verifed :%d\n", val);
 
 	pd->verifed = val;
@@ -4704,6 +4817,9 @@ static ssize_t usbpd_verifed_store(struct device *dev,
 			usbpd_set_state(pd, PE_SEND_SOFT_RESET);
 			return size;
 		}
+
+		schedule_delayed_work(&pd->request_9v_after_verify_work,
+				msecs_to_jiffies(500));
 	}
 
 	return size;
@@ -5341,6 +5457,7 @@ struct usbpd *usbpd_create(struct device *parent)
 	INIT_WORK(&pd->sm_work, usbpd_sm);
 	INIT_WORK(&pd->start_periph_work, start_usb_peripheral_work);
 	INIT_WORK(&pd->restart_host_work, restart_usb_host_work);
+    INIT_DELAYED_WORK(&pd->request_9v_after_verify_work, request_9v_after_verify_work);
 	hrtimer_init(&pd->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	pd->timer.function = pd_timeout;
 	mutex_init(&pd->swap_lock);
