@@ -782,10 +782,6 @@ static ssize_t udfps_enabled_store(struct device *dev,
 	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
 	core_data->udfps_enabled = buf[0] != '0';
 
-	core_data->gesture_enabled = core_data->double_tap_enabled | core_data->udfps_enabled | core_data->single_tap_enabled;
-
-	goodix_check_gesture_stat(true);
-
 	return count;
 }
 
