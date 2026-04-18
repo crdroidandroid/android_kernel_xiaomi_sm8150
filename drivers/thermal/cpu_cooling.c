@@ -705,6 +705,8 @@ static int cpufreq_set_cur_state(struct thermal_cooling_device *cdev,
 	struct device *cpu_dev;
 	int ret = 0;
 	int cpu = 0;
+	struct cpumask *cpus;
+	unsigned long max_capacity, capacity;
 
 	/* Request state should be less than max_level */
 	if (WARN_ON(state > cpufreq_cdev->max_level))
@@ -753,10 +755,17 @@ static int cpufreq_set_cur_state(struct thermal_cooling_device *cdev,
 		blocking_notifier_call_chain(&cpu_max_cooling_level_notifer,
 					     0, (void *)(long)cpu);
 	}
+
 update_frequency:
 	clip_freq = cpufreq_cdev->freq_table[state].frequency;
 	cpufreq_cdev->cpufreq_state = state;
 	cpufreq_cdev->clipped_freq = clip_freq;
+	
+cpus = cpufreq_cdev->policy->cpus;
+	max_capacity = arch_scale_cpu_capacity(NULL, cpumask_first(cpus));
+	capacity = clip_freq * max_capacity;
+	capacity /= cpufreq_cdev->policy->cpuinfo.max_freq;
+	arch_set_thermal_pressure(cpus, max_capacity - capacity);
 
 #ifdef CONFIG_MACH_XIAOMI_SM8150
 	get_online_cpus();

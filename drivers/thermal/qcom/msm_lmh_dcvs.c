@@ -12,6 +12,7 @@
 
 #define pr_fmt(fmt) "%s:%s " fmt, KBUILD_MODNAME, __func__
 
+#include <linux/cpufreq.h>
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/thermal.h>
@@ -148,6 +149,11 @@ static unsigned long limits_mitigation_notify(struct limits_dcvs_hw *hw)
 	struct device *cpu_dev = NULL;
 	unsigned long freq_val, max_limit = 0;
 	struct dev_pm_opp *opp_entry;
+	struct cpufreq_policy *policy;
+	unsigned long max_capacity, capacity;
+
+	policy = cpufreq_cpu_get(cpumask_first(&hw->core_map));
+	max_capacity = arch_scale_cpu_capacity(NULL, cpumask_first(&hw->core_map));
 
 	val = readl_relaxed(hw->osm_hw_reg);
 	dcvsh_get_frequency(val, max_limit);
