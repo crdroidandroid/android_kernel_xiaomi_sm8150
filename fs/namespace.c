@@ -39,9 +39,6 @@ extern bool susfs_is_current_ksu_domain(void);
 extern bool susfs_is_sdcard_android_data_decrypted;
 
 #define CL_COPY_MNT_NS BIT(25) /* used by copy_mnt_ns() */
-
-static DEFINE_IDA(susfs_mnt_id_ida);
-static DEFINE_IDA(susfs_mnt_group_ida);
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 
 /* Maximum number of mounts in a mount namespace */
@@ -123,14 +120,8 @@ static int mnt_alloc_id(struct mount *mnt)
 static void mnt_free_id(struct mount *mnt)
 {
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	if (mnt->mnt_id >= DEFAULT_KSU_MNT_ID) {
-		ida_free(&susfs_mnt_id_ida, mnt->mnt_id);
+	if (mnt->mnt.mnt_flags & VFSMOUNT_MNT_FLAGS_KSU_UNSHARED_MNT)
 		return;
-	}
-
-	if (mnt->mnt.mnt_flags & VFSMOUNT_MNT_FLAGS_KSU_UNSHARED_MNT) {
-		return;
-	}
 
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	ida_free(&mnt_id_ida, mnt->mnt_id);
@@ -150,7 +141,7 @@ static int mnt_alloc_group_id(struct mount *mnt)
 	 *   when boot-completed stage is triggered in core_hook.c 
 	 */
 	if (susfs_is_current_ksu_domain()) {
-		res = ida_alloc_min(&susfs_mnt_group_ida, DEFAULT_KSU_MNT_GROUP_ID, GFP_KERNEL);
+		res = ida_alloc_min(&mnt_group_ida, DEFAULT_KSU_MNT_GROUP_ID, GFP_KERNEL);
 		goto bypass_orig_flow;
 	}
 	res = ida_alloc_min(&mnt_group_ida, 1, GFP_KERNEL);
@@ -169,13 +160,6 @@ bypass_orig_flow:
  */
 void mnt_release_group_id(struct mount *mnt)
 {
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	if (mnt->mnt_group_id >= DEFAULT_KSU_MNT_GROUP_ID) {
-		ida_free(&susfs_mnt_group_ida, mnt->mnt_group_id);
-		mnt->mnt_group_id = 0;
-		return;
-	}
-#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	ida_free(&mnt_group_ida, mnt->mnt_group_id);
 	mnt->mnt_group_id = 0;
 }
@@ -284,10 +268,10 @@ static struct mount *susfs_alloc_non_unshare_ksu_vfsmnt(const char *name)
 	int res;
 
 	if (mnt) {
-		res = ida_alloc_min(&susfs_mnt_id_ida, DEFAULT_KSU_MNT_ID, GFP_KERNEL);;
-		if (res < 0) {
+		res = ida_alloc_min(&mnt_id_ida, DEFAULT_KSU_MNT_ID, GFP_KERNEL);
+		if (res < 0)
 			goto out_free_cache;
-		}
+
 		mnt->mnt_id = res;
 
 		if (name) {
@@ -1301,9 +1285,9 @@ bypass_orig_flow:
 	mnt->mnt.mnt_flags &= ~(MNT_WRITE_HOLD|MNT_MARKED|MNT_INTERNAL);
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	if (unlikely(is_mnt_ksu_unshared)) {
+	if (unlikely(is_mnt_ksu_unshared))
 		mnt->mnt.mnt_flags |= VFSMOUNT_MNT_FLAGS_KSU_UNSHARED_MNT;
-	}
+		
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	/* Don't allow unprivileged users to change mount flags */
 	if (flag & CL_UNPRIVILEGED) {
