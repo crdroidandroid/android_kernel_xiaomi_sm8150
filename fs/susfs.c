@@ -7,7 +7,7 @@
 #include <linux/namei.h>
 #include <linux/list.h>
 #include <linux/init_task.h>
-#include <linux/spinlock.h>
+#include <linux/mutex.h>
 #include <linux/seqlock.h>
 #include <linux/stat.h>
 #include <linux/uaccess.h>
@@ -49,7 +49,7 @@ bool susfs_starts_with(const char *str, const char *prefix) {
 /* sus_path */
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
 DEFINE_STATIC_SRCU(susfs_srcu_sus_path_loop);
-static DEFINE_SPINLOCK(susfs_spin_lock_sus_path);
+static DEFINE_MUTEX(susfs_mutex_lock_sus_path);
 static LIST_HEAD(LH_SUS_PATH_LOOP);
 const struct qstr susfs_fake_qstr_name = QSTR_INIT("..5.u.S", 7); // used to re-test the dcache lookup, make sure you don't have file named like this!!
 
@@ -127,9 +127,9 @@ void susfs_add_sus_path_loop(void __user **user_info) {
 	strncpy(new_list->info.target_pathname, info.target_pathname, SUSFS_MAX_LEN_PATHNAME - 1);
 	strncpy(new_list->target_pathname, info.target_pathname, SUSFS_MAX_LEN_PATHNAME - 1);
 	INIT_LIST_HEAD(&new_list->list);
-	spin_lock(&susfs_spin_lock_sus_path);
+	mutex_lock(&susfs_mutex_lock_sus_path);
 	list_add_tail_rcu(&new_list->list, &LH_SUS_PATH_LOOP);
-	spin_unlock(&susfs_spin_lock_sus_path);
+	mutex_unlock(&susfs_mutex_lock_sus_path);
 	SUSFS_LOGI("target_pathname: '%s', is successfully added to LH_SUS_PATH_LOOP\n", new_list->target_pathname);
 	info.err = 0;
 out_copy_to_user:
@@ -255,7 +255,7 @@ out_copy_to_user:
 
 /* sus_kstat */
 #ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
-static DEFINE_SPINLOCK(susfs_spin_lock_sus_kstat);
+static DEFINE_MUTEX(susfs_mutex_lock_sus_kstat);
 static DEFINE_HASHTABLE(SUS_KSTAT_HLIST, 10);
 static int susfs_mark_inode_sus_kstat(char *target_pathname, struct st_susfs_sus_kstat_hlist *new_entry) {
 	struct path path;
@@ -339,12 +339,12 @@ void susfs_add_sus_kstat(void __user **user_info) {
 	memcpy(&new_entry->info, &info, sizeof(info));
 
 // statically or not, check for duplicated entry, and remove it first if so
-	spin_lock(&susfs_spin_lock_sus_kstat);
+	mutex_lock(&susfs_mutex_lock_sus_kstat);
 	hash_for_each_possible_safe(SUS_KSTAT_HLIST, tmp_entry, tmp_hlist_node, node, info.target_ino) {
 		if (!strcmp(tmp_entry->info.target_pathname, info.target_pathname)) {
 			info.err = susfs_mark_inode_sus_kstat(new_entry->info.target_pathname, new_entry);
 			if (info.err) {
-				spin_unlock(&susfs_spin_lock_sus_kstat);
+				mutex_unlock(&susfs_mutex_lock_sus_kstat);
 				kfree(new_entry);
 				goto out_copy_to_user;
 			}
@@ -369,7 +369,7 @@ void susfs_add_sus_kstat(void __user **user_info) {
 #endif
 			hash_del_rcu(&tmp_entry->node);
 			hash_add_rcu(SUS_KSTAT_HLIST, &new_entry->node, info.target_ino);
-			spin_unlock(&susfs_spin_lock_sus_kstat);
+			mutex_unlock(&susfs_mutex_lock_sus_kstat);
 			synchronize_rcu();
 			kfree(tmp_entry);
 			info.err = 0;
@@ -380,7 +380,7 @@ void susfs_add_sus_kstat(void __user **user_info) {
 	// if no duplicated, add it to list
 	info.err = susfs_mark_inode_sus_kstat(new_entry->info.target_pathname, new_entry);
 	if (info.err) {
-		spin_unlock(&susfs_spin_lock_sus_kstat);
+		mutex_unlock(&susfs_mutex_lock_sus_kstat);
 		kfree(new_entry);
 		goto out_copy_to_user;
 	}
@@ -405,7 +405,7 @@ void susfs_add_sus_kstat(void __user **user_info) {
 			new_entry->info.spoofed_blksize, new_entry->info.spoofed_blocks);
 #endif
 	hash_add_rcu(SUS_KSTAT_HLIST, &new_entry->node, info.target_ino);
-	spin_unlock(&susfs_spin_lock_sus_kstat);
+	mutex_unlock(&susfs_mutex_lock_sus_kstat);
 	info.err = 0;
 out_copy_to_user:
 	if (copy_to_user(&((struct st_susfs_sus_kstat __user*)*user_info)->err, &info.err, sizeof(info.err))) {
@@ -436,7 +436,7 @@ void susfs_update_sus_kstat(void __user **user_info) {
 	}
 
 	// check for added entry, do the update only if entry is found.
-	spin_lock(&susfs_spin_lock_sus_kstat);
+	mutex_lock(&susfs_mutex_lock_sus_kstat);
 	// for update we have to use hash_for_each_safe() since the new target inode is changed already.
 	hash_for_each_safe(SUS_KSTAT_HLIST, bkt, tmp_hlist_node, tmp_entry, node) {
 		if (!strcmp(tmp_entry->info.target_pathname, info.target_pathname)) {
@@ -447,7 +447,7 @@ void susfs_update_sus_kstat(void __user **user_info) {
 			new_entry->info.target_ino = info.target_ino;
 			info.err = susfs_mark_inode_sus_kstat(new_entry->info.target_pathname, new_entry);
 			if (info.err) {
-				spin_unlock(&susfs_spin_lock_sus_kstat);
+				mutex_unlock(&susfs_mutex_lock_sus_kstat);
 				kfree(new_entry);
 				goto out_copy_to_user;
 			}
@@ -455,14 +455,14 @@ void susfs_update_sus_kstat(void __user **user_info) {
 					tmp_entry->target_ino, new_entry->target_ino, new_entry->info.target_pathname);
 			hash_del_rcu(&tmp_entry->node);
 			hash_add_rcu(SUS_KSTAT_HLIST, &new_entry->node, info.target_ino);
-			spin_unlock(&susfs_spin_lock_sus_kstat);
+			mutex_unlock(&susfs_mutex_lock_sus_kstat);
 			synchronize_rcu();
 			kfree(tmp_entry);
 			info.err = 0;
 			goto out_copy_to_user;
 		}
 	}
-	spin_unlock(&susfs_spin_lock_sus_kstat);
+	mutex_unlock(&susfs_mutex_lock_sus_kstat);
 	info.err = -ENOENT;
 
 out_copy_to_user:
@@ -591,7 +591,7 @@ out_spoof_kstat:
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
 /* try_umount */
 #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
-static DEFINE_SPINLOCK(susfs_spin_lock_try_umount);
+static DEFINE_MUTEX(susfs_mutex_lock_try_umount);
 extern void try_umount(const char *mnt, int flags);
 static LIST_HEAD(LH_TRY_UMOUNT_PATH);
 void susfs_add_try_umount(void __user **user_info) {
@@ -622,9 +622,9 @@ void susfs_add_try_umount(void __user **user_info) {
 	memcpy(&new_list->info, &info, sizeof(info));
 
 	INIT_LIST_HEAD(&new_list->list);
-	spin_lock(&susfs_spin_lock_try_umount);
+	mutex_lock(&susfs_mutex_lock_try_umount);
 	list_add_tail(&new_list->list, &LH_TRY_UMOUNT_PATH);
-	spin_unlock(&susfs_spin_lock_try_umount);
+	mutex_unlock(&susfs_mutex_lock_try_umount);
 	SUSFS_LOGI("target_pathname: '%s', umount options: %d, is successfully added to LH_TRY_UMOUNT_PATH\n", new_list->info.target_pathname, new_list->info.mnt_mode);
 	info.err = 0;
 out_copy_to_user:
@@ -647,7 +647,7 @@ void susfs_try_umount(uid_t uid) {
 
 /* spoof_uname */
 #ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
-static DEFINE_SPINLOCK(susfs_spin_lock_set_uname);
+static DEFINE_MUTEX(susfs_mutex_lock_set_uname);
 static struct st_susfs_uname my_uname;
 static void susfs_my_uname_init(void) {
 	memset(&my_uname, 0, sizeof(my_uname));
@@ -661,7 +661,7 @@ void susfs_set_uname(void __user **user_info) {
 		goto out_copy_to_user;
 	}
 
-	spin_lock(&susfs_spin_lock_set_uname);
+	mutex_lock(&susfs_mutex_lock_set_uname);
 	if (!strcmp(info.release, "default")) {
 		strncpy(my_uname.release, utsname()->release, __NEW_UTS_LEN);
 	} else {
@@ -672,7 +672,7 @@ void susfs_set_uname(void __user **user_info) {
 	} else {
 		strncpy(my_uname.version, info.version, __NEW_UTS_LEN);
 	}
-	spin_unlock(&susfs_spin_lock_set_uname);
+	mutex_unlock(&susfs_mutex_lock_set_uname);
 	SUSFS_LOGI("setting spoofed release: '%s', version: '%s'\n",
 				my_uname.release, my_uname.version);
 	info.err = 0;
@@ -684,7 +684,7 @@ out_copy_to_user:
 }
 
 void susfs_spoof_uname(struct new_utsname* tmp) {
-	if (unlikely(my_uname.release[0] == '\0' || spin_is_locked(&susfs_spin_lock_set_uname)))
+	if (unlikely(my_uname.release[0] == '\0' || mutex_is_locked(&susfs_mutex_lock_set_uname)))
 		return;
 	strncpy(tmp->release, my_uname.release, __NEW_UTS_LEN);
 	strncpy(tmp->version, my_uname.version, __NEW_UTS_LEN);
@@ -786,7 +786,7 @@ int susfs_spoof_cmdline_or_bootconfig(struct seq_file *m) {
 
 /* open_redirect */
 #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
-static DEFINE_SPINLOCK(susfs_spin_lock_open_redirect);
+static DEFINE_MUTEX(susfs_mutex_lock_open_redirect);
 static DEFINE_HASHTABLE(OPEN_REDIRECT_HLIST, 10);
 DEFINE_STATIC_SRCU(susfs_srcu_open_redirect);
 
@@ -885,12 +885,12 @@ void susfs_add_open_redirect(void __user **user_info) {
 
 
 	// check for existing entries, delete it first if so
-	spin_lock(&susfs_spin_lock_open_redirect);
+	mutex_lock(&susfs_mutex_lock_open_redirect);
 	hash_for_each_possible_safe(OPEN_REDIRECT_HLIST, tmp_entry_target, tmp_hlist_node, node, target_inode->i_ino) {
 		if (!strcmp(tmp_entry_target->info.target_pathname, info.target_pathname)) {
 			if (tmp_entry_target->reversed_lookup_only) {
 				SUSFS_LOGE("duplicated '%s' cannot be removed/added because it is used for reversed lookup only\n", info.target_pathname);
-				spin_unlock(&susfs_spin_lock_open_redirect);
+				mutex_unlock(&susfs_mutex_lock_open_redirect);
 				info.err = -EINVAL;
 				kfree(new_entry_redirected);
 				kfree(new_entry_target);
@@ -919,7 +919,7 @@ void susfs_add_open_redirect(void __user **user_info) {
 		// we need to mark both target and redirected path inode just for spoofing readlink as well
 		set_bit(AS_FLAGS_OPEN_REDIRECT, &redirected_inode->i_mapping->flags);
 		set_bit(AS_FLAGS_OPEN_REDIRECT, &target_inode->i_mapping->flags);
-		spin_unlock(&susfs_spin_lock_open_redirect);
+		mutex_unlock(&susfs_mutex_lock_open_redirect);
 		synchronize_rcu();
 		if (is_second_dup_found)
 			kfree(tmp_entry_redirected);
@@ -937,7 +937,7 @@ void susfs_add_open_redirect(void __user **user_info) {
 	// we need to mark both target and redirected path inode just for spoofing readlink as well
 	set_bit(AS_FLAGS_OPEN_REDIRECT, &redirected_inode->i_state);
 	set_bit(AS_FLAGS_OPEN_REDIRECT, &target_inode->i_state);
-	spin_unlock(&susfs_spin_lock_open_redirect);
+	mutex_unlock(&susfs_mutex_lock_open_redirect);
 	
 	info.err = 0;
 
