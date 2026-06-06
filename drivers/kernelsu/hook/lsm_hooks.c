@@ -389,16 +389,17 @@ static void ksu_list_del_safe(struct list_head *entry)
 
 static void ksu_dethrone_selinux_setprocattr()
 {
-	struct list_head *head = ksu_hooks_setprocattr[0].head;
-	struct security_hook_list *pos, *tmp;
+	struct hlist_head *head = ksu_hooks_setprocattr[0].head;
+    struct security_hook_list *pos;
+    struct hlist_node *tmp;
 
 	if (!head)
 		return;
 
-	if (list_empty(head))
+	if (hlist_empty(head))
 		return;
 
-	list_for_each_entry_safe(pos, tmp, head, list) {
+	hlist_for_each_entry_safe(pos, tmp, head, list) {
 		// dont unhook ourself!
 		if (pos->hook.setprocattr == ksu_setprocattr_wrapper)
 			continue;
@@ -411,7 +412,7 @@ static void ksu_dethrone_selinux_setprocattr()
 
 		// just delete evrything
 		pr_info("ksu_setprocattr: delete setprocattr LSM at 0x%lx\n", (uintptr_t)pos->hook.setprocattr);
-		ksu_list_del_safe(&pos->list);
+		hlist_del(&pos->list);
 	}
 }
 #endif
