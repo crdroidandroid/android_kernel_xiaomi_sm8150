@@ -588,11 +588,11 @@ static int smack_sb_copy_data(char *orig, char *smackopts)
 			*commap = '\0';
 
 		if (*dp != '\0')
-			strcat(dp, ",");
-		strcat(dp, cp);
+			strlcat(dp, ",", PAGE_SIZE);
+		strlcat(dp, cp, PAGE_SIZE);
 	}
 
-	strcpy(orig, otheropts);
+	strlcpy(orig, otheropts, PAGE_SIZE);
 	free_page((unsigned long)otheropts);
 
 	return 0;
