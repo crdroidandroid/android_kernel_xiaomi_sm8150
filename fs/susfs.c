@@ -1167,6 +1167,71 @@ out_copy_to_user:
 }
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MAP
 
+#ifdef CONFIG_KSU_SUSFS_SUS_MEMFD
+static DEFINE_MUTEX(susfs_mutex_lock_sus_memfd);
+static LIST_HEAD(LH_SUS_MEMFD);
+
+int susfs_add_sus_memfd(void __user **user_info) {
+	struct st_susfs_sus_memfd_list *cursor;
+	struct st_susfs_sus_memfd_list *new_list = NULL;
+	struct st_susfs_sus_memfd info = {0};
+
+	if (copy_from_user(&info, (struct st_susfs_sus_memfd __user*)*user_info, sizeof(info))) {
+		SUSFS_LOGE("failed copying from userspace\n");
+		info.err = -EFAULT;
+		goto out_copy_to_user;
+	}
+
+	mutex_lock(&susfs_mutex_lock_sus_memfd);
+	list_for_each_entry(cursor, &LH_SUS_MEMFD, list) {
+		if (unlikely(!strcmp(info.target_pathname, cursor->info.target_pathname))) {
+			SUSFS_LOGE("target_pathname: '%s' is already created in LH_SUS_MEMFD\n", info.target_pathname);
+			mutex_unlock(&susfs_mutex_lock_sus_memfd);
+			info.err = -EEXIST;
+			goto out_copy_to_user;
+		}
+	}
+	mutex_unlock(&susfs_mutex_lock_sus_memfd);
+
+	new_list = kzalloc(sizeof(struct st_susfs_sus_memfd_list), GFP_KERNEL);
+	if (!new_list) {
+		info.err = -ENOMEM;
+		goto out_copy_to_user;
+	}
+
+	memcpy(&new_list->info, &info, sizeof(info));
+
+	INIT_LIST_HEAD(&new_list->list);
+	mutex_lock(&susfs_mutex_lock_sus_memfd);
+	list_add_tail(&new_list->list, &LH_SUS_MEMFD);
+	mutex_unlock(&susfs_mutex_lock_sus_memfd);
+	SUSFS_LOGI("target_pathname: '%s', is successfully added to LH_SUS_MEMFD\n", new_list->info.target_pathname);
+	info.err = 0;
+out_copy_to_user:
+	if (copy_to_user(&((struct st_susfs_sus_memfd __user*)*user_info)->err, &info.err, sizeof(info.err))) {
+		info.err = -EFAULT;
+	}
+	SUSFS_LOGI("CMD_SUSFS_ADD_SUS_MEMFD -> ret: %d\n", info.err);
+	return info.err;
+}
+
+int susfs_sus_memfd(char *memfd_name) {
+	struct st_susfs_sus_memfd_list *cursor;
+	int res = 0;
+
+	mutex_lock(&susfs_mutex_lock_sus_memfd);
+	list_for_each_entry(cursor, &LH_SUS_MEMFD, list) {
+		if (unlikely(!strcmp(memfd_name, cursor->info.target_pathname))) {
+			SUSFS_LOGI("memfd_name: '%s' is found in LH_SUS_MEMFD, blocking memfd_create\n", memfd_name);
+			res = 1;
+			break;
+		}
+	}
+	mutex_unlock(&susfs_mutex_lock_sus_memfd);
+	return res;
+}
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MEMFD
+
 /* susfs avc log spoofing */
 extern bool susfs_is_avc_log_spoofing_enabled;
 
@@ -1265,6 +1330,11 @@ void susfs_get_enabled_features(void __user **user_info) {
 #endif
 #ifdef CONFIG_KSU_SUSFS_SUS_MAP
 	info->err = copy_config_to_buf("CONFIG_KSU_SUSFS_SUS_MAP\n", buf_ptr, &copied_size, SUSFS_ENABLED_FEATURES_SIZE);
+	if (info->err) goto out_copy_to_user;
+	buf_ptr = info->enabled_features + copied_size;
+#endif
+#ifdef CONFIG_KSU_SUSFS_SUS_MEMFD
+	info->err = copy_config_to_buf("CONFIG_KSU_SUSFS_SUS_MEMFD\n", buf_ptr, &copied_size, SUSFS_ENABLED_FEATURES_SIZE);
 	if (info->err) goto out_copy_to_user;
 	buf_ptr = info->enabled_features + copied_size;
 #endif
