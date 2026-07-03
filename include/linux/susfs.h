@@ -172,6 +172,19 @@ struct st_susfs_sus_map {
 };
 #endif
 
+/* sus_memfd */
+#ifdef CONFIG_KSU_SUSFS_SUS_MEMFD
+struct st_susfs_sus_memfd {
+	char                    target_pathname[SUSFS_MAX_LEN_PATHNAME];
+	int 					err;
+};
+
+struct st_susfs_sus_memfd_list {
+	struct list_head                        list;
+	struct st_susfs_sus_memfd               info;
+};
+#endif
+
 /* avc log spoofing */
 struct st_susfs_avc_log_spoofing {
 	bool                                    enabled;
@@ -248,6 +261,12 @@ void susfs_add_open_redirect(void __user **user_info);
 /* sus_map */
 #ifdef CONFIG_KSU_SUSFS_SUS_MAP
 void susfs_add_sus_map(void __user **user_info);
+#endif
+
+/* sus_memfd */
+#ifdef CONFIG_KSU_SUSFS_SUS_MEMFD
+int susfs_add_sus_memfd(void __user **user_info);
+int susfs_sus_memfd(char *memfd_name);
 #endif
 
 void susfs_set_avc_log_spoofing(void __user **user_info);
