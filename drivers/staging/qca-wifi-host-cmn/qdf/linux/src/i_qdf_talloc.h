@@ -30,6 +30,10 @@
 #include "linux/preempt.h"
 #include "linux/slab.h"
 
+#ifdef __free
+#undef __free
+#endif
+
 #define __can_sleep() \
 	(!in_interrupt() && !irqs_disabled() && !in_atomic())
 
