@@ -284,6 +284,9 @@ unsigned long __init free_all_bootmem(void)
 	return total_pages;
 }
 
+#ifdef __free
+#undef __free
+#endif
 static void __init __free(bootmem_data_t *bdata,
 			unsigned long sidx, unsigned long eidx)
 {
