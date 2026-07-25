@@ -171,7 +171,7 @@ config KSU_SUSFS_SUS_MAP
 config KSU_SUSFS_SUS_MEMFD
     bool "Enable to hide or spoof suspicous memfd (experimental)"
     depends on KSU_SUSFS
-    default y
+    default n
     help
         - Allow preventing the user-defined memfd name from being created
 
