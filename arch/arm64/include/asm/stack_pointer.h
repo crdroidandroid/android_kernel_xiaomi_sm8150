@@ -3,8 +3,16 @@
 #define __ASM_STACK_POINTER_H
 
 /*
- * how to get the current stack pointer from C
+ * How to get the current stack pointer from C.
  */
-register unsigned long current_stack_pointer asm ("sp");
+static __always_inline unsigned long __current_stack_pointer(void)
+{
+	unsigned long sp;
+
+	asm volatile("mov %0, sp" : "=r" (sp));
+	return sp;
+}
+
+#define current_stack_pointer	__current_stack_pointer()
 
 #endif /* __ASM_STACK_POINTER_H */
