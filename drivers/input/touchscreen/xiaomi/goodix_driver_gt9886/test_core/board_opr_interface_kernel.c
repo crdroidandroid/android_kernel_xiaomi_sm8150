@@ -535,7 +535,7 @@ extern char *strdup(const char *s)
 	return (char *)memcpy(new, s, len);
 }
 
-extern int strtol(const char *nptr, char **endptr, int base)
+extern long board_strtol(const char *nptr, char **endptr, int base)
 {
 	const char *p = nptr;
 	int ret;

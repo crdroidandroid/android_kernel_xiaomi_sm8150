@@ -55,7 +55,7 @@ extern "C" {
 #define EOF -1
 /*********************************str opr**********************************/
 extern char *strdup(const char *s);
-extern int strtol(const char *nptr, char **endptr, int base);
+extern long board_strtol(const char *nptr, char **endptr, int base);
 
 /*********************************mem opr**********************************/
 extern void *malloc(size_t size);

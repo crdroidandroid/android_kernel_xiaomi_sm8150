@@ -364,9 +364,9 @@ static int mxml_get_entity(mxml_node_t *parent, void *p, int *encoding,
 
 	if (entity[0] == '#') {
 		if (entity[1] == 'x')
-			ch = (int)strtol(entity + 2, NULL, 16);
+			ch = (int)board_strtol(entity + 2, NULL, 16);
 		else
-			ch = (int)strtol(entity + 1, NULL, 10);
+			ch = (int)board_strtol(entity + 1, NULL, 10);
 	} else {
 		ch = mxmlEntityGetValue(entity);
 		if (ch < 0)
@@ -451,7 +451,7 @@ mxml_load_data(mxml_node_t *top, /* I - Top node */
 			switch (type) {
 			case MXML_INTEGER:
 				node = mxmlNewInteger(parent,
-						      (int)strtol(buffer,
+						      (int)board_strtol(buffer,
 								  &bufptr, 0));
 				break;
 

@@ -1,7 +1,7 @@
 #define LONG_MAX 2147483647L /*0x7FFFFFFF */
 #define LONG_MIN (-2147483647L - 1L) /*-0x80000000*/
 
-int strtol(const char *nptr, char **endptr, int base)
+int board_strtol(const char *nptr, char **endptr, int base)
 {
 	const char *p = nptr;
 	unsigned long ret;
