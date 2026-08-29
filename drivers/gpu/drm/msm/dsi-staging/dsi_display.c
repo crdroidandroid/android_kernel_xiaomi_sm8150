@@ -5045,6 +5045,105 @@ error:
 	return rc;
 }
 
+static ssize_t sysfs_doze_status_read(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct dsi_display *display;
+	struct dsi_panel *panel;
+	bool status;
+
+	display = dev_get_drvdata(dev);
+	if (!display)
+		return -EINVAL;
+
+	panel = display->panel;
+
+	mutex_lock(&panel->panel_lock);
+	status = panel->doze_enabled;
+	mutex_unlock(&panel->panel_lock);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", status);
+}
+
+static ssize_t sysfs_doze_status_write(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct dsi_display *display;
+	struct dsi_panel *panel;
+	bool status;
+	int rc;
+
+	display = dev_get_drvdata(dev);
+	if (!display)
+		return -EINVAL;
+
+	rc = kstrtobool(buf, &status);
+	if (rc)
+		return rc;
+
+	panel = display->panel;
+
+	mutex_lock(&panel->panel_lock);
+
+	if (dsi_panel_initialized(panel))
+		dsi_panel_set_doze_status(panel, status);
+
+	mutex_unlock(&panel->panel_lock);
+
+	return count;
+}
+
+static ssize_t sysfs_doze_mode_read(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct dsi_display *display;
+	struct dsi_panel *panel;
+	enum dsi_doze_mode_type mode;
+
+	display = dev_get_drvdata(dev);
+	if (!display)
+		return -EINVAL;
+
+	panel = display->panel;
+
+	mutex_lock(&panel->panel_lock);
+	mode = panel->doze_mode;
+	mutex_unlock(&panel->panel_lock);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", mode);
+}
+
+static ssize_t sysfs_doze_mode_write(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct dsi_display *display;
+	struct dsi_panel *panel;
+	int mode;
+	int rc;
+
+	display = dev_get_drvdata(dev);
+	if (!display)
+		return -EINVAL;
+
+	rc = kstrtoint(buf, 10, &mode);
+	if (rc)
+		return rc;
+
+	if (mode < DSI_DOZE_LPM || mode > DSI_DOZE_HBM)
+		return -EINVAL;
+
+	panel = display->panel;
+
+	mutex_lock(&panel->panel_lock);
+	dsi_panel_set_doze_mode(panel,
+			(enum dsi_doze_mode_type) mode);
+	mutex_unlock(&panel->panel_lock);
+
+	return count;
+}
+
 static ssize_t sysfs_hbm_read(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -5100,11 +5199,21 @@ error:
 	return ret == 0 ? count : ret;
 }
 
+static DEVICE_ATTR(doze_status, 0644,
+		sysfs_doze_status_read,
+		sysfs_doze_status_write);
+
+static DEVICE_ATTR(doze_mode, 0644,
+		sysfs_doze_mode_read,
+		sysfs_doze_mode_write);
+
 static DEVICE_ATTR(hbm, 0644,
 			sysfs_hbm_read,
 			sysfs_hbm_write);
 
 static struct attribute *display_fs_attrs[] = {
+    &dev_attr_doze_status.attr,
+    &dev_attr_doze_mode.attr,
 	&dev_attr_hbm.attr,
 	NULL,
 };
