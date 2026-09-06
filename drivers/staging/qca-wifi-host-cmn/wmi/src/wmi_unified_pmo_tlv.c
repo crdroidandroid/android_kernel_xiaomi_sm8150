@@ -948,6 +948,8 @@ static QDF_STATUS extract_gtk_rsp_event_tlv(wmi_unified_t wmi_handle,
 {
 	WMI_GTK_OFFLOAD_STATUS_EVENT_fixed_param *fixed_param;
 	WMI_GTK_OFFLOAD_STATUS_EVENTID_param_tlvs *param_buf;
+	uint32_t min_len;
+	uint32_t tlv_len;
 
 	param_buf = (WMI_GTK_OFFLOAD_STATUS_EVENTID_param_tlvs *)evt_buf;
 	if (!param_buf) {
@@ -955,13 +957,25 @@ static QDF_STATUS extract_gtk_rsp_event_tlv(wmi_unified_t wmi_handle,
 		return QDF_STATUS_E_INVAL;
 	}
 
-	if (len < sizeof(WMI_GTK_OFFLOAD_STATUS_EVENT_fixed_param)) {
-		WMI_LOGE("Invalid length for GTK status");
+	fixed_param = (WMI_GTK_OFFLOAD_STATUS_EVENT_fixed_param *)
+		param_buf->fixed_param;
+	if (!fixed_param) {
+		WMI_LOGE("gtk fixed_param is NULL");
 		return QDF_STATUS_E_INVAL;
 	}
 
-	fixed_param = (WMI_GTK_OFFLOAD_STATUS_EVENT_fixed_param *)
-		param_buf->fixed_param;
+	min_len = offsetof(WMI_GTK_OFFLOAD_STATUS_EVENT_fixed_param,
+			   replay_counter) +
+		  sizeof(fixed_param->replay_counter);
+
+	tlv_len = WMITLV_GET_TLVLEN(fixed_param->tlv_header) +
+		  WMI_TLV_HDR_SIZE;
+
+	if (len < min_len || tlv_len < min_len) {
+		WMI_LOGE("Invalid length for GTK status: event %u tlv %u min %u",
+			 len, tlv_len, min_len);
+		return QDF_STATUS_E_INVAL;
+	}
 
 	if (fixed_param->vdev_id >= WLAN_UMAC_PSOC_MAX_VDEVS) {
 		wmi_err_rl("Invalid vdev_id %u", fixed_param->vdev_id);
@@ -976,7 +990,6 @@ static QDF_STATUS extract_gtk_rsp_event_tlv(wmi_unified_t wmi_handle,
 		GTK_REPLAY_COUNTER_BYTES);
 
 	return QDF_STATUS_SUCCESS;
-
 }
 
 #ifdef FEATURE_WLAN_RA_FILTERING
