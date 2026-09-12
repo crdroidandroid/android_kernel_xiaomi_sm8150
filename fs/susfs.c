@@ -928,8 +928,8 @@ void susfs_add_open_redirect(void __user **user_info) {
 		hash_add_rcu(OPEN_REDIRECT_HLIST, &new_entry_target->node, new_entry_target->target_ino);
 		hash_add_rcu(OPEN_REDIRECT_HLIST, &new_entry_redirected->node, new_entry_redirected->target_ino);
 		// we need to mark both target and redirected path inode just for spoofing readlink as well
-		set_bit(AS_FLAGS_OPEN_REDIRECT, &redirected_inode->i_mapping->flags);
-		set_bit(AS_FLAGS_OPEN_REDIRECT, &target_inode->i_mapping->flags);
+		set_bit(AS_FLAGS_OPEN_REDIRECT, &redirected_inode->i_state);
+		set_bit(AS_FLAGS_OPEN_REDIRECT, &target_inode->i_state);
 		mutex_unlock(&susfs_mutex_lock_open_redirect);
 		synchronize_rcu();
 		if (is_second_dup_found)
