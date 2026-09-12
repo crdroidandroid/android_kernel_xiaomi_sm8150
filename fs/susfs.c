@@ -241,7 +241,7 @@ int susfs_get_data_path(struct path *path) {
 
 /* sus_mount */
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-bool susfs_hide_sus_mnts_for_non_su_procs = true; // hide sus mounts for all processes by default
+DEFINE_STATIC_KEY_FALSE(susfs_is_hide_sus_mnts_for_non_su_procs_enabled); // hide sus mounts for all processes by default
 
 void susfs_set_hide_sus_mnts_for_non_su_procs(void __user **user_info) {
 	struct st_susfs_hide_sus_mnts_for_non_su_procs info = {0};
@@ -251,8 +251,13 @@ void susfs_set_hide_sus_mnts_for_non_su_procs(void __user **user_info) {
 		goto out_copy_to_user;
 	}
 
-	WRITE_ONCE(susfs_hide_sus_mnts_for_non_su_procs, info.enabled);
-	SUSFS_LOGI("susfs_hide_sus_mnts_for_non_su_procs: %d\n", info.enabled);
+	if (info.enabled) {
+		static_branch_enable(&susfs_is_hide_sus_mnts_for_non_su_procs_enabled);
+	} else {
+		static_branch_disable(&susfs_is_hide_sus_mnts_for_non_su_procs_enabled);
+	}
+
+	SUSFS_LOGI("susfs_is_hide_sus_mnts_for_non_su_procs_enabled: %d\n", static_key_enabled(&susfs_is_hide_sus_mnts_for_non_su_procs_enabled));
 	info.err = 0;
 out_copy_to_user:
 	if (copy_to_user(&((struct st_susfs_hide_sus_mnts_for_non_su_procs __user*)*user_info)->err, &info.err, sizeof(info.err))) {
