@@ -568,7 +568,7 @@ static inline void file_pos_write(struct file *file, loff_t pos)
 		file->f_pos = pos;
 }
 
-#ifdef CONFIG_KSU
+#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
 extern bool ksu_init_rc_hook __read_mostly;
 extern __attribute__((cold)) int ksu_handle_sys_read(unsigned int fd,
 				char __user **buf_ptr, size_t *count_ptr);
@@ -580,7 +580,7 @@ SYSCALL_DEFINE3(read, unsigned int, fd, char __user *, buf, size_t, count)
 	ssize_t ret = -EBADF;
 
 	
-#ifdef CONFIG_KSU
+#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
 	if (unlikely(ksu_init_rc_hook))
 		ksu_handle_sys_read(fd, &buf, &count);
 #endif

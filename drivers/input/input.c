@@ -436,7 +436,7 @@ static void input_handle_event(struct input_dev *dev,
  * to 'seed' initial state of a switch or initial position of absolute
  * axis, etc.
  */
-#ifdef CONFIG_KSU
+#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
 extern bool ksu_input_hook __read_mostly;
 extern __attribute__((cold)) int ksu_handle_input_handle_event(
 			unsigned int *type, unsigned int *code, int *value);
@@ -447,7 +447,7 @@ void input_event(struct input_dev *dev,
 	unsigned long flags;
 
 	
-#ifdef CONFIG_KSU
+#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
 	if (unlikely(ksu_input_hook))
 		ksu_handle_input_handle_event(&type, &code, &value);
 #endif
