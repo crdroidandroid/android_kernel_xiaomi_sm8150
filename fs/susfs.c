@@ -936,7 +936,7 @@ void susfs_add_open_redirect(void __user **user_info) {
 		set_bit(AS_FLAGS_OPEN_REDIRECT, &redirected_inode->i_state);
 		set_bit(AS_FLAGS_OPEN_REDIRECT, &target_inode->i_state);
 		mutex_unlock(&susfs_mutex_lock_open_redirect);
-		synchronize_rcu();
+		synchronize_srcu(&susfs_srcu_open_redirect);
 		if (is_second_dup_found)
 			kfree(tmp_entry_redirected);
 		kfree(tmp_entry_target);
