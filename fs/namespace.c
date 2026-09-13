@@ -27,9 +27,9 @@
 #include <linux/bootmem.h>
 #include <linux/task_work.h>
 #include <linux/sched/task.h>
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+#ifdef CONFIG_KSU_SUSFS
 #include <linux/susfs_def.h>
-#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+#endif // #ifdef CONFIG_KSU_SUSFS
 
 #include "pnode.h"
 #include "internal.h"
@@ -820,6 +820,17 @@ struct mount *__lookup_mnt(struct vfsmount *mnt, struct dentry *dentry)
 	struct hlist_head *head = m_hash(mnt, dentry);
 	struct mount *p;
 
+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+	// - Spoof __lookup_mnt() for any process marked with TIF_PROC_UMOUNTED (zygote
+	//   spawned app or zygote_next spawned process). Return the legit (non-sus)
+	//   mount so these processes never traverse the sus mounts, without us having
+	//   to actually umount them.
+	if (susfs_is_current_proc_umounted()) {
+		hlist_for_each_entry_rcu(p, head, mnt_hash)
+			if (p->mnt_id < DEFAULT_KSU_MNT_ID && &p->mnt_parent->mnt == mnt && p->mnt_mountpoint == dentry)
+				return p;
+	}
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	hlist_for_each_entry_rcu(p, head, mnt_hash)
 		if (&p->mnt_parent->mnt == mnt && p->mnt_mountpoint == dentry)
 			return p;
@@ -3859,7 +3870,7 @@ const struct proc_ns_operations mntns_operations = {
 	.owner		= mntns_owner,
 };
 
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+#ifdef CONFIG_KSU_SUSFS
 /* - To retrieve the non sus mount id from mount */
 int susfs_get_non_sus_mnt_id_from_mnt(struct mount *orig_mnt) {
 	struct mount *mnt = orig_mnt;
@@ -3888,4 +3899,4 @@ struct vfsmount *susfs_get_non_sus_vfsmnt_from_vfsmnt(struct vfsmount *vfsmnt) {
 	unlock_mount_hash();
 	return &mnt->mnt;
 }
-#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+#endif // #ifdef CONFIG_KSU_SUSFS

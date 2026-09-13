@@ -95,11 +95,13 @@ struct st_susfs_sus_kstat {
 };
 
 struct st_susfs_sus_kstat_hlist {
+	struct hlist_node                       node;
 	unsigned long                           target_ino;
 	unsigned long                           target_dev;
+	struct kstatfs                          spoofed_kstatfs;
+	int                                     spoofed_mnt_id;
 	bool                                    is_fuse;
 	struct st_susfs_sus_kstat               info;
-	struct hlist_node                       node;
 };
 #endif
 
@@ -152,6 +154,7 @@ struct st_susfs_open_redirect {
 };
 
 struct st_susfs_open_redirect_hlist {
+	struct hlist_node                       node;
 	unsigned long                           target_ino;
 	unsigned long                           target_dev;
 	unsigned long                           redirected_ino;
@@ -160,7 +163,6 @@ struct st_susfs_open_redirect_hlist {
 	struct kstatfs                          spoofed_kstatfs;
 	struct st_susfs_open_redirect           info;
 	bool                                    reversed_lookup_only;
-	struct hlist_node                       node;
 };
 #endif
 
@@ -227,8 +229,12 @@ void susfs_set_hide_sus_mnts_for_non_su_procs(void __user **user_info);
 #ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
 void susfs_add_sus_kstat(void __user **user_info);
 void susfs_update_sus_kstat(void __user **user_info);
-void susfs_generic_fillattr_spoofer(struct inode *inode, struct kstat *stat);
+bool susfs_is_inode_sus_kstat(struct inode *inode, bool *out_is_fuse);
+void susfs_generic_fillattr_spoofer(struct inode *inode, struct kstat *stat, u32 result_mask);
 void susfs_show_map_vma_spoofer(struct inode *inode, dev_t *out_dev, unsigned long *out_ino);
+int susfs_sus_kstat_spoof_vfs_statfs(struct inode *inode, struct kstatfs *buf, bool *is_fuse);
+void susfs_sus_kstat_spoof_inotify_fdinfo(unsigned long *out_target_ino, dev_t *out_target_dev);
+void susfs_sus_kstat_spoof_proc_fd_seq_show(int *out_target_mnt_id, unsigned long *out_target_ino, dev_t target_dev);
 #endif
 /* try_umount */
 #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
