@@ -36,8 +36,15 @@
 #include <linux/fsnotify.h>
 #include <linux/lockdep.h>
 #include <linux/user_namespace.h>
+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+#include <linux/susfs_def.h>
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 #include "internal.h"
 
+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+extern bool susfs_is_current_ksu_domain(void);
+extern bool susfs_is_sdcard_android_data_decrypted;
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 
 static LIST_HEAD(super_blocks);
 static DEFINE_SPINLOCK(sb_lock);
@@ -973,6 +980,20 @@ static DEFINE_IDA(unnamed_dev_ida);
 int get_anon_bdev(dev_t *p)
 {
 	int dev;
+
+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+	if (!READ_ONCE(susfs_is_sdcard_android_data_decrypted) && susfs_is_current_ksu_domain()) {
+		dev = ida_alloc_range(&unnamed_dev_ida, DEFAULT_KSU_MNT_MINOR_DEV, (1 << MINORBITS) - 1,
+			GFP_ATOMIC);
+		if (dev == -ENOSPC)
+			dev = -EMFILE;
+		if (dev < 0)
+			return dev;
+
+		*p = MKDEV(0, dev);
+		return 0;
+	}
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 
 	/*
 	 * Many userspace utilities consider an FSID of 0 invalid.

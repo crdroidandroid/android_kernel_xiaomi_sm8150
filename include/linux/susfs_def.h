@@ -83,6 +83,7 @@
 #define STATX_SUS_KSTAT_FUSE 0x20000000U
 
 #define MAGIC_MOUNT_WORKDIR "/debug_ramdisk/workdir"
+#define DEFAULT_KSU_MNT_MINOR_DEV (1 << 12) /* should be way enough, here minor(dev) begins with 4097 */
 
 #ifndef FUSE_SUPER_MAGIC
 #define FUSE_SUPER_MAGIC 0x65735546
