@@ -66,10 +66,6 @@
 	reg = <0x0 0x99100000 0x0 0x1400000>;
 };
 
-&disp_rdump_memory {
-	status = "disabled";
-};
-
 #include "trusty.dtsi"
 
 &qcom_seecom {
